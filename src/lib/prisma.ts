@@ -2,7 +2,7 @@ import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const PRISMA_CLIENT_REV = 9;
+const PRISMA_CLIENT_REV = 10;
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
@@ -28,8 +28,23 @@ function createPool() {
 
   const connectionString = needsRelaxedSsl ? stripSslMode(raw) : raw;
 
+  // Supabase's session-mode pooler (port 5432) gives every client a dedicated
+  // Postgres connection and caps the whole project at ~15. Transaction mode
+  // (port 6543 / pgbouncer=true) multiplexes and allows far more. Each running
+  // instance — every serverless lambda, plus local dev, plus the admin app —
+  // opens its own pg Pool, so an uncapped pool (pg default max: 10) blows the
+  // session-mode limit as soon as two instances are warm. Cap it hard.
+  const isTransactionPooler =
+    url.includes(":6543") || url.includes("pgbouncer=true");
+  const max = Number(
+    process.env.DB_POOL_MAX ?? (isTransactionPooler ? 10 : 3)
+  );
+
   return new Pool({
     connectionString,
+    max: Number.isFinite(max) && max > 0 ? max : 3,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000,
     ...(needsRelaxedSsl
       ? { ssl: { rejectUnauthorized: false as const } }
       : {}),
