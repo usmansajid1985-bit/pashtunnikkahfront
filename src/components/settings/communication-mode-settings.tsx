@@ -49,7 +49,7 @@ export function CommunicationModeSettings({
       </p>
 
       <div className="mt-4">
-        <ChoiceGrid>
+        <ChoiceGrid count={4}>
           {COMM_MODES.map((m) => {
             const icons = {
               standard: I.chat,
@@ -79,7 +79,7 @@ export function CommunicationModeSettings({
       {mode === "niqab" ? (
         <div className="mt-4">
           <p className="text-xs font-semibold text-ink-950 mb-2">After matching, prefer:</p>
-          <ChoiceGrid>
+          <ChoiceGrid count={3}>
             {[
               { id: "standard", label: "Standard", icon: I.chat, tone: "sky" as const },
               { id: "wali_oversight", label: "Wali Oversight", icon: I.eye, tone: "lilac" as const },

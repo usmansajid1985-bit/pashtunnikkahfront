@@ -140,7 +140,7 @@ export async function POST(req: Request) {
       location_region: geo?.region || null,
       location_country: geo?.country || country,
       location_country_code: geo?.countryCode || null,
-      location_radius_miles: geo ? DEFAULT_RADIUS_MILES : null,
+      location_radius_miles: geo ? DEFAULT_RADIUS_MILES : undefined,
       location_country_only: false,
       marital_status: body.maritalStatus || null,
       ancestral_village: body.ancestralRegion || null,
