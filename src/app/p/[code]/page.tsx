@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +8,7 @@ import { ProfilePreview } from "@/components/profile/profile-preview";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { recordBrowseOpened } from "@/lib/browse-rank";
 import { computeCompatibilityOnce, getCachedCompatDetail, toCompatProfile } from "@/lib/compatibility-cache";
+import { compatScore } from "@/lib/requests-hub-shared";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 
 export const dynamic = "force-dynamic";
@@ -34,35 +36,34 @@ export default async function PublicProfilePage({
   if (isOwn) redirect("/profile");
 
   const viewerId = BigInt(session.userId);
-  const [relation, unreadCount, viewerUser, viewerProfile] = await Promise.all([
-    findRelation(viewerId, profile.user_id),
-    getUnreadMessageCount(viewerId),
-    prisma.users.findUnique({ where: { id: viewerId }, select: { plan: true } }),
-    prisma.profiles.findUnique({
-      where: { user_id: viewerId },
-      select: {
-        country: true,
-        city: true,
-        age: true,
-        marital_status: true,
-        religious_practice: true,
-        religious_methodology: true,
-        tribe: true,
-        education: true,
-        dialect: true,
-        ancestral_village: true,
-        willing_to_relocate: true,
-      },
-    }),
-  ]);
+  const [relation, unreadCount, viewerUser, viewerProfile, hideGoldBadge, cachedCompat] =
+    await Promise.all([
+      findRelation(viewerId, profile.user_id),
+      getUnreadMessageCount(viewerId),
+      prisma.users.findUnique({ where: { id: viewerId }, select: { plan: true } }),
+      prisma.profiles.findUnique({
+        where: { user_id: viewerId },
+        select: {
+          country: true,
+          city: true,
+          age: true,
+          marital_status: true,
+          religious_practice: true,
+          religious_methodology: true,
+          tribe: true,
+          education: true,
+          dialect: true,
+          ancestral_village: true,
+          willing_to_relocate: true,
+        },
+      }),
+      readHideGoldBadge(profile.user_id),
+      getCachedCompatDetail(viewerId, profile.user_id),
+    ]);
   const matchStatus = relationStatus(relation, viewerId);
 
   const isGold = (viewerUser?.plan ?? "").toLowerCase() === "gold";
   let viewerCompat: { score: number; reasons: string[] } | null = null;
-
-  const [hideGoldBadge] = await Promise.all([
-    readHideGoldBadge(profile.user_id),
-  ]);
 
   if (isGold && viewerProfile) {
     const peer = {
@@ -82,12 +83,23 @@ export default async function PublicProfilePage({
       about_me: profile.about_me,
       occupation: profile.occupation,
     };
-    const cached = await getCachedCompatDetail(viewerId, profile.user_id);
-    if (cached?.aiComputed) {
-      viewerCompat = { score: cached.score, reasons: cached.reasons };
+    const meCompat = toCompatProfile(viewerProfile);
+    if (cachedCompat?.aiComputed) {
+      viewerCompat = { score: cachedCompat.score, reasons: cachedCompat.reasons };
     } else {
-      const result = await computeCompatibilityOnce(viewerId, toCompatProfile(viewerProfile), peer);
-      viewerCompat = { score: result.finalScore, reasons: result.reasons };
+      // Never block the profile from opening on a live Gemini call — show the
+      // heuristic score now, compute + cache the AI score after the response.
+      viewerCompat = {
+        score: cachedCompat?.score ?? compatScore(meCompat, peer),
+        reasons: cachedCompat?.reasons ?? [],
+      };
+      after(async () => {
+        try {
+          await computeCompatibilityOnce(viewerId, meCompat, peer);
+        } catch {
+          // best-effort cache warming
+        }
+      });
     }
   }
 
