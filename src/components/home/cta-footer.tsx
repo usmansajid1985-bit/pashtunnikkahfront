@@ -43,7 +43,7 @@ export function SiteFooter() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr] gap-10 lg:gap-8">
           <div>
             <Link href="/" className="flex items-center gap-2.5">
-              <Image src="/images/logo.png" alt="Pashtun Nikah logo" width={36} height={36} className="rounded-lg object-cover" />
+              <Image src="/images/logo.jpeg" alt="Pashtun Nikah logo" width={36} height={36} className="rounded-lg object-cover" />
               <span className="text-lg font-semibold text-white">Pashtun Nikah</span>
             </Link>
             <p className="mt-4 text-sm text-white/50 leading-relaxed max-w-xs">

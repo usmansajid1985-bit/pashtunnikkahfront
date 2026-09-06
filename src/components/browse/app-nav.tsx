@@ -22,7 +22,7 @@ export function BrowseAppNav({ active = "browse", unreadCount = 0 }: Props) {
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-60 lg:flex-col lg:border-r lg:border-ink-900/8 lg:bg-white px-4 py-6">
         <Link href="/" className="flex items-center gap-2.5 px-1">
-          <Image src="/images/logo.png" alt="Pashtun Nikah" width={30} height={30} className="rounded-lg" priority />
+          <Image src="/images/logo.jpeg" alt="Pashtun Nikah" width={30} height={30} className="rounded-lg" priority />
           <span className="text-base font-semibold tracking-tight text-ink-950">Pashtun Nikah</span>
         </Link>
 
@@ -58,7 +58,7 @@ export function BrowseAppNav({ active = "browse", unreadCount = 0 }: Props) {
       <header className="lg:hidden sticky top-0 z-40 bg-white border-b border-ink-900/8">
         <div className="px-4 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Image src="/images/logo.png" alt="Pashtun Nikah" width={26} height={26} className="rounded-lg" priority />
+            <Image src="/images/logo.jpeg" alt="Pashtun Nikah" width={26} height={26} className="rounded-lg" priority />
             <span className="font-semibold text-ink-950">Pashtun Nikah</span>
           </Link>
           <MobileNavMenu items={NAV_ITEMS} active={active} unread={unreadCount} />

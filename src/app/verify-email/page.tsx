@@ -95,7 +95,7 @@ export default function VerifyEmailPage() {
   return (
     <div className="min-h-screen bg-[#faf8f7] flex flex-col items-center justify-center px-4 py-12">
       <Link href="/browse" className="mb-8 flex items-center gap-2">
-        <Image src="/images/logo.png" alt="Pashtun Nikah" width={32} height={32} className="rounded-lg" />
+        <Image src="/images/logo.jpeg" alt="Pashtun Nikah" width={32} height={32} className="rounded-lg" />
         <span className="font-serif text-lg text-ink-950">Pashtun Nikah</span>
       </Link>
       <Suspense fallback={<p className="text-sm text-ink-700/60">Loading…</p>}>

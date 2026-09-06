@@ -25,7 +25,10 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/images/logo.png",
+    icon: [
+      { url: "/images/fav.png", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
     apple: "/icons/pn-icon-180.png",
   },
 };

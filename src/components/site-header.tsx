@@ -82,7 +82,7 @@ export function SiteHeader() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-ink-900/5">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
           <Link href={loggedIn ? "/browse" : "/"} className="flex items-center gap-2.5">
-            <Image src="/images/logo.png" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
+            <Image src="/images/logo.jpeg" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
             <span className="text-lg font-semibold tracking-tight text-ink-950">Pashtun Nikah</span>
           </Link>
 
@@ -158,7 +158,7 @@ export function SiteHeader() {
       >
         <div className="flex items-center justify-between px-5 h-16 border-b border-ink-900/5">
           <div className="flex items-center gap-2.5">
-            <Image src="/images/logo.png" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
+            <Image src="/images/logo.jpeg" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
             <span className="text-lg font-semibold text-ink-950">Pashtun Nikah</span>
           </div>
           <button aria-label="Close menu" onClick={close} className="w-9 h-9 flex items-center justify-center text-ink-900">

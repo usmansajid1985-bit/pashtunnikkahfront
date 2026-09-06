@@ -191,7 +191,7 @@ export function SignupWizard() {
       <header className="bg-white/80 backdrop-blur-md border-b border-ink-900/8 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">
-            <Image src="/images/logo.png" alt="Pashtun Nikah" width={32} height={32} className="rounded-lg" />
+            <Image src="/images/logo.jpeg" alt="Pashtun Nikah" width={32} height={32} className="rounded-lg" />
             <span className="text-lg font-semibold tracking-tight text-ink-950">Pashtun Nikah</span>
           </Link>
           <Link
