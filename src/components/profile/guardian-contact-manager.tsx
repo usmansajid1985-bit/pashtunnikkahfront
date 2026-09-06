@@ -55,7 +55,10 @@ export function GuardianContactManager() {
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2">
+    <section
+      id="wali-contact"
+      className="scroll-mt-24 bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2"
+    >
       <div>
         <h2 className="font-bold text-ink-950">Wali contact card</h2>
         <p className="text-xs text-ink-700/55 mt-0.5">

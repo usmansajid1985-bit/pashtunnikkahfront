@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type Handover = {
@@ -97,18 +98,32 @@ export function WaliHandoverPanel({
           </button>
         ) : null}
 
-        {isFemaleViewer && (status === "requested" || !status) ? (
+        {isFemaleViewer && (status === "requested" || !status) && !wali?.contact ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-[13px] font-semibold text-amber-900">
+              Add your wali&apos;s contact first
+            </p>
+            <p className="mt-1 text-xs text-amber-800 leading-relaxed">
+              To hand over to your wali here, save their name and phone number on your
+              profile. This is separate from the read-only wali access links.
+            </p>
+            <Link
+              href="/profile/edit#wali-contact"
+              className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-rose-700 hover:text-rose-800"
+            >
+              Add wali contact in your profile →
+            </Link>
+          </div>
+        ) : null}
+
+        {isFemaleViewer && (status === "requested" || !status) && wali?.contact ? (
           confirmShare ? (
             <div className="rounded-xl border border-indigo-100 bg-white p-3">
               <p className="text-[13px] text-ink-800 leading-relaxed">
                 Confirm what will be shared:
               </p>
               <p className="mt-2 text-sm font-bold text-ink-950">{wali?.name || "Wali"}</p>
-              {wali?.contact ? (
-                <p className="text-sm text-ink-700">{wali.contact}</p>
-              ) : (
-                <p className="text-xs text-amber-700 mt-1">No phone on file — update your wali details first.</p>
-              )}
+              {wali?.contact ? <p className="text-sm text-ink-700">{wali.contact}</p> : null}
               {wali?.email ? <p className="text-xs text-ink-700/55">{wali.email}</p> : null}
               <div className="mt-3 flex gap-2">
                 <button

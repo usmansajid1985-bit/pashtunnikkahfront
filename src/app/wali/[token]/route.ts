@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { requestOrigin } from "@/lib/site-url";
 import { createWaliSessionToken, waliCookieOptions, WALI_COOKIE } from "@/lib/wali";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ token: string }> }
 ) {
   const { token } = await params;
-  const origin = process.env.WEB_ORIGIN || "http://localhost:3001";
+  const origin = (await requestOrigin()) || new URL(req.url).origin;
 
   const link = await prisma.wali_links.findUnique({ where: { token } });
   if (!link || link.revoked_at) {

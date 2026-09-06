@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
+import { siteOrigin } from "@/lib/site-url";
 import type { PushPayload } from "@/lib/push/types";
 import { getFirebaseMessaging } from "@/lib/push/firebase-admin";
 
@@ -44,7 +45,7 @@ export type PushSendResult = {
 };
 
 function appOrigin() {
-  return (process.env.NEXT_PUBLIC_APP_URL || process.env.WEB_ORIGIN || "http://localhost:3001").replace(
+  return siteOrigin().replace(
     /\/$/,
     ""
   );

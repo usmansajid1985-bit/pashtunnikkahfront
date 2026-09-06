@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
+import { siteOrigin } from "@/lib/site-url";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { recordCreditChange } from "@/lib/credit-ledger";
 import {
@@ -56,7 +57,7 @@ export function getStripe() {
 }
 
 export function appUrl() {
-  return (process.env.NEXT_PUBLIC_APP_URL || process.env.WEB_ORIGIN || "http://localhost:3001").replace(
+  return siteOrigin().replace(
     /\/$/,
     ""
   );

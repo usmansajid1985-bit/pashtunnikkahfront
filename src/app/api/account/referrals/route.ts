@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requestOrigin } from "@/lib/site-url";
 
 function makeReferralCode(userId: bigint) {
   return `PN${userId.toString(36).toUpperCase().slice(-8)}`;
@@ -31,7 +32,7 @@ export async function GET() {
     take: 20,
   });
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+  const base = await requestOrigin();
   return NextResponse.json({
     code: user?.referral_code,
     link: `${base}/signup?ref=${encodeURIComponent(user?.referral_code ?? "")}`,

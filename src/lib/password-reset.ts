@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "crypto";
+import { siteOrigin } from "@/lib/site-url";
 
 export function generatePasswordResetToken() {
   return randomBytes(32).toString("hex");
@@ -9,11 +10,7 @@ export function hashPasswordResetToken(token: string) {
 }
 
 export function appBaseUrl() {
-  return (
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
-    process.env.WEB_ORIGIN?.replace(/\/$/, "") ||
-    "http://localhost:3001"
-  );
+  return siteOrigin().replace(/\/$/, "");
 }
 
 export function passwordResetUrl(token: string) {

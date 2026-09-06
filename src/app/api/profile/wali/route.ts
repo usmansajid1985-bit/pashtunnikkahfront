@@ -1,20 +1,23 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requestOrigin } from "@/lib/site-url";
 import { activeWaliLinkCount, generateWaliToken, isFemaleProfile, listWaliLinks, MAX_ACTIVE_LINKS } from "@/lib/wali";
 
 export const dynamic = "force-dynamic";
 
-function serialize(link: {
-  id: bigint;
-  name: string;
-  relation: string | null;
-  token: string;
-  revoked_at: Date | null;
-  last_accessed_at: Date | null;
-  created_at: Date;
-}) {
-  const origin = process.env.WEB_ORIGIN || "http://localhost:3001";
+function serialize(
+  link: {
+    id: bigint;
+    name: string;
+    relation: string | null;
+    token: string;
+    revoked_at: Date | null;
+    last_accessed_at: Date | null;
+    created_at: Date;
+  },
+  origin: string
+) {
   return {
     id: link.id.toString(),
     name: link.name,
@@ -32,8 +35,8 @@ export async function GET() {
   const userId = BigInt(session.userId);
   if (!(await isFemaleProfile(userId))) return NextResponse.json({ waliLinks: [] });
 
-  const links = await listWaliLinks(userId);
-  return NextResponse.json({ waliLinks: links.map(serialize) });
+  const [links, origin] = await Promise.all([listWaliLinks(userId), requestOrigin()]);
+  return NextResponse.json({ waliLinks: links.map((l) => serialize(l, origin)) });
 }
 
 export async function POST(req: Request) {
@@ -72,5 +75,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ waliLink: serialize(created) });
+  return NextResponse.json({ waliLink: serialize(created, await requestOrigin()) });
 }
