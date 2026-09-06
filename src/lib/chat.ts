@@ -266,8 +266,10 @@ export async function threadMetaFor(
     photo_shared: boolean;
     photo_once_shared_at?: Date | null;
     photo_once_viewed_at?: Date | null;
+    wali_handover_status?: string | null;
   },
-  viewerId: bigint
+  viewerId: bigint,
+  opts?: { withWaliContact?: boolean }
 ): Promise<ChatThreadMeta> {
   const mode = modeOf(req);
   const privateChat = allowsPrivateChat(mode);
@@ -296,6 +298,21 @@ export async function threadMetaFor(
       : "pending";
   const canSendPhotoOnce = isFemaleViewer && allowsPhotoShare(mode);
 
+  // Who may see the female member's wali contact:
+  //  - she always sees her own (needed for the handover confirm dialog)
+  //  - the brother sees it in Wali-Only mode, or once she has shared it via handover
+  const handoverShared = ["involving", "attempted", "established"].includes(
+    req.wali_handover_status || ""
+  );
+  const maySeeWali =
+    Boolean(femaleId) && (isFemaleViewer || !privateChat || handoverShared);
+  const wali =
+    opts?.withWaliContact && maySeeWali && femaleId
+      ? await loadWaliContact(femaleId)
+      : !privateChat && femaleId
+        ? await loadWaliContact(femaleId)
+        : null;
+
   return {
     communicationMode: mode,
     privateChat,
@@ -303,7 +320,7 @@ export async function threadMetaFor(
     photoVisible,
     canSharePhoto: canSendPhotoOnce,
     isFemaleViewer,
-    wali: !privateChat && femaleId ? await loadWaliContact(femaleId) : null,
+    wali,
     photoOnceStatus,
     canSendPhotoOnce,
     canRevealPhotoOnce: !isFemaleViewer && photoOnceStatus === "pending",

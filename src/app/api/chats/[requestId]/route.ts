@@ -40,7 +40,7 @@ export async function GET(
   const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
   if (!peer) return NextResponse.json({ error: "Peer not found" }, { status: 404 });
 
-  const meta = await threadMetaFor(req, userId);
+  const meta = await threadMetaFor(req, userId, { withWaliContact: true });
 
   const rows = meta.privateChat
     ? await prisma.messages.findMany({
