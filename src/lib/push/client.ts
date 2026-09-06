@@ -61,6 +61,48 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   }
 }
 
+function base64UrlToUint8Array(base64Url: string): Uint8Array {
+  const padding = "=".repeat((4 - (base64Url.length % 4)) % 4);
+  const base64 = (base64Url + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function keysMatch(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false;
+  const av = new Uint8Array(a);
+  if (av.length !== b.length) return false;
+  for (let i = 0; i < av.length; i++) if (av[i] !== b[i]) return false;
+  return true;
+}
+
+/**
+ * A browser push subscription is bound to the exact VAPID key it was created with.
+ * If that key changed since the user last subscribed (new Firebase project, rotated
+ * Web Push certificate, an earlier deploy with a different key), the browser refuses
+ * to hand FCM a fresh token and throws "Error retrieving push subscription". Drop any
+ * subscription whose key no longer matches so the next getToken() starts clean.
+ */
+async function clearStalePushSubscription(
+  registration: ServiceWorkerRegistration,
+  desiredVapidKey: string
+): Promise<void> {
+  try {
+    const existing = await registration.pushManager.getSubscription();
+    if (!existing) return;
+    const desired = base64UrlToUint8Array(desiredVapidKey);
+    const current = existing.options?.applicationServerKey as ArrayBuffer | null | undefined;
+    if (!keysMatch(current, desired)) {
+      await existing.unsubscribe().catch(() => {});
+      console.warn("[push] removed stale push subscription (VAPID key changed)");
+    }
+  } catch (err) {
+    console.warn("[push] could not check existing push subscription", err);
+  }
+}
+
 export async function getExistingSubscription(): Promise<boolean> {
   if (typeof window === "undefined") return false;
   try {
@@ -123,21 +165,58 @@ export async function subscribeToPush(): Promise<SubscribeResult> {
     }
 
     const { initializeApp, getApps } = await import("firebase/app");
-    const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
+    const { getMessaging, getToken, deleteToken, isSupported } = await import("firebase/messaging");
     if (!(await isSupported())) {
       return { ok: false, reason: "unsupported", detail: "This browser does not support FCM" };
     }
 
+    const registration =
+      (await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js")) ??
+      (await registerServiceWorker());
+    if (!registration) {
+      return { ok: false, reason: "error", detail: "Could not register the notification service worker." };
+    }
+    await navigator.serviceWorker.ready.catch(() => {});
+
     const app = getApps()[0] ?? initializeApp(config);
     const messaging = getMessaging(app);
-    const token = await withTimeout(getToken(messaging, { vapidKey: config.vapidKey }), 20000, "Firebase token");
+
+    // Drop a subscription left over from an older/different VAPID key before asking
+    // for a token — that mismatch is the usual "Error retrieving push subscription".
+    await clearStalePushSubscription(registration, config.vapidKey);
+
+    const requestToken = () =>
+      withTimeout(
+        getToken(messaging, {
+          vapidKey: config.vapidKey,
+          serviceWorkerRegistration: registration,
+        }),
+        20000,
+        "Firebase token"
+      );
+
+    let token: string | null = null;
+    try {
+      token = await requestToken();
+    } catch (tokenErr) {
+      // One clean retry: fully tear down the old token + subscription, then try again.
+      console.warn("[push] first getToken failed, retrying after cleanup", tokenErr);
+      await deleteToken(messaging).catch(() => {});
+      const sub = await registration.pushManager.getSubscription().catch(() => null);
+      await sub?.unsubscribe().catch(() => {});
+      token = await requestToken();
+    }
+
     if (!token) return { ok: false, reason: "error", detail: "Firebase did not return a device token" };
 
     await saveFcmToken(token);
     return { ok: true };
   } catch (err) {
-    const detail = err instanceof Error ? err.message : "Subscribe failed";
     console.error("[push] subscribe failed", err);
+    const raw = err instanceof Error ? err.message : "";
+    const detail = /token-subscribe-failed|retrieving push subscription|push service error/i.test(raw)
+      ? "Your browser blocked the notification subscription. Fully close and reopen the browser, then try again — or check that notifications aren't blocked for this site."
+      : raw || "Couldn't enable notifications. Please try again.";
     return { ok: false, reason: "error", detail };
   }
 }
