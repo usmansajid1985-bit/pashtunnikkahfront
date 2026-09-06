@@ -1,6 +1,11 @@
+import { after } from "next/server";
 import { DEFAULT_FILTERS, buildProfileWhere } from "@/lib/browse-filters";
 import { BROWSE_PROFILE_SELECT, rankBrowseProfiles } from "@/lib/browse-rank";
-import { resolveSmartMatchBatch, toCompatProfile } from "@/lib/compatibility-cache";
+import {
+  MAX_SMART_MATCHES_COMPUTE,
+  resolveSmartMatchBatch,
+  toCompatProfile,
+} from "@/lib/compatibility-cache";
 import { prisma } from "@/lib/prisma";
 
 export const SMART_MATCHES_POOL = 50;
@@ -90,7 +95,19 @@ export async function loadSmartMatches(viewerId: bigint): Promise<{
     };
   });
 
-  const scores = await resolveSmartMatchBatch(viewerId, toCompatProfile(me), peers);
+  // Render path never blocks on Gemini — show cached AI scores + heuristic for the
+  // rest. Missing pair scores are computed after the response is flushed and are
+  // ready on the next visit (they cache permanently once computed).
+  const compatMe = toCompatProfile(me);
+  const scores = await resolveSmartMatchBatch(viewerId, compatMe, peers, 0);
+
+  after(async () => {
+    try {
+      await resolveSmartMatchBatch(viewerId, compatMe, peers, MAX_SMART_MATCHES_COMPUTE);
+    } catch {
+      // best-effort cache warming
+    }
+  });
 
   const items: SmartMatchItem[] = pool
     .map((card) => {

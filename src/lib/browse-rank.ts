@@ -92,16 +92,22 @@ export async function rankBrowseProfiles(
     skipped_at: Date | null;
   };
 
-  const impressions =
+  const [impressions, pendingRows] = await Promise.all([
     peerIds.length === 0
-      ? []
-      : await prisma.$queryRaw<ImpRow[]>`
+      ? Promise.resolve([] as ImpRow[])
+      : prisma.$queryRaw<ImpRow[]>`
     SELECT shown_user_id, last_shown_at, times_shown, opened_at, skipped_at
     FROM browse_impressions
     WHERE viewer_id = ${viewerId}
       AND last_shown_at >= ${since}
       AND shown_user_id IN (${Prisma.join(peerIds)})
-  `.catch(() => [] as ImpRow[]);
+  `.catch(() => [] as ImpRow[]),
+    prisma.match_requests.groupBy({
+      by: ["receiver_id"],
+      where: { receiver_id: { in: peerIds }, status: "pending" },
+      _count: { _all: true },
+    }).catch(() => [] as { receiver_id: bigint; _count: { _all: number } }[]),
+  ]);
 
   const peerSet = new Set(peerIds.map((id) => id.toString()));
   const seen = new Map(
@@ -120,11 +126,6 @@ export async function rankBrowseProfiles(
 
   const salt = daySalt(viewerId, now);
 
-  const pendingRows = await prisma.match_requests.groupBy({
-    by: ["receiver_id"],
-    where: { receiver_id: { in: peerIds }, status: "pending" },
-    _count: { _all: true },
-  });
   const pendingByUser = new Map(
     pendingRows.map((p) => [p.receiver_id.toString(), p._count._all])
   );

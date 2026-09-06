@@ -78,6 +78,37 @@ body {
   border: 1px solid #f0eceb;
   border-radius: 18px;
 }
+
+/* Route-transition skeletons */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #efeae8;
+  border-radius: 10px;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+  animation: skeletonShimmer 1.4s ease-in-out infinite;
+}
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
+}
 .icon-badge {
   width: 30px;
   height: 30px;

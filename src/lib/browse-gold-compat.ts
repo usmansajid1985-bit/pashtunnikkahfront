@@ -1,6 +1,11 @@
 import type { RankableProfile } from "@/lib/ai-match";
 import type { BrowseCardDTO } from "@/lib/browse-rank";
-import { resolveGoldMatchScores, toCompatProfile, MAX_AI_COMPAT_COMPUTE_ON_BROWSE } from "@/lib/compatibility-cache";
+import {
+  type CachedCompat,
+  resolveGoldMatchScores,
+  toCompatProfile,
+  MAX_AI_COMPAT_COMPUTE_ON_BROWSE,
+} from "@/lib/compatibility-cache";
 
 type MeRow = Parameters<typeof toCompatProfile>[0];
 type ProfileRow = {
@@ -25,7 +30,8 @@ export async function applyGoldCompatToBrowseItems(
   viewerId: bigint,
   me: MeRow,
   items: BrowseCardDTO[],
-  profiles: ProfileRow[]
+  profiles: ProfileRow[],
+  preloadedCache?: Map<string, CachedCompat>
 ): Promise<BrowseCardDTO[]> {
   const byId = new Map(profiles.map((p) => [p.id.toString(), p]));
   const peers: (RankableProfile & { userId: string })[] = items.map((p) => {
@@ -53,7 +59,8 @@ export async function applyGoldCompatToBrowseItems(
     viewerId,
     toCompatProfile(me),
     peers,
-    MAX_AI_COMPAT_COMPUTE_ON_BROWSE
+    MAX_AI_COMPAT_COMPUTE_ON_BROWSE,
+    preloadedCache
   );
   return items.map((p) => ({
     ...p,

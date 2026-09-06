@@ -158,11 +158,14 @@ export type ComputeCompatResult = {
 export async function computeCompatibilityOnce(
   viewerId: bigint,
   me: CompatProfile,
-  peer: RankableProfile & { userId: string }
+  peer: RankableProfile & { userId: string },
+  preloaded?: CachedCompat | null
 ): Promise<ComputeCompatResult> {
   const candidateUserId = BigInt(peer.userId);
-  const cache = await loadCompatibilityCache(viewerId, [candidateUserId]);
-  const existing = cache.get(peer.userId);
+  const existing =
+    preloaded !== undefined
+      ? preloaded
+      : (await loadCompatibilityCache(viewerId, [candidateUserId])).get(peer.userId);
   if (existing?.aiComputed) {
     return {
       finalScore: existing.finalScore,
@@ -216,11 +219,13 @@ export async function resolveGoldMatchScores(
   viewerId: bigint,
   me: CompatProfile,
   peers: (RankableProfile & { userId: string })[],
-  maxCompute = MAX_AI_COMPAT_COMPUTE_PER_REQUEST
+  maxCompute = MAX_AI_COMPAT_COMPUTE_PER_REQUEST,
+  preloadedCache?: Map<string, CachedCompat>
 ): Promise<{ scores: Map<string, number>; cache: Map<string, CachedCompat> }> {
   const heuristicScored = attachHeuristicScores(me, peers);
   const candidateIds = peers.map((p) => BigInt(p.userId));
-  const cache = await loadCompatibilityCache(viewerId, candidateIds);
+  const cache =
+    preloadedCache ?? (await loadCompatibilityCache(viewerId, candidateIds));
 
   const scores = new Map<string, number>();
   const toCompute: (RankableProfile & { userId: string; matchScore: number })[] = [];
@@ -235,13 +240,19 @@ export async function resolveGoldMatchScores(
     if (!cached?.aiComputed) toCompute.push(p);
   }
 
-  let computed = 0;
-  for (const p of toCompute) {
-    if (computed >= maxCompute) break;
-    const { finalScore } = await computeCompatibilityOnce(viewerId, me, p);
-    scores.set(p.id, finalScore);
-    computed++;
-  }
+  // Compute the allowed slice in parallel — these are independent one-time
+  // Gemini calls; running them sequentially made Gold Browse block for seconds.
+  await Promise.all(
+    toCompute.slice(0, Math.max(0, maxCompute)).map(async (p) => {
+      const { finalScore } = await computeCompatibilityOnce(
+        viewerId,
+        me,
+        p,
+        cache.get(p.userId) ?? null
+      );
+      scores.set(p.id, finalScore);
+    })
+  );
 
   return { scores, cache };
 }
@@ -274,13 +285,18 @@ export async function resolveSmartMatchBatch(
     toCompute.push(p);
   }
 
-  let computed = 0;
-  for (const p of toCompute) {
-    if (computed >= maxCompute) break;
-    const result = await computeCompatibilityOnce(viewerId, me, p);
-    out.set(p.userId, { score: result.finalScore, reasons: result.reasons });
-    computed++;
-  }
+  // Parallel one-time computes for the allowed slice (see resolveGoldMatchScores).
+  await Promise.all(
+    toCompute.slice(0, Math.max(0, maxCompute)).map(async (p) => {
+      const result = await computeCompatibilityOnce(
+        viewerId,
+        me,
+        p,
+        cache.get(p.userId) ?? null
+      );
+      out.set(p.userId, { score: result.finalScore, reasons: result.reasons });
+    })
+  );
 
   return out;
 }

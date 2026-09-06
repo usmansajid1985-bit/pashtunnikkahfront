@@ -17,6 +17,7 @@ import { CompletenessBanner, PremiumBanner } from "@/components/browse/banners";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
 import { BrowseInfiniteGrid } from "@/components/browse/browse-infinite-grid";
 import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
+import { loadCompatibilityCache } from "@/lib/compatibility-cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { getBrowseFilterOptions } from "@/lib/browse-filter-options";
 import {
@@ -163,7 +164,19 @@ export default async function BrowsePage({
     getBrowseFilterOptions(),
   ]);
 
-  let initialItems = await rankBrowseProfiles(userId, profiles);
+  // Ranking and the Gold compatibility-cache read don't depend on each other —
+  // the cache is keyed by peer user id, which we already have. Run them together.
+  const [ranked, compatCache] = await Promise.all([
+    rankBrowseProfiles(userId, profiles),
+    isGold && me
+      ? loadCompatibilityCache(
+          userId,
+          profiles.map((p) => p.user_id)
+        )
+      : Promise.resolve(undefined),
+  ]);
+
+  let initialItems = ranked;
   if (filters.sort === "age_asc" || filters.sort === "age_desc") {
     initialItems = [...initialItems].sort((a, b) => {
       const aa = a.age ?? 0;
@@ -173,7 +186,7 @@ export default async function BrowsePage({
   }
 
   if (isGold && me) {
-    initialItems = await applyGoldCompatToBrowseItems(userId, me, initialItems, profiles);
+    initialItems = await applyGoldCompatToBrowseItems(userId, me, initialItems, profiles, compatCache);
     if (useActivityRank) initialItems = softSortGoldCompat(initialItems);
   }
 

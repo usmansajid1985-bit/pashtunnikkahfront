@@ -364,28 +364,25 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
     orderBy: { updated_at: "desc" },
   });
 
-  const threads: ChatThreadDTO[] = [];
+  // Each thread's lookups are independent — run them all concurrently instead of
+  // walking the list one round-trip at a time.
+  const built = await Promise.all(
+    requests.map(async (req) => {
+      const peerId = await peerUserId(req, userId);
+      const [peer, meta, last, unread] = await Promise.all([
+        loadPeer(peerId),
+        threadMetaFor(req, userId),
+        prisma.messages.findFirst({
+          where: { request_id: req.id },
+          orderBy: { created_at: "desc" },
+        }),
+        prisma.messages.count({
+          where: { request_id: req.id, receiver_id: userId, is_read: false },
+        }),
+      ]);
+      if (!peer) return null;
 
-  for (const req of requests) {
-    const peerId = await peerUserId(req, userId);
-    const peer = await loadPeer(peerId);
-    if (!peer) continue;
-    const meta = await threadMetaFor(req, userId);
-
-    const last = await prisma.messages.findFirst({
-      where: { request_id: req.id },
-      orderBy: { created_at: "desc" },
-    });
-
-    const unread = await prisma.messages.count({
-      where: {
-        request_id: req.id,
-        receiver_id: userId,
-        is_read: false,
-      },
-    });
-
-    threads.push({
+      return {
       requestId: req.id.toString(),
       peerUserId: peer.userId,
       peerCode: peer.code,
@@ -402,8 +399,11 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       privateChat: meta.privateChat,
       photoShared: meta.photoShared,
       photoVisible: meta.photoVisible,
-    });
-  }
+      };
+    })
+  );
+
+  const threads: ChatThreadDTO[] = built.filter(Boolean) as ChatThreadDTO[];
 
   threads.sort((a, b) => {
     const at = a.lastAt ? new Date(a.lastAt).getTime() : 0;

@@ -6,28 +6,62 @@ import { getPlanSettings } from "@/lib/plan-settings";
 export type { HubCard } from "@/lib/requests-hub-shared";
 export { formatAgeLabel, compatScore } from "@/lib/requests-hub-shared";
 
+const HUB_PROFILE_SELECT = {
+  id: true,
+  user_id: true,
+  profile_code: true,
+  full_name: true,
+  city: true,
+  country: true,
+  age: true,
+  marital_status: true,
+  religious_practice: true,
+  ancestral_village: true,
+  about_me: true,
+  tribe: true,
+  education: true,
+  religious_methodology: true,
+  dialect: true,
+  willing_to_relocate: true,
+} as const;
+
+type HubProfile = {
+  id: bigint;
+  user_id: bigint;
+  profile_code: string | null;
+  full_name: string | null;
+  city: string | null;
+  country: string | null;
+  age: number | null;
+  marital_status: string | null;
+  religious_practice: string | null;
+  ancestral_village: string | null;
+  about_me: string | null;
+  tribe: string | null;
+  education: string | null;
+  religious_methodology: string | null;
+  dialect: string | null;
+  willing_to_relocate: string | null;
+};
+
 async function loadProfile(userId: bigint) {
   return prisma.profiles.findUnique({
     where: { user_id: userId },
-    select: {
-      id: true,
-      user_id: true,
-      profile_code: true,
-      full_name: true,
-      city: true,
-      country: true,
-      age: true,
-      marital_status: true,
-      religious_practice: true,
-      ancestral_village: true,
-      about_me: true,
-      tribe: true,
-      education: true,
-      religious_methodology: true,
-      dialect: true,
-      willing_to_relocate: true,
-    },
+    select: HUB_PROFILE_SELECT,
   });
+}
+
+/** One query for every peer profile the hub needs, keyed by user_id string. */
+async function loadProfilesByUserId(
+  userIds: bigint[]
+): Promise<Map<string, HubProfile>> {
+  const unique = [...new Set(userIds.map((id) => id.toString()))].map((s) => BigInt(s));
+  if (unique.length === 0) return new Map();
+  const rows = (await prisma.profiles.findMany({
+    where: { user_id: { in: unique } },
+    select: HUB_PROFILE_SELECT,
+  })) as HubProfile[];
+  return new Map(rows.map((r) => [r.user_id.toString(), r]));
 }
 
 function toCard(
@@ -60,14 +94,28 @@ function toCard(
 
 export async function loadRequestsHub(userId: bigint) {
   await ensureMatchRequestsSchema();
+
   // Fresh DB read of plan — a JWT session claim can be stale until next login/refresh,
   // and this gates real limits (saved-profile cap, viewer identity), not just cosmetics.
-  const meUser = await prisma.users.findUnique({ where: { id: userId }, select: { plan: true } });
-  const isGold = (meUser?.plan || "").toLowerCase() === "gold";
-  const settings = await getPlanSettings(meUser?.plan);
-  const meProfile = await loadProfile(userId);
+  const meUserP = prisma.users.findUnique({ where: { id: userId }, select: { plan: true } });
 
-  const [incoming, sentAll, matched, ended, declined, expired] = await Promise.all([
+  // All top-level list reads fire together — previously each block awaited the
+  // one before it, and every card then did its own per-peer profile lookup.
+  const [
+    meUser,
+    meProfile,
+    incoming,
+    sentAll,
+    matched,
+    ended,
+    declined,
+    expired,
+    viewRows,
+    favs,
+    blockRows,
+  ] = await Promise.all([
+    meUserP,
+    loadProfile(userId),
     prisma.match_requests.findMany({
       where: { receiver_id: userId, status: "pending" },
       orderBy: { created_at: "desc" },
@@ -110,9 +158,53 @@ export async function loadRequestsHub(userId: bigint) {
       orderBy: { updated_at: "desc" },
       take: 40,
     }),
+    prisma.profile_views.findMany({
+      where: { viewed_id: userId },
+      orderBy: { viewed_at: "desc" },
+      take: 60,
+    }),
+    prisma.favourites.findMany({
+      where: { user_id: userId },
+      orderBy: { created_at: "desc" },
+      take: 60,
+    }),
+    prisma.blocks.findMany({
+      where: { blocker_id: userId },
+      orderBy: { created_at: "desc" },
+      take: 60,
+    }),
   ]);
 
-  async function mapRequest(
+  const isGold = (meUser?.plan || "").toLowerCase() === "gold";
+
+  const allRequests = [...incoming, ...sentAll, ...matched, ...ended, ...declined, ...expired];
+  const matchRequestIds = [...matched, ...ended].map((r) => r.id);
+
+  // Two batched lookups replace the old N+1: every peer profile in one query,
+  // every thread's latest message in another.
+  const [settings, profileMap, lastMsgRows] = await Promise.all([
+    getPlanSettings(meUser?.plan),
+    loadProfilesByUserId([
+      ...allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id)),
+      ...(isGold ? viewRows.map((v) => v.viewer_id) : []),
+      ...favs.map((f) => f.profile_user_id),
+      ...blockRows.map((b) => b.blocked_id),
+    ]),
+    matchRequestIds.length === 0
+      ? Promise.resolve([] as { request_id: bigint; body: string }[])
+      : prisma.messages.findMany({
+          where: { request_id: { in: matchRequestIds } },
+          orderBy: [{ request_id: "asc" }, { created_at: "desc" }],
+          distinct: ["request_id"],
+          select: { request_id: true, body: true },
+        }),
+  ]);
+
+  const lastMsgByRequest = new Map(
+    lastMsgRows.map((m) => [m.request_id.toString(), m.body])
+  );
+
+  function mapRequest(
     r: {
       id: bigint;
       sender_id: bigint;
@@ -126,19 +218,11 @@ export async function loadRequestsHub(userId: bigint) {
       intro_message?: string | null;
     },
     asMatch = false
-  ) {
+  ): HubCard | null {
     const peerId = r.sender_id === userId ? r.receiver_id : r.sender_id;
-    const peer = await loadProfile(peerId);
+    const peer = profileMap.get(peerId.toString());
     if (!peer) return null;
-    let lastMessage: string | null = null;
-    if (asMatch) {
-      const last = await prisma.messages.findFirst({
-        where: { request_id: r.id },
-        orderBy: { created_at: "desc" },
-        select: { body: true },
-      });
-      lastMessage = last?.body ?? null;
-    }
+    const lastMessage = asMatch ? lastMsgByRequest.get(r.id.toString()) ?? null : null;
     const stamp =
       r.status === "ended" && r.ended_at
         ? r.ended_at
@@ -157,37 +241,28 @@ export async function loadRequestsHub(userId: bigint) {
     });
   }
 
-  const [incomingCards, sentCards, matchedCards, endedCards, declinedCards, expiredCards] = await Promise.all([
-    Promise.all(incoming.map((r) => mapRequest(r))).then((a) => a.filter(Boolean) as HubCard[]),
-    Promise.all(sentAll.map((r) => mapRequest(r))).then((a) => a.filter(Boolean) as HubCard[]),
-    Promise.all(matched.map((r) => mapRequest(r, true))).then((a) => a.filter(Boolean) as HubCard[]),
-    Promise.all(ended.map((r) => mapRequest(r, true))).then((a) => a.filter(Boolean) as HubCard[]),
-    Promise.all(declined.map((r) => mapRequest(r))).then((a) => a.filter(Boolean) as HubCard[]),
-    Promise.all(expired.map((r) => mapRequest(r))).then((a) => a.filter(Boolean) as HubCard[]),
-  ]);
-
-  const viewRows = await prisma.profile_views.findMany({
-    where: { viewed_id: userId },
-    orderBy: { viewed_at: "desc" },
-    take: 60,
-  });
+  const filterCards = (a: (HubCard | null)[]) => a.filter(Boolean) as HubCard[];
+  const incomingCards = filterCards(incoming.map((r) => mapRequest(r)));
+  const sentCards = filterCards(sentAll.map((r) => mapRequest(r)));
+  const matchedCards = filterCards(matched.map((r) => mapRequest(r, true)));
+  const endedCards = filterCards(ended.map((r) => mapRequest(r, true)));
+  const declinedCards = filterCards(declined.map((r) => mapRequest(r)));
+  const expiredCards = filterCards(expired.map((r) => mapRequest(r)));
 
   let views: HubCard[] = [];
   let viewsSummary: { total: number; last7d: number; last30d: number } | null = null;
   const viewsLocked = !isGold;
   if (isGold) {
-    views = (
-      await Promise.all(
-        viewRows.map(async (v) => {
-          const peer = await loadProfile(v.viewer_id);
-          if (!peer) return null;
-          return toCard(peer, meProfile, {
-            id: `view-${v.id}`,
-            createdAt: v.viewed_at.toISOString(),
-          });
-        })
-      )
-    ).filter(Boolean) as HubCard[];
+    views = filterCards(
+      viewRows.map((v) => {
+        const peer = profileMap.get(v.viewer_id.toString());
+        if (!peer) return null;
+        return toCard(peer, meProfile, {
+          id: `view-${v.id}`,
+          createdAt: v.viewed_at.toISOString(),
+        });
+      })
+    );
   } else {
     // Free: reveal that they were viewed and roughly when, never who — full identity is Gold-only.
     const now = Date.now();
@@ -199,45 +274,31 @@ export async function loadRequestsHub(userId: bigint) {
     };
   }
 
-  const favs = await prisma.favourites.findMany({
-    where: { user_id: userId },
-    orderBy: { created_at: "desc" },
-    take: 60,
-  });
-  const saved = (
-    await Promise.all(
-      favs.map(async (f) => {
-        const peer = await loadProfile(f.profile_user_id);
-        if (!peer) return null;
-        return toCard(peer, meProfile, {
-          id: `fav-${f.id}`,
-          createdAt: f.created_at.toISOString(),
-          note: f.note,
-        });
-      })
-    )
-  ).filter(Boolean) as HubCard[];
+  const saved = filterCards(
+    favs.map((f) => {
+      const peer = profileMap.get(f.profile_user_id.toString());
+      if (!peer) return null;
+      return toCard(peer, meProfile, {
+        id: `fav-${f.id}`,
+        createdAt: f.created_at.toISOString(),
+        note: f.note,
+      });
+    })
+  );
   const savedLimit = settings.savedProfileLimit;
   const savedLocked = false;
 
-  const blockRows = await prisma.blocks.findMany({
-    where: { blocker_id: userId },
-    orderBy: { created_at: "desc" },
-    take: 60,
-  });
-  const blocked = (
-    await Promise.all(
-      blockRows.map(async (b) => {
-        const peer = await loadProfile(b.blocked_id);
-        if (!peer) return null;
-        return toCard(peer, meProfile, {
-          id: `block-${b.id}`,
-          createdAt: b.created_at.toISOString(),
-          status: "blocked",
-        });
-      })
-    )
-  ).filter(Boolean) as HubCard[];
+  const blocked = filterCards(
+    blockRows.map((b) => {
+      const peer = profileMap.get(b.blocked_id.toString());
+      if (!peer) return null;
+      return toCard(peer, meProfile, {
+        id: `block-${b.id}`,
+        createdAt: b.created_at.toISOString(),
+        status: "blocked",
+      });
+    })
+  );
 
   return {
     isGold,
