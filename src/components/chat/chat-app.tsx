@@ -319,7 +319,9 @@ export function ChatApp({
     email: string | null;
   } | null>(null);
   const [shareConfirm, setShareConfirm] = useState(false);
-  const [headerMenu, setHeaderMenu] = useState<"wali" | "photo" | null>(null);
+  const [headerMenu, setHeaderMenu] = useState<"wali" | "photo" | "more" | null>(null);
+  const [moreBusy, setMoreBusy] = useState(false);
+  const [blockArmed, setBlockArmed] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [chatWarning, setChatWarning] = useState<string | null>(null);
@@ -345,6 +347,7 @@ export function ChatApp({
   const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (headerMenu !== "more") setBlockArmed(false);
     if (!headerMenu) return;
     function onDown(e: MouseEvent) {
       if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
@@ -1015,6 +1018,53 @@ export function ChatApp({
     }
   }
 
+  async function reportMember() {
+    if (!peer || moreBusy) return;
+    setMoreBusy(true);
+    try {
+      const res = await fetch("/api/reports", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: peer.userId,
+          reason: `Reported ${peer.code} from chat`,
+        }),
+      });
+      showToast(res.ok ? "Member reported to the PN team" : "Could not report member");
+    } catch {
+      showToast("Could not report member");
+    } finally {
+      setMoreBusy(false);
+      setHeaderMenu(null);
+    }
+  }
+
+  async function blockMember() {
+    if (!peer || moreBusy) return;
+    setMoreBusy(true);
+    try {
+      const res = await fetch("/api/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: peer.userId }),
+      });
+      if (!res.ok) {
+        showToast("Could not block member");
+        return;
+      }
+      setThreads((prev) => prev.filter((t) => t.requestId !== activeId));
+      if (activeId) leaveThread(activeId);
+      setHeaderMenu(null);
+      setActiveId(null);
+      if (typeof window !== "undefined") window.history.replaceState(null, "", "/chats");
+      showToast("Member blocked");
+    } catch {
+      showToast("Could not block member");
+    } finally {
+      setMoreBusy(false);
+    }
+  }
+
   function showToast(message: string) {
     setToast(message);
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -1299,17 +1349,22 @@ export function ChatApp({
                         </svg>
                       </button>
                     ) : null}
-                    <Link
-                      href={peer ? `/p/${peer.code}` : "/browse"}
-                      className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 text-ink-700"
-                      aria-label="More"
+                    <button
+                      type="button"
+                      onClick={() => setHeaderMenu((m) => (m === "more" ? null : "more"))}
+                      className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
+                        headerMenu === "more" ? "bg-ink-900/10 text-ink-950" : "text-ink-700"
+                      }`}
+                      aria-label="More options"
+                      aria-haspopup="menu"
+                      aria-expanded={headerMenu === "more"}
                     >
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                         <circle cx="12" cy="5" r="1.6" />
                         <circle cx="12" cy="12" r="1.6" />
                         <circle cx="12" cy="19" r="1.6" />
                       </svg>
-                    </Link>
+                    </button>
                   </div>
                   <div className="px-4 flex gap-8 text-[15px]">
                     <button
@@ -1338,7 +1393,94 @@ export function ChatApp({
 
                   {/* Wali / Photo actions live here as popovers to keep the composer uncluttered */}
                   {headerMenu ? (
-                    <div className="absolute right-2 sm:right-4 top-full z-40 w-[min(340px,calc(100vw-1.25rem))] rounded-2xl border border-ink-900/12 bg-white shadow-[0_20px_50px_-18px_rgba(15,13,14,0.45)] overflow-hidden animate-[chatIn_140ms_ease-out]">
+                    <div
+                      role={headerMenu === "more" ? "menu" : undefined}
+                      className="absolute right-2 sm:right-4 top-full z-40 w-[min(340px,calc(100vw-1.25rem))] rounded-2xl border border-ink-900/12 bg-white shadow-[0_20px_50px_-18px_rgba(15,13,14,0.45)] overflow-hidden animate-[chatIn_140ms_ease-out]">
+                        {headerMenu === "more" ? (
+                          <div className="p-1.5">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => {
+                                setTab("profile");
+                                setHeaderMenu(null);
+                              }}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-ink-800 hover:bg-ink-900/5"
+                            >
+                              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                                <circle cx="12" cy="8" r="3.5" />
+                                <path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" />
+                              </svg>
+                              View full profile
+                            </button>
+                            {!matchEnded ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  setHeaderMenu(null);
+                                  setShowEndConfirm(true);
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-ink-800 hover:bg-ink-900/5"
+                              >
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                                  <path d="M18 6 6 18M6 6l12 12" />
+                                </svg>
+                                End match
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={moreBusy}
+                              onClick={() => void reportMember()}
+                              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-ink-800 hover:bg-ink-900/5 disabled:opacity-50"
+                            >
+                              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                                <path d="M4 21V4h9l1 2h6v9h-7l-1-2H4" />
+                              </svg>
+                              Report member
+                            </button>
+                            {blockArmed ? (
+                              <div className="px-3 py-2.5">
+                                <p className="text-[12px] text-ink-700/70 leading-snug">
+                                  Block {peer?.name?.split(" ")[0] || "this member"}? They won&apos;t be able to
+                                  reach you and this chat will close.
+                                </p>
+                                <div className="mt-2 flex gap-2">
+                                  <button
+                                    type="button"
+                                    disabled={moreBusy}
+                                    onClick={() => void blockMember()}
+                                    className="flex-1 py-2 rounded-full bg-rose-600 text-white text-[13px] font-semibold disabled:opacity-50"
+                                  >
+                                    {moreBusy ? "Blocking…" : "Block"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setBlockArmed(false)}
+                                    className="flex-1 py-2 rounded-full border border-ink-900/12 text-[13px] font-semibold"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => setBlockArmed(true)}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-rose-700 hover:bg-rose-50"
+                              >
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
+                                  <circle cx="12" cy="12" r="9" />
+                                  <path d="m5.6 5.6 12.8 12.8" />
+                                </svg>
+                                Block member
+                              </button>
+                            )}
+                          </div>
+                        ) : null}
                         {headerMenu === "wali" ? (
                           <div className="max-h-[70vh] overflow-y-auto p-1.5">
                             <WaliHandoverPanel

@@ -218,7 +218,6 @@ export default async function BrowsePage({
 
         <BrowseFiltersBar
           filters={filters}
-          resultCount={total}
           isGold={isGold}
           savedLocation={{
             city: me?.location_city || me?.city || null,
@@ -234,7 +233,6 @@ export default async function BrowsePage({
           key={JSON.stringify({ ...filters, page: 1 })}
           initialItems={initialItems}
           initialHasMore={BROWSE_PAGE_SIZE < total}
-          total={total}
           filters={filters}
           initialSavedUserIds={initialSavedUserIds}
         />

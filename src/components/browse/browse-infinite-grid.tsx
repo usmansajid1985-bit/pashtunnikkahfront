@@ -7,7 +7,6 @@ import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared"
 type Props = {
   initialItems: ProfileCardData[];
   initialHasMore: boolean;
-  total: number;
   filters: BrowseFilters;
   initialSavedUserIds?: string[];
 };
@@ -15,7 +14,6 @@ type Props = {
 export function BrowseInfiniteGrid({
   initialItems,
   initialHasMore,
-  total,
   filters,
   initialSavedUserIds = [],
 }: Props) {
@@ -145,11 +143,9 @@ export function BrowseInfiniteGrid({
             Loading more…
           </span>
         ) : hasMore ? (
-          <span>
-            Showing {items.length} of {total} · scroll for more
-          </span>
+          <span>Scroll for more</span>
         ) : (
-          <span>You&apos;ve seen all {total} profiles</span>
+          <span>You&apos;ve reached the end</span>
         )}
       </div>
     </>

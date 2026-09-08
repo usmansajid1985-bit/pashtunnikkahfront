@@ -31,7 +31,6 @@ export type FilterOptions = {
 type Props = {
   filters: BrowseFilters;
   options: FilterOptions;
-  resultCount: number;
   isGold?: boolean;
   savedLocation?: {
     city: string | null;
@@ -93,7 +92,7 @@ function Field({
 const selectClass =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white";
 
-export function BrowseFiltersBar({ filters, options, resultCount, isGold = false, savedLocation }: Props) {
+export function BrowseFiltersBar({ filters, options, isGold = false, savedLocation }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -161,20 +160,6 @@ export function BrowseFiltersBar({ filters, options, resultCount, isGold = false
         </Pill>
 
         <Pill
-          active={Boolean(filters.ethnicity)}
-          onClick={() => {
-            setDraft(filters);
-            setOpen(true);
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563eb" strokeWidth="1.8">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18" />
-          </svg>
-          {filters.ethnicity || "Any ethnicity"}
-        </Pill>
-
-        <Pill
           active={filters.near}
           onClick={() => {
             setDraft(filters);
@@ -215,7 +200,6 @@ export function BrowseFiltersBar({ filters, options, resultCount, isGold = false
         </button>
 
         <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-ink-700/60 hidden sm:inline">{resultCount} profiles</span>
           <label className="pill-btn cursor-pointer">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <circle cx="12" cy="12" r="9" />
@@ -412,13 +396,11 @@ export function BrowseFiltersBar({ filters, options, resultCount, isGold = false
                     onChange={(e) => setDraft({ ...draft, city: e.target.value })}
                   >
                     <option value="">Any city</option>
-                    {options.cities
-                      .filter((c) => !draft.country || true)
-                      .map((c) => (
-                        <option key={c} value={c}>
-                          {c}
-                        </option>
-                      ))}
+                    {options.cities.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                   </select>
                 </Field>
                 <Field label="Distance" gold>
@@ -441,20 +423,6 @@ export function BrowseFiltersBar({ filters, options, resultCount, isGold = false
                   >
                     <option value="">Any tribe</option>
                     {options.tribes.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Ethnicity / ancestry label" gold>
-                  <select
-                    className={selectClass}
-                    value={draft.ethnicity}
-                    onChange={(e) => setDraft({ ...draft, ethnicity: e.target.value })}
-                  >
-                    <option value="">Any ethnicity</option>
-                    {options.ethnicities.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>
