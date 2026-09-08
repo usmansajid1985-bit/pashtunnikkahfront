@@ -142,7 +142,9 @@ export function mapProfileView(
     },
     {
       label: "Cultural verification",
-      done: Boolean(user.cultural_verified),
+      // PN's approval workflow is the cultural check — an approved profile is verified,
+      // even if the standalone cultural_verified flag was never toggled in admin.
+      done: Boolean(user.cultural_verified || profile.status === "approved"),
       action: "review",
     },
   ];
@@ -203,7 +205,7 @@ export function mapProfileView(
     email: user.email,
     phone: profile.phone,
     verified: Boolean(user.email_verified || user.cultural_verified || profile.status === "approved"),
-    culturalVerified: Boolean(user.cultural_verified),
+    culturalVerified: Boolean(user.cultural_verified || profile.status === "approved"),
     completeness,
     checklist,
     avatarSeed: Number(profile.id % 70n),

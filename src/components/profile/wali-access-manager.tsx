@@ -76,10 +76,10 @@ export function WaliAccessManager() {
   return (
     <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2">
       <div>
-        <h2 className="font-bold text-ink-950">Wali access</h2>
+        <h2 className="font-bold text-ink-950">Wali or Mother Oversight</h2>
         <p className="text-xs text-ink-700/55 mt-0.5">
-          Give your wali a private link to view your chats and profile only — read-only, no messaging.
-          You can add more than one and revoke access at any time.
+          Give your wali or mother a private link to view your chats and profile only — read-only, no
+          messaging. You can add more than one and revoke access at any time.
         </p>
       </div>
 

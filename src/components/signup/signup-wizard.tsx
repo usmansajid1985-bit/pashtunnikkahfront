@@ -309,12 +309,11 @@ export function SignupWizard() {
             )}
 
             {step.id === "marital" && (
-              <ChoiceGrid count={5}>
+              <ChoiceGrid count={4}>
                 {(
                   [
                     { v: "Never Married", tone: "mint" as const, icon: I.ring },
                     { v: "Divorced", tone: "peach" as const, icon: I.split },
-                    { v: "Polygamy", tone: "lilac" as const, icon: I.users },
                     { v: "Annulled", tone: "sky" as const, icon: I.fileX },
                     { v: "Widowed", tone: "rose" as const, icon: I.flower },
                   ] as const
@@ -404,7 +403,7 @@ export function SignupWizard() {
                   value={data.ancestralRegion}
                   onChange={(e) => patch({ ancestralRegion: e.target.value })}
                 >
-                  <option value="">Select region (KP / Afghanistan)</option>
+                  <option value="">Select region (Pakhtunkhwa / Afghanistan)</option>
                   {ANCESTRAL_REGIONS.map((r) => (
                     <option key={r} value={r}>
                       {r}
@@ -463,7 +462,10 @@ export function SignupWizard() {
                       { v: "Widows", tone: "rose" as const, icon: I.flower },
                       { v: "Single parents", tone: "sky" as const, icon: I.parent },
                       { v: "Reverts", tone: "mint" as const, icon: I.spark },
-                      { v: "Polygamy", tone: "lilac" as const, icon: I.users },
+                      // Polygamy is only a relevant openness for male members.
+                      ...(data.gender === "Brother"
+                        ? [{ v: "Polygamy", tone: "lilac" as const, icon: I.users }]
+                        : []),
                     ] as const
                   ).map((item) => {
                     const on = data.openTo.includes(item.v);
@@ -510,13 +512,17 @@ export function SignupWizard() {
                   />
                 </ChoiceGrid>
                 <p className="pt-3 text-xs font-semibold text-ink-900">Willing to have children?</p>
-                <ChoiceGrid count={3}>
+                <ChoiceGrid count={2}>
                   <ChoiceTile
-                    label="Yes"
+                    label="Yes, Insha'Allah"
+                    hint="if Allah wills"
                     tone="mint"
-                    icon={I.check}
-                    selected={data.willingChildren === "Yes"}
-                    onClick={() => patch({ willingChildren: "Yes" })}
+                    icon={I.moon}
+                    selected={
+                      data.willingChildren === "Insha'Allah if Allah Wills" ||
+                      data.willingChildren === "Yes"
+                    }
+                    onClick={() => patch({ willingChildren: "Insha'Allah if Allah Wills" })}
                   />
                   <ChoiceTile
                     label="No"
@@ -524,14 +530,6 @@ export function SignupWizard() {
                     icon={I.x}
                     selected={data.willingChildren === "No"}
                     onClick={() => patch({ willingChildren: "No" })}
-                  />
-                  <ChoiceTile
-                    label="Insha'Allah"
-                    hint="If Allah wills"
-                    tone="lilac"
-                    icon={I.moon}
-                    selected={data.willingChildren === "Insha'Allah if Allah Wills"}
-                    onClick={() => patch({ willingChildren: "Insha'Allah if Allah Wills" })}
                   />
                 </ChoiceGrid>
               </>

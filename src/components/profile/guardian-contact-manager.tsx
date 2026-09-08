@@ -60,10 +60,10 @@ export function GuardianContactManager() {
       className="scroll-mt-24 bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2"
     >
       <div>
-        <h2 className="font-bold text-ink-950">Wali contact card</h2>
+        <h2 className="font-bold text-ink-950">Wali or Mother Contact Card</h2>
         <p className="text-xs text-ink-700/55 mt-0.5">
-          Add your wali&apos;s name and phone number. Once a match is accepted, you can send this as a
-          contact card in chat so the other member can reach your wali directly.
+          Add your wali&apos;s or mother&apos;s name and phone number. Once a match is accepted, you can
+          send this as a contact card in chat so the other member can reach them directly.
         </p>
       </div>
 

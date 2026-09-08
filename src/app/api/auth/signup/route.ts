@@ -81,13 +81,18 @@ export async function POST(req: Request) {
     const profile_code = await nextProfileCode(genderLabel);
     const userId = resumeIncompleteSignup ? existingUser!.id : await nextUserId();
 
+    // "Polygamy" openness is male-only — drop it server-side regardless of client state.
+    const openTo: string[] = (body.openTo ?? []).filter(
+      (o: string) => genderLabel === "Male" || o !== "Polygamy"
+    );
+
     const extras = {
       smoking: body.smoking ?? "",
       vaping: body.vaping ?? "",
       employment: body.employment ?? "",
       communicationMode: body.communicationMode ?? "",
       niqabSubMode: body.niqabSubMode ?? "",
-      openTo: body.openTo ?? [],
+      openTo,
       languages: body.languages ?? [],
       hasPhoto: Boolean(body.photoDataUrl),
     };
@@ -158,7 +163,7 @@ export async function POST(req: Request) {
       wants_children: body.willingChildren || null,
       about_me: body.about || null,
       partner_preferences: body.lookingFor || null,
-      open_to: (body.openTo ?? []).join(", ") || null,
+      open_to: openTo.join(", ") || null,
       phone: body.phone || null,
       phone_country_code: body.phoneCountry || null,
       photo_status: photoUrl ? "pending" : null,

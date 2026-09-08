@@ -27,7 +27,7 @@ function optionsWithCurrent(options: string[], current: string) {
 }
 
 const EDUCATION = ["GCSEs", "A Levels", "Diploma", "Bachelor's", "Master's", "PhD", "Islamic Studies", "Other"];
-const MARITAL = ["Never Married", "Divorced", "Polygamy", "Annulled", "Widowed"];
+const MARITAL = ["Never Married", "Divorced", "Annulled", "Widowed"];
 const EMPLOYMENT = [
   { v: "Employed", tone: "sky" as const, icon: I.briefcase },
   { v: "Self-employed", tone: "lilac" as const, icon: I.laptop },
@@ -376,15 +376,24 @@ export function ProfileEditForm({
             />
           </ChoiceGrid>
           <p className="text-xs font-semibold">Willing to have children</p>
-          <ChoiceGrid count={3}>
-            {(["Yes", "No", "Insha'Allah if Allah Wills"] as const).map((v, i) => (
+          <ChoiceGrid count={2}>
+            {(
+              [
+                { v: "Insha'Allah if Allah Wills", label: "Yes, Insha'Allah", icon: I.moon, tone: "mint" as const },
+                { v: "No", label: "No", icon: I.x, tone: "peach" as const },
+              ] as const
+            ).map((o) => (
               <ChoiceTile
-                key={v}
-                label={v === "Insha'Allah if Allah Wills" ? "Insha'Allah" : v}
-                tone={(["mint", "peach", "lilac"] as const)[i]}
-                icon={i === 2 ? I.moon : i === 0 ? I.check : I.x}
-                selected={form.willingChildren === v}
-                onClick={() => patch("willingChildren", v)}
+                key={o.v}
+                label={o.label}
+                hint={o.v === "Insha'Allah if Allah Wills" ? "if Allah wills" : undefined}
+                tone={o.tone}
+                icon={o.icon}
+                selected={
+                  form.willingChildren === o.v ||
+                  (o.v === "Insha'Allah if Allah Wills" && form.willingChildren === "Yes")
+                }
+                onClick={() => patch("willingChildren", o.v)}
               />
             ))}
           </ChoiceGrid>
