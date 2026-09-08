@@ -19,36 +19,22 @@ import { threadTopic } from "@/lib/realtime-topics";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ requestId: string }> }
-) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+// Newest-first paging: the initial load returns the last PAGE_SIZE messages; the client
+// asks for older ones with ?before=<oldest message id it holds> as the user scrolls up.
+const PAGE_SIZE = 25;
+const MAX_PAGE_SIZE = 60;
 
-  const { requestId: raw } = await params;
-  const requestId = BigInt(raw);
-  const userId = BigInt(session.userId);
-  const req = await assertMatchParticipant(requestId, userId);
-  if (!req) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
-
-  const matchEnded = req.status === "ended";
-
-  void processWaliReminders(5).catch(() => undefined);
-
-  const peerId = await peerUserId(req, userId);
-  const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
-  if (!peer) return NextResponse.json({ error: "Peer not found" }, { status: 404 });
-
-  const meta = await threadMetaFor(req, userId, { withWaliContact: true });
-
-  const rows = meta.privateChat
-    ? await prisma.messages.findMany({
-        where: { request_id: requestId },
-        orderBy: { created_at: "asc" },
-        take: 400,
-      })
-    : [];
+async function loadMessagePage(requestId: bigint, before: bigint | null, limit: number) {
+  const desc = await prisma.messages.findMany({
+    where: {
+      request_id: requestId,
+      ...(before ? { id: { lt: before } } : {}),
+    },
+    orderBy: { id: "desc" },
+    take: limit + 1,
+  });
+  const hasMore = desc.length > limit;
+  const rows = desc.slice(0, limit).reverse();
 
   const replyIds = [...new Set(rows.map((m) => m.reply_to_id).filter(Boolean))] as bigint[];
   const quoted =
@@ -69,8 +55,59 @@ export async function GET(
       reactionsMap.get(m.id.toString()) ?? []
     )
   );
+  return { messages, hasMore };
+}
+
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ requestId: string }> }
+) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { requestId: raw } = await params;
+  const requestId = BigInt(raw);
+  const userId = BigInt(session.userId);
+  const req = await assertMatchParticipant(requestId, userId);
+  if (!req) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+
+  const { searchParams } = new URL(_req.url);
+  let before: bigint | null = null;
+  try {
+    const rawBefore = searchParams.get("before");
+    if (rawBefore) before = BigInt(rawBefore);
+  } catch {
+    before = null;
+  }
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, Number(searchParams.get("limit")) || PAGE_SIZE)
+  );
+
+  const matchEnded = req.status === "ended";
+
+  // "before" requests are just older-message pages — skip the heavy peer/profile payload.
+  if (before !== null) {
+    const meta = await threadMetaFor(req, userId);
+    if (!meta.privateChat) return NextResponse.json({ messages: [], hasMore: false });
+    const page = await loadMessagePage(requestId, before, limit);
+    return NextResponse.json(page);
+  }
+
+  void processWaliReminders(5).catch(() => undefined);
+
+  const peerId = await peerUserId(req, userId);
+  const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
+  if (!peer) return NextResponse.json({ error: "Peer not found" }, { status: 404 });
+
+  const meta = await threadMetaFor(req, userId, { withWaliContact: true });
+
+  const { messages, hasMore } = meta.privateChat
+    ? await loadMessagePage(requestId, null, limit)
+    : { messages: [] as ReturnType<typeof serializeMessage>[], hasMore: false };
 
   return NextResponse.json({
+    hasMore,
     requestId: requestId.toString(),
     userId: session.userId,
     realtimeTopic: threadTopic(requestId.toString()),

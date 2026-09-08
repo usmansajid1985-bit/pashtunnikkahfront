@@ -5,6 +5,7 @@ import {
   FormEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -296,6 +297,8 @@ export function ChatApp({
   const [loadingThread, setLoadingThread] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
+  const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [photoShared, setPhotoShared] = useState(false);
   const [photoVisible, setPhotoVisible] = useState(false);
   const [canSharePhoto, setCanSharePhoto] = useState(false);
@@ -328,6 +331,13 @@ export function ChatApp({
   const [, startTransition] = useTransition();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
+  const messagesRef = useRef<ChatMessageDTO[]>([]);
+  const hasMoreOlderRef = useRef(false);
+  const loadingOlderRef = useRef(false);
+  const prependAdjustRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
+  const bootScrollDoneRef = useRef(false);
+  const canPageOlderRef = useRef(false);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peerTypingClear = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -370,12 +380,51 @@ export function ChatApp({
     requestAnimationFrame(() => {
       const el = scrollerRef.current;
       if (!el) return;
-      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+      el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "instant" });
       atBottomRef.current = true;
       setAtBottom(true);
       setUnseenCount(0);
     });
   }, []);
+
+  // Keep a ref copy so scroll handlers read the latest messages without re-binding.
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  const loadOlderMessages = useCallback(async () => {
+    const el = scrollerRef.current;
+    if (!el || !activeId || loadingOlderRef.current || !hasMoreOlderRef.current) return;
+    const oldest = messagesRef.current.find((m) => !String(m.id).startsWith("c_"));
+    if (!oldest) return;
+
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    const prevHeight = el.scrollHeight;
+    const prevTop = el.scrollTop;
+    try {
+      const res = await fetch(`/api/chats/${activeId}?before=${oldest.id}&limit=25`);
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data || !Array.isArray(data.messages)) return;
+
+      hasMoreOlderRef.current = Boolean(data.hasMore);
+      setHasMoreOlder(Boolean(data.hasMore));
+
+      if (data.messages.length > 0) {
+        // Preserve the reading position: after the older batch renders, add back the
+        // height that grew above the viewport (applied in a layout effect, pre-paint).
+        prependAdjustRef.current = { prevHeight, prevTop };
+        setMessages((prev) => {
+          const seen = new Set(prev.map((m) => m.id));
+          const older = (data.messages as ChatMessageDTO[]).filter((m) => !seen.has(m.id));
+          return older.length ? [...older, ...prev] : prev;
+        });
+      }
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [activeId]);
 
   const onScrollThread = useCallback(() => {
     const el = scrollerRef.current;
@@ -384,7 +433,19 @@ export function ChatApp({
     atBottomRef.current = near;
     setAtBottom(near);
     if (near) setUnseenCount(0);
-  }, [isNearBottom]);
+    // Only page in older history after the thread has settled at the bottom (canPageOlderRef
+    // is armed a beat after the initial pin) and the list is actually scrollable — otherwise
+    // the initial render sitting at scrollTop 0 would pull page after page on its own.
+    if (
+      canPageOlderRef.current &&
+      el.scrollHeight > el.clientHeight + 40 &&
+      el.scrollTop < 140 &&
+      hasMoreOlderRef.current &&
+      !loadingOlderRef.current
+    ) {
+      void loadOlderMessages();
+    }
+  }, [isNearBottom, loadOlderMessages]);
 
   const openThread = useCallback(
     async (requestId: string, opts?: { soft?: boolean }) => {
@@ -396,12 +457,22 @@ export function ChatApp({
       setUnseenCount(0);
       setAtBottom(true);
       atBottomRef.current = true;
+      setLoadingOlder(false);
+      loadingOlderRef.current = false;
+      setHasMoreOlder(false);
+      hasMoreOlderRef.current = false;
+      prependAdjustRef.current = null;
+      bootScrollDoneRef.current = false;
+      canPageOlderRef.current = false;
       try {
         const res = await fetch(`/api/chats/${requestId}`);
         const data = await res.json();
         if (!res.ok) return;
         setPeer(data.peer);
         setMessages(data.messages || []);
+        messagesRef.current = data.messages || [];
+        setHasMoreOlder(Boolean(data.hasMore));
+        hasMoreOlderRef.current = Boolean(data.hasMore);
         setActiveId(requestId);
         setPhotoShared(Boolean(data.photoShared));
         setPhotoVisible(Boolean(data.photoVisible));
@@ -633,6 +704,55 @@ export function ChatApp({
     }
     return items;
   }, [messages]);
+
+  // Leaving the Profile tab unmounts and remounts the message scroller (scrollTop 0),
+  // so ask the effect below to re-pin to the newest message when we come back.
+  const prevTabRef = useRef(tab);
+  useLayoutEffect(() => {
+    if (prevTabRef.current === "profile" && tab === "chat") {
+      bootScrollDoneRef.current = false;
+      canPageOlderRef.current = false;
+    }
+    prevTabRef.current = tab;
+  }, [tab]);
+
+  // Message-list scroll management, run before paint on every messages change:
+  //  1. first render of a thread  -> pin to the newest message
+  //  2. older page just prepended -> keep the current message under the viewport
+  useLayoutEffect(() => {
+    if (loadingThread || tab !== "chat") return;
+    const el = scrollerRef.current;
+    if (!el || messages.length === 0) return;
+
+    if (!bootScrollDoneRef.current) {
+      // Instant (not smooth) jump — the container has `scroll-smooth`, and an animated
+      // pin would leave scrollTop near 0 for a few frames, tripping the load-older check.
+      const pin = () => {
+        const cur = scrollerRef.current;
+        if (cur && atBottomRef.current) cur.scrollTo({ top: cur.scrollHeight, behavior: "instant" });
+      };
+      atBottomRef.current = true;
+      prependAdjustRef.current = null;
+      bootScrollDoneRef.current = true;
+      pin();
+      const raf = requestAnimationFrame(pin);
+      // Re-pin after late layout (fonts, reply chips, reaction rows), then allow paging.
+      const t = setTimeout(() => {
+        pin();
+        canPageOlderRef.current = true;
+      }, 300);
+      return () => {
+        cancelAnimationFrame(raf);
+        clearTimeout(t);
+      };
+    }
+
+    const adj = prependAdjustRef.current;
+    if (adj) {
+      prependAdjustRef.current = null;
+      el.scrollTo({ top: adj.prevTop + (el.scrollHeight - adj.prevHeight), behavior: "instant" });
+    }
+  }, [messages, loadingThread, tab]);
 
   async function endMatchHandler() {
     if (!activeId || matchEnded || endBusy) return;
@@ -1051,9 +1171,26 @@ export function ChatApp({
 
           {/* Thread */}
           <section
+            onTouchStart={(e) => {
+              if (!activeId || typeof window === "undefined" || window.innerWidth >= 1024) return;
+              const t = e.touches[0];
+              swipeStart.current = { x: t.clientX, y: t.clientY };
+            }}
+            onTouchEnd={(e) => {
+              const start = swipeStart.current;
+              swipeStart.current = null;
+              if (!start) return;
+              const t = e.changedTouches[0];
+              const dx = t.clientX - start.x;
+              const dy = t.clientY - start.y;
+              // Only a deliberate, mostly-horizontal drag switches panes.
+              if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
+              if (dx < 0) setTab("profile"); // swipe left → Profile
+              else setTab("chat"); // swipe right → back to Chat
+            }}
             className={`${
               activeId ? "flex" : "hidden lg:flex"
-            } flex-col min-h-screen lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
+            } flex-col h-dvh lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
             {!activeId ? (
               <div className="flex-1 flex items-center justify-center text-center px-6">
@@ -1393,7 +1530,18 @@ export function ChatApp({
                       {loadingThread ? (
                         <p className="text-center text-sm text-ink-700/50 py-10">Loading…</p>
                       ) : (
-                        grouped.map((item) =>
+                        <>
+                        {hasMoreOlder ? (
+                          <button
+                            type="button"
+                            onClick={() => void loadOlderMessages()}
+                            disabled={loadingOlder}
+                            className="mx-auto block px-3 py-1.5 rounded-full border border-ink-900/10 bg-white text-[12px] font-medium text-ink-700/70 disabled:opacity-50"
+                          >
+                            {loadingOlder ? "Loading…" : "Load earlier messages"}
+                          </button>
+                        ) : null}
+                        {grouped.map((item) =>
                           item.type === "day" ? (
                             <p key={item.key} className="text-center text-[12px] text-ink-700/45 py-2">
                               <LocalStamp iso={item.iso ?? null} variant="day" />
@@ -1414,7 +1562,8 @@ export function ChatApp({
                               onReport={(m) => void reportMessage(m)}
                             />
                           ) : null
-                        )
+                        )}
+                        </>
                       )}
 
                       {peerTyping ? (

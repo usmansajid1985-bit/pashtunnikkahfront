@@ -252,6 +252,16 @@ export async function POST(req: Request) {
     relatedRequestId: created.id,
   });
 
+  // Privacy-safe: no sender name or intro text in the payload — it can surface on a locked phone.
+  void sendPushNotification(peerUserId, {
+    title: "Pashtun Nikah",
+    body: "You have a new Introduction request.",
+    url: "/requests",
+    tag: `request-${created.id}`,
+    type: "match",
+    relatedRequestId: created.id,
+  }).catch((err) => console.error("[push] introduction-request notification failed", err));
+
   return NextResponse.json({
     ok: true,
     status: "pending",

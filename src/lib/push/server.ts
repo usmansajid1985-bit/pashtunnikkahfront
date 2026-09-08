@@ -2,7 +2,7 @@ import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { siteOrigin } from "@/lib/site-url";
 import type { PushPayload } from "@/lib/push/types";
-import { getFirebaseMessaging } from "@/lib/push/firebase-admin";
+import { getFirebaseMessaging, firebaseAdminUnavailableReason } from "@/lib/push/firebase-admin";
 
 let vapidConfigured = false;
 
@@ -26,6 +26,14 @@ function fcmTokenOf(sub: { endpoint: string; auth_key: string }) {
 }
 
 async function nextNotificationId() {
+  // Prefer the Postgres sequence so concurrent inserts can't collide on a stale MAX(id)+1
+  // (that race threw a unique-constraint error which silently dropped the notification).
+  try {
+    const rows = await prisma.$queryRaw<{ nextval: bigint }[]>`SELECT nextval('notifications_id_seq') as nextval`;
+    if (rows[0]?.nextval) return rows[0].nextval;
+  } catch {
+    /* fall through — notifications_id_seq doesn't exist in this database */
+  }
   const max = await prisma.notifications.aggregate({ _max: { id: true } });
   return (max._max.id ?? BigInt(0)) + BigInt(1);
 }
@@ -42,7 +50,14 @@ export type PushSendResult = {
   delivered: number;
   failed: number;
   reason?: "push_disabled" | "not_configured" | "no_subscriptions";
+  detail?: string;
+  errors?: string[];
 };
+
+function describeError(err: unknown): string {
+  const e = err as { errorInfo?: { code?: string; message?: string }; code?: string; message?: string };
+  return e?.errorInfo?.code || e?.errorInfo?.message || e?.code || e?.message || String(err);
+}
 
 function appOrigin() {
   return siteOrigin().replace(
@@ -77,7 +92,28 @@ export async function sendPushNotification(
 
   const messaging = getFirebaseMessaging();
   const hasVapid = ensureVapid();
-  if (!messaging && !hasVapid) return { delivered: 0, failed: 0, reason: "not_configured" };
+  if (!messaging && !hasVapid) {
+    return {
+      delivered: 0,
+      failed: 0,
+      reason: "not_configured",
+      detail: firebaseAdminUnavailableReason() ?? "no push transport configured",
+    };
+  }
+
+  // Every subscription created by this app is an FCM token, so a missing Admin SDK
+  // credential means nothing can be delivered — report it as a config problem
+  // instead of a generic delivery failure.
+  if (!messaging && subscriptions.every(isFcmSub)) {
+    return {
+      delivered: 0,
+      failed: 0,
+      reason: "not_configured",
+      detail:
+        firebaseAdminUnavailableReason() ??
+        "Firebase Admin credentials missing — set FIREBASE_SERVICE_ACCOUNT on the server",
+    };
+  }
 
   const clickUrl = payload.url?.startsWith("http") ? payload.url : `${appOrigin()}${payload.url || "/"}`;
   const data = {
@@ -134,6 +170,7 @@ export async function sendPushNotification(
   );
 
   let failed = 0;
+  const errors: string[] = [];
   await Promise.all(
     results.map(async (result, i) => {
       if (result.status === "fulfilled") return;
@@ -143,11 +180,18 @@ export async function sendPushNotification(
       const code = err?.statusCode ?? err?.errorInfo?.code ?? err?.code;
       if (code === 404 || code === 410 || String(code).includes("registration-token-not-registered")) {
         await prisma.push_subscriptions.delete({ where: { id: sub.id } }).catch(() => {});
+        errors.push("stale-token (subscription removed)");
         return;
       }
-      console.error(`[push] send failed for ${endpointHost(sub.endpoint)}:`, code ?? result.reason);
+      const detail = describeError(result.reason);
+      errors.push(detail);
+      console.error(`[push] send failed for ${endpointHost(sub.endpoint)}:`, detail);
     })
   );
 
-  return { delivered: results.length - failed, failed };
+  return {
+    delivered: results.length - failed,
+    failed,
+    ...(errors.length ? { errors, detail: errors[0] } : {}),
+  };
 }

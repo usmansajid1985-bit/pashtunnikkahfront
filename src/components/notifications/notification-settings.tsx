@@ -101,9 +101,17 @@ export function NotificationSettings() {
       } else if (data.reason === "push_disabled") {
         setTestResult("Push is turned off in your preferences.");
       } else if (data.reason === "not_configured") {
-        setTestResult("Push isn't configured on the server yet.");
+        setTestResult(
+          data.detail
+            ? `Push isn't configured on the server: ${data.detail}`
+            : "Push isn't configured on the server yet."
+        );
       } else if (data.failed > 0) {
-        setTestResult("Delivery failed. Try disabling and re-enabling notifications.");
+        setTestResult(
+          data.detail
+            ? `Delivery failed: ${data.detail}`
+            : "Delivery failed. Try disabling and re-enabling notifications."
+        );
       } else {
         setTestResult("Couldn't send test notification.");
       }
