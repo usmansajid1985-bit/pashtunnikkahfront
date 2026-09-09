@@ -428,6 +428,8 @@ model notifications {
   group_key          String?   @db.VarChar(160)
   /** Aggregation counter for a grouped notification ("sent you 5 messages"). */
   group_count        Int       @default(1)
+  /** Set when a backup email was sent for this (grouped) notification — suppresses repeats (§16). */
+  email_sent_at      DateTime? @db.Timestamptz(6)
   metadata           Json?
   read_at            DateTime? @db.Timestamptz(6)
   created_at         DateTime  @default(now()) @db.Timestamptz(6)

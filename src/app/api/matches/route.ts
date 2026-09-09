@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { expireStaleRequests, findRelation, nextMatchRequestId, withdrawCooldownBlocked } from "@/lib/matches";
 import { isBlockedBetween } from "@/lib/blocking";
 import { profileCodeOf } from "@/lib/notifications";
+import { maybeSendActivityEmail } from "@/lib/notification-email";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { recordCreditChange } from "@/lib/credit-ledger";
 import { maybeRenewMonthlyCredits } from "@/lib/credit-renewal";
@@ -85,6 +86,14 @@ export async function POST(req: Request) {
     }
 
     const accepterCode = await profileCodeOf(receiverId);
+    void maybeSendActivityEmail({
+      userId: senderId,
+      kind: "request_accepted",
+      heading: `${accepterCode} accepted your match request`,
+      lines: ["You can now start a conversation on Pashtun Nikah."],
+      ctaLabel: "Open conversation",
+      ctaUrl: `/chats/${matchId}`,
+    });
     void sendPushNotification(senderId, {
       title: `${accepterCode} accepted your match request`,
       body: "You can now begin your conversation.",
@@ -264,6 +273,14 @@ export async function POST(req: Request) {
   // Privacy-safe: no intro text in the payload — it can surface on a locked phone. The profile
   // code is fine (that's what the recipient sees in-app too).
   const senderCode = await profileCodeOf(me);
+  void maybeSendActivityEmail({
+    userId: peerUserId,
+    kind: "new_request",
+    heading: `${senderCode} sent you a match request`,
+    lines: ["Open Pashtun Nikah to view their profile and respond."],
+    ctaLabel: "View request",
+    ctaUrl: "/requests?tab=incoming",
+  });
   void sendPushNotification(peerUserId, {
     title: `${senderCode} sent you a match request`,
     body: "Open Requests to respond.",

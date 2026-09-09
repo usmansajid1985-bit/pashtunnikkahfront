@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { expireStaleRequests } from "@/lib/matches";
 import { sendPushNotification } from "@/lib/push/server";
 import { profileCodeOf } from "@/lib/notifications";
+import { maybeSendActivityEmail } from "@/lib/notification-email";
 import {
   allowsPrivateChat,
   loadWaliContact,
@@ -51,6 +52,14 @@ export async function POST(
     });
 
     const accepterCode = await profileCodeOf(match.receiver_id);
+    void maybeSendActivityEmail({
+      userId: match.sender_id,
+      kind: "request_accepted",
+      heading: `${accepterCode} accepted your match request`,
+      lines: ["You can now start a conversation on Pashtun Nikah."],
+      ctaLabel: "Open conversation",
+      ctaUrl: `/chats/${id}`,
+    });
     void sendPushNotification(match.sender_id, {
       title: `${accepterCode} accepted your match request`,
       body: "You can now begin your conversation.",

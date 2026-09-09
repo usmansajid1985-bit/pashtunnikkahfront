@@ -14,6 +14,7 @@ export async function ensureNotificationsSchema() {
         ADD COLUMN IF NOT EXISTS actor_user_id BIGINT,
         ADD COLUMN IF NOT EXISTS group_key VARCHAR(160),
         ADD COLUMN IF NOT EXISTS group_count INT NOT NULL DEFAULT 1,
+        ADD COLUMN IF NOT EXISTS email_sent_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     `);
     await prisma.$executeRawUnsafe(`

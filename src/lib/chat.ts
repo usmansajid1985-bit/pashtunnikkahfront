@@ -493,7 +493,8 @@ export async function createMessage(opts: {
   });
 
   // Privacy-safe: no message content in the payload (spec §8). Repeat messages from the same
-  // sender fold into one bell row: "PNF142 sent you 5 messages" (spec §7).
+  // sender fold into one bell row: "PNF142 sent you 5 messages" (spec §7). The push runs before
+  // the email so the grouped notification row exists for the email's once-per-conversation guard.
   const { profileCodeOf } = await import("@/lib/notifications");
   const senderCode = await profileCodeOf(opts.senderId);
   void sendPushNotification(opts.receiverId, {
@@ -507,7 +508,20 @@ export async function createMessage(opts: {
     groupKey: `message:${opts.requestId}`,
     groupedTitle: (n) => `${senderCode} sent you ${n} messages`,
     groupedBody: (n) => `${n} unread messages`,
-  }).catch((err) => console.error("[push] message notification failed", err));
+  })
+    .catch((err) => console.error("[push] message notification failed", err))
+    .then(async () => {
+      const { maybeSendActivityEmail } = await import("@/lib/notification-email");
+      await maybeSendActivityEmail({
+        userId: opts.receiverId,
+        kind: "new_message",
+        heading: `${senderCode} sent you a message`,
+        lines: ["Open Pashtun Nikah to read it and reply."],
+        ctaLabel: "Open messages",
+        ctaUrl: `/chats/${opts.requestId}`,
+        groupKey: `message:${opts.requestId}`,
+      });
+    });
 
   return serializeMessage(created, replyTo);
 }

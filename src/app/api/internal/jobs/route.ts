@@ -1,5 +1,6 @@
 import { expireStaleRequests } from "@/lib/matches";
 import { processWaliReminders } from "@/lib/wali-reminders";
+import { processUnreadMessageReminders } from "@/lib/notification-email";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -14,11 +15,13 @@ export async function POST(req: Request) {
 
   await expireStaleRequests();
   const wali = await processWaliReminders();
+  const messageReminders = await processUnreadMessageReminders().catch(() => ({ sent: 0 }));
 
   return NextResponse.json({
     ok: true,
     expiredStaleRequests: true,
     wali,
+    messageReminders,
     ranAt: new Date().toISOString(),
   });
 }
