@@ -9,6 +9,11 @@ function first(v: string | string[] | undefined): string {
   return v ?? "";
 }
 
+/** Same as `first`, but trims — whitespace-only text filters must read as blank (PN-BROWSE-005). */
+function firstTrimmed(v: string | string[] | undefined): string {
+  return first(v).trim();
+}
+
 export type BrowseFilters = {
   ageMin: number;
   ageMax: number;
@@ -67,6 +72,59 @@ export const DEFAULT_FILTERS: BrowseFilters = {
   page: 1,
 };
 
+/**
+ * Filters that only apply for Gold members. Free tier keeps: age, country, marital status,
+ * religious practice, relocation preference (and gender, which is always opposite-of-viewer).
+ * `buildProfileWhere` already ignores these for non-Gold callers — this list lets the UI lock
+ * the controls and the active-filter count exclude them, so a Basic user never sees a filter
+ * that looks applied but isn't (PN-BROWSE-002).
+ */
+export const GOLD_ONLY_FILTER_KEYS = [
+  "city",
+  "ethnicity",
+  "sect",
+  "tribe",
+  "salah",
+  "appearance",
+  "education",
+  "dialect",
+  "ancestral",
+  "height",
+  "occupation",
+  "language",
+  "dress",
+  "interests",
+  "goldOnly",
+  "newMembers",
+  "recentlyActive",
+  "near",
+] as const satisfies readonly (keyof BrowseFilters)[];
+
+/** Blank every Gold-only field so a non-Gold view can't show or submit them. */
+export function stripGoldFilters(f: BrowseFilters): BrowseFilters {
+  return {
+    ...f,
+    city: "",
+    ethnicity: "",
+    sect: "",
+    tribe: "",
+    salah: "",
+    appearance: "",
+    education: "",
+    dialect: "",
+    ancestral: "",
+    height: "",
+    occupation: "",
+    language: "",
+    dress: "",
+    interests: "",
+    goldOnly: false,
+    newMembers: false,
+    recentlyActive: false,
+    near: false,
+  };
+}
+
 export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
   const ageMin = Math.min(80, Math.max(18, Number(first(sp.ageMin)) || 18));
   const ageMax = Math.min(80, Math.max(ageMin, Number(first(sp.ageMax)) || 60));
@@ -79,24 +137,24 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
   return {
     ageMin,
     ageMax,
-    country: first(sp.country),
-    city: first(sp.city),
-    ethnicity: first(sp.ethnicity),
-    marital: first(sp.marital),
-    sect: first(sp.sect),
-    practice: first(sp.practice),
-    tribe: first(sp.tribe),
-    relocate: first(sp.relocate),
-    salah: first(sp.salah),
-    appearance: first(sp.appearance),
-    education: first(sp.education),
-    dialect: first(sp.dialect),
-    ancestral: first(sp.ancestral),
-    height: first(sp.height),
-    occupation: first(sp.occupation),
-    language: first(sp.language),
-    dress: first(sp.dress),
-    interests: first(sp.interests),
+    country: firstTrimmed(sp.country),
+    city: firstTrimmed(sp.city),
+    ethnicity: firstTrimmed(sp.ethnicity),
+    marital: firstTrimmed(sp.marital),
+    sect: firstTrimmed(sp.sect),
+    practice: firstTrimmed(sp.practice),
+    tribe: firstTrimmed(sp.tribe),
+    relocate: firstTrimmed(sp.relocate),
+    salah: firstTrimmed(sp.salah),
+    appearance: firstTrimmed(sp.appearance),
+    education: firstTrimmed(sp.education),
+    dialect: firstTrimmed(sp.dialect),
+    ancestral: firstTrimmed(sp.ancestral),
+    height: firstTrimmed(sp.height),
+    occupation: firstTrimmed(sp.occupation),
+    language: firstTrimmed(sp.language),
+    dress: firstTrimmed(sp.dress),
+    interests: firstTrimmed(sp.interests),
     goldOnly: first(sp.goldOnly) === "1",
     newMembers: first(sp.newMembers) === "1",
     recentlyActive: first(sp.recentlyActive) === "1",
@@ -106,8 +164,11 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
   };
 }
 
-/** Count active filters excluding age defaults and sort/page. */
-export function countActiveFilters(f: BrowseFilters): number {
+/** Count active filters excluding age defaults and sort/page. Gold-only filters are not
+ * counted for a non-Gold viewer, since they don't actually apply. */
+export function countActiveFilters(f: BrowseFilters, isGold = true): number {
+  const goldOnly = new Set<string>(GOLD_ONLY_FILTER_KEYS);
+  const counts = (k: keyof BrowseFilters) => isGold || !goldOnly.has(k);
   let n = 0;
   if (f.ageMin !== 18 || f.ageMax !== 60) n += 1;
   const keys: (keyof BrowseFilters)[] = [
@@ -130,11 +191,15 @@ export function countActiveFilters(f: BrowseFilters): number {
     "dress",
     "interests",
   ];
-  for (const k of keys) if (f[k]) n += 1;
-  if (f.goldOnly) n += 1;
-  if (f.newMembers) n += 1;
-  if (f.recentlyActive) n += 1;
-  if (f.near) n += 1;
+  for (const k of keys) {
+    if (!counts(k)) continue;
+    const v = f[k];
+    if (typeof v === "string" ? v.trim() !== "" : Boolean(v)) n += 1;
+  }
+  if (f.goldOnly && counts("goldOnly")) n += 1;
+  if (f.newMembers && counts("newMembers")) n += 1;
+  if (f.recentlyActive && counts("recentlyActive")) n += 1;
+  if (f.near && counts("near")) n += 1;
   return n;
 }
 
@@ -142,6 +207,7 @@ export function filtersToQuery(f: Partial<BrowseFilters>, extras: Record<string,
   const params = new URLSearchParams(extras);
   const set = (k: string, v: string | number | boolean | undefined) => {
     if (v === undefined || v === "" || v === false) return;
+    if (typeof v === "string" && v.trim() === "") return;
     if (k === "ageMin" && v === 18) return;
     if (k === "ageMax" && v === 60) return;
     if (k === "sort" && v === "newest") return;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getPlanSettings } from "@/lib/plan-settings";
+import { isBlockedBetween } from "@/lib/blocking";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ export async function POST(req: Request) {
   const me = BigInt(session.userId);
   if (!peerUserId || peerUserId === me) {
     return NextResponse.json({ error: "Invalid profile" }, { status: 400 });
+  }
+
+  if (await isBlockedBetween(me, peerUserId)) {
+    return NextResponse.json({ error: "This member is not available." }, { status: 403 });
   }
 
   const existing = await prisma.favourites.findFirst({

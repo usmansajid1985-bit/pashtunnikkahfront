@@ -5,6 +5,7 @@ import {
   BROWSE_PAGE_SIZE,
   buildProfileWhere,
   parseBrowseFilters,
+  stripGoldFilters,
 } from "@/lib/browse-filters";
 import { locationRadiusIds } from "@/lib/browse-location";
 import {
@@ -14,6 +15,7 @@ import {
   softSortGoldCompat,
 } from "@/lib/browse-rank";
 import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
+import { blockedUserIds } from "@/lib/blocking";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -22,7 +24,7 @@ export async function GET(req: Request) {
   }
 
   const url = new URL(req.url);
-  const filters = parseBrowseFilters(Object.fromEntries(url.searchParams.entries()));
+  const rawFilters = parseBrowseFilters(Object.fromEntries(url.searchParams.entries()));
   const userId = BigInt(session.userId);
 
   const [me, meUser] = await Promise.all([
@@ -51,6 +53,9 @@ export async function GET(req: Request) {
     prisma.users.findUnique({ where: { id: userId }, select: { plan: true } }),
   ]);
   const isGold = (meUser?.plan ?? "").toLowerCase() === "gold";
+  const filters = isGold ? rawFilters : stripGoldFilters(rawFilters);
+
+  const blockedIds = await blockedUserIds(userId);
 
   const locationIds =
     filters.near && me?.location_lat != null && me?.location_lng != null
@@ -65,6 +70,7 @@ export async function GET(req: Request) {
 
   const where = buildProfileWhere(filters, {
     excludeUserId: userId,
+    excludeUserIds: blockedIds,
     viewerGender: me?.gender,
     isGold,
     locationIds,

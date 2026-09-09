@@ -27,7 +27,7 @@ export function PremiumBanner({ isGold }: { isGold: boolean }) {
           Premium members get <span className="text-rose-600">10x</span> more responses
         </p>
         <p className="text-sm text-ink-700/70 mt-0.5">
-          Upgrade now to unlock messages, see who liked you &amp; more.
+          Upgrade for Smart Matches, advanced filters, distance search &amp; more.
         </p>
       </div>
       <div className="flex items-center gap-3 shrink-0">

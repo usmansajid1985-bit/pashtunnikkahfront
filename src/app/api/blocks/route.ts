@@ -25,14 +25,40 @@ export async function POST(req: Request) {
   });
   if (existing) return NextResponse.json({ ok: true });
 
+  const now = new Date();
   await prisma.blocks.create({
     data: {
       id: await nextBlockId(),
       blocker_id: me,
       blocked_id: peerUserId,
-      created_at: new Date(),
+      created_at: now,
     },
   });
+
+  // Mutual disappearance: tear down the live relationship both ways. Pending introductions are
+  // cancelled; saved entries removed. Accepted matches are left in place but chat access is
+  // gated at the chat layer (see chat route / loadThread block check).
+  await Promise.all([
+    prisma.match_requests.updateMany({
+      where: {
+        status: "pending",
+        OR: [
+          { sender_id: me, receiver_id: peerUserId },
+          { sender_id: peerUserId, receiver_id: me },
+        ],
+      },
+      data: { status: "cancelled", updated_at: now },
+    }),
+    prisma.favourites.deleteMany({
+      where: {
+        OR: [
+          { user_id: me, profile_user_id: peerUserId },
+          { user_id: peerUserId, profile_user_id: me },
+        ],
+      },
+    }),
+  ]);
+
   return NextResponse.json({ ok: true });
 }
 

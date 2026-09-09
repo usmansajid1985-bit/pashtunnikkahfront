@@ -7,6 +7,7 @@ import {
   toCompatProfile,
 } from "@/lib/compatibility-cache";
 import { prisma } from "@/lib/prisma";
+import { blockedUserIds } from "@/lib/blocking";
 
 export const SMART_MATCHES_POOL = 50;
 export const SMART_MATCHES_SHOW = 12;
@@ -59,6 +60,7 @@ export async function loadSmartMatches(viewerId: bigint): Promise<{
 
   const where = buildProfileWhere(DEFAULT_FILTERS, {
     excludeUserId: viewerId,
+    excludeUserIds: await blockedUserIds(viewerId),
     viewerGender: me.gender,
     isGold: true,
   });

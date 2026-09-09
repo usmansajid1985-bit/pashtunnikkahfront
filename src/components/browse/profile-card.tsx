@@ -155,12 +155,6 @@ export function ProfileCard({
       </div>
       <p className="mt-3 text-xs text-ink-700/75 leading-relaxed line-clamp-3 flex-1">{about}</p>
       <div className="mt-4 flex items-center gap-2">
-        <button type="button" className="icon-circle text-ink-700/50 hover:text-ink-900" aria-label="Skip">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <line x1="5" y1="5" x2="19" y2="19" />
-            <line x1="19" y1="5" x2="5" y2="19" />
-          </svg>
-        </button>
         <a
           href={p.profileCode ? `/p/${encodeURIComponent(p.profileCode)}` : `#profile-${p.id}`}
           className="flex-1 text-center py-2 rounded-full border border-ink-900/12 text-sm font-semibold text-ink-900 hover:border-rose-300 transition"
@@ -186,15 +180,6 @@ export function ProfileCard({
             strokeWidth="1.8"
           >
             <path d="M6 3.5h12v17l-6-4-6 4v-17Z" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className="icon-circle bg-rose-600 border-rose-600 text-white"
-          aria-label="Like"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 21s-7-4.35-9-8.5C1.4 9 3 5.5 6.5 5.5c2 0 3.7 1.2 5.5 3.3 1.8-2.1 3.5-3.3 5.5-3.3 3.5 0 5.1 3.5 3.5 7C19 16.65 12 21 12 21Z" />
           </svg>
         </button>
       </div>

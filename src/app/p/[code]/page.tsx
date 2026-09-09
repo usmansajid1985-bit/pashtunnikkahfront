@@ -10,6 +10,8 @@ import { recordBrowseOpened } from "@/lib/browse-rank";
 import { computeCompatibilityOnce, getCachedCompatDetail, toCompatProfile } from "@/lib/compatibility-cache";
 import { compatScore } from "@/lib/requests-hub-shared";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
+import { isOnline, formatLastSeen } from "@/lib/presence";
+import { isBlockedBetween } from "@/lib/blocking";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +38,9 @@ export default async function PublicProfilePage({
   if (isOwn) redirect("/profile");
 
   const viewerId = BigInt(session.userId);
+
+  // Mutual blocking: a blocked pair can't open each other's profile at all.
+  if (await isBlockedBetween(viewerId, profile.user_id)) notFound();
   const [relation, unreadCount, viewerUser, viewerProfile, hideGoldBadge, cachedCompat] =
     await Promise.all([
       findRelation(viewerId, profile.user_id),
@@ -135,6 +140,12 @@ export default async function PublicProfilePage({
     hide_gold_badge: hideGoldBadge,
   });
 
+  const lastSeenAt = profile.users.last_seen_at;
+  const presence = {
+    online: isOnline(lastSeenAt),
+    label: formatLastSeen(lastSeenAt),
+  };
+
   return (
     <ProfilePreview
       profile={view}
@@ -144,6 +155,7 @@ export default async function PublicProfilePage({
       closeHref="/browse"
       unreadCount={unreadCount}
       viewerCompat={viewerCompat}
+      presence={presence}
     />
   );
 }

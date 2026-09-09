@@ -3,7 +3,9 @@ import { Prisma } from "@/generated/prisma/client";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import {
   FAIR_EXPOSURE_WINDOW_DAYS,
+  NEW_MEMBER_BOOST_DAYS,
   activityBucket,
+  daysSinceJoined,
   formatLastSeen,
   isJustJoined,
   isOnline,
@@ -137,11 +139,14 @@ export async function rankBrowseProfiles(
     const imp = seen.get(r.user_id.toString());
     const recentlySeen = Boolean(imp);
     // Soft demotion only — never enough to cross an activity bucket boundary.
+    // Skip/X was removed as a Browse action — the algorithm no longer depends on a skipped state.
     const seenPenalty = imp
-      ? Math.min(50, imp.n * 8 + (imp.opened ? 18 : 0) + (imp.skipped ? 6 : 0))
+      ? Math.min(50, imp.n * 8 + (imp.opened ? 18 : 0))
       : 0;
     const popularPenalty = Math.min(35, (pendingByUser.get(r.user_id.toString()) ?? 0) * 4);
-    const newBoost = isJustJoined(joined, now) && !recentlySeen ? 12 : 0;
+    const joinedDays = daysSinceJoined(joined, now);
+    const newBoost =
+      joinedDays != null && joinedDays <= NEW_MEMBER_BOOST_DAYS && !recentlySeen ? 12 : 0;
     const lastMs = lastSeen ? lastSeen.getTime() : 0;
     // Lower sortKey = higher in list. Bucket dominates; then freshness; then fair exposure; then stable salt.
     const sortKey =

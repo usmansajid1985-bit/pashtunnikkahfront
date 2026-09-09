@@ -47,6 +47,7 @@ export function ProfilePreview({
   backLabel,
   unreadCount = 0,
   viewerCompat,
+  presence,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -60,6 +61,8 @@ export function ProfilePreview({
   unreadCount?: number;
   /** Gold viewer compatibility breakdown for the profile being viewed */
   viewerCompat?: { score: number; reasons: string[] } | null;
+  /** Real presence for the member being viewed — one source of truth with Browse. */
+  presence?: { online: boolean; label: string } | null;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
@@ -77,6 +80,7 @@ export function ProfilePreview({
           backLabel={backLabel}
           unreadCount={unreadCount}
           viewerCompat={viewerCompat}
+          presence={presence}
           footer={
             matchStatus ? (
               <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" />
@@ -149,6 +153,16 @@ export function ProfilePreview({
               {[profile.age ? `${profile.age} years` : null, location].filter(Boolean).join(" · ") || "—"}
             </p>
             <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {presence ? (
+                <Pill tone={presence.online ? "green" : "grey"}>
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      presence.online ? "bg-emerald-500" : "bg-ink-700/40"
+                    }`}
+                  />
+                  {presence.label}
+                </Pill>
+              ) : null}
               {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
               {profile.pashto ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
               {profile.plan === "gold" && !profile.hideGoldBadge ? <Pill tone="amber">Gold</Pill> : null}

@@ -1,15 +1,18 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { oppositeGenderLabels, type BrowseFilters } from "@/lib/browse-filters-shared";
+import { JUST_JOINED_DAYS } from "@/lib/presence";
 
 export {
   BROWSE_PAGE_SIZE,
   DEFAULT_FILTERS,
+  GOLD_ONLY_FILTER_KEYS,
   SALAH_OPTIONS,
   countActiveFilters,
   filtersToQuery,
   oppositeGender,
   oppositeGenderLabels,
   parseBrowseFilters,
+  stripGoldFilters,
   type BrowseFilters,
   type BrowseSearchParams,
 } from "@/lib/browse-filters-shared";
@@ -28,6 +31,8 @@ export function buildProfileWhere(
   f: BrowseFilters,
   opts: {
     excludeUserId?: bigint;
+    /** Users to hide entirely — blocked in either direction (mutual blocking rule). */
+    excludeUserIds?: bigint[];
     viewerGender?: string | null;
     isGold: boolean;
     /** Ids within the searching user's saved distance radius, or undefined if no radius is set. */
@@ -41,6 +46,9 @@ export function buildProfileWhere(
   ];
 
   if (opts.excludeUserId) and.push({ user_id: { not: opts.excludeUserId } });
+  if (opts.excludeUserIds && opts.excludeUserIds.length > 0) {
+    and.push({ user_id: { notIn: opts.excludeUserIds } });
+  }
   if (opts.locationIds) and.push({ id: { in: opts.locationIds } });
 
   const opposite = oppositeGenderLabels(opts.viewerGender);
@@ -55,8 +63,14 @@ export function buildProfileWhere(
   }
 
   const eq = (field: keyof Prisma.profilesWhereInput, value: string) => {
-    if (!value) return;
-    and.push({ [field]: { equals: value, mode: "insensitive" } } as Prisma.profilesWhereInput);
+    const v = (value ?? "").trim();
+    if (!v) return;
+    and.push({ [field]: { equals: v, mode: "insensitive" } } as Prisma.profilesWhereInput);
+  };
+  /** Trimmed value for a `contains` filter, or null when effectively blank (PN-BROWSE-005). */
+  const kw = (value: string) => {
+    const v = (value ?? "").trim();
+    return v || null;
   };
 
   eq("country", f.country);
@@ -85,35 +99,46 @@ export function buildProfileWhere(
   eq("ancestral_village", f.ancestral);
   eq("height", f.height);
 
-  if (f.salah) {
-    and.push({ salah_pattern: { contains: f.salah, mode: "insensitive" } });
+  const salah = kw(f.salah);
+  if (salah) {
+    and.push({ salah_pattern: { contains: salah, mode: "insensitive" } });
   }
 
-  if (f.occupation) {
-    and.push({ occupation: { contains: f.occupation, mode: "insensitive" } });
+  const occupation = kw(f.occupation);
+  if (occupation) {
+    and.push({ occupation: { contains: occupation, mode: "insensitive" } });
   }
 
-  if (f.language) {
+  const language = kw(f.language);
+  if (language) {
     and.push({
       OR: [
-        { home_language: { contains: f.language, mode: "insensitive" } },
-        { pashto_speaker: { contains: f.language, mode: "insensitive" } },
+        { home_language: { contains: language, mode: "insensitive" } },
+        { pashto_speaker: { contains: language, mode: "insensitive" } },
       ],
     });
   }
 
-  if (f.dress) {
-    and.push({ appearance: { contains: f.dress, mode: "insensitive" } });
+  const dress = kw(f.dress);
+  if (dress) {
+    and.push({ appearance: { contains: dress, mode: "insensitive" } });
   }
 
-  if (f.interests) {
-    and.push({ interests: { contains: f.interests, mode: "insensitive" } });
+  const interests = kw(f.interests);
+  if (interests) {
+    and.push({ interests: { contains: interests, mode: "insensitive" } });
   }
 
   if (f.newMembers) {
-    const since = new Date();
-    since.setDate(since.getDate() - 14);
-    and.push({ created_at: { gte: since } });
+    // "Just Joined" = first JUST_JOINED_DAYS after approval (falls back to created_at when a
+    // profile has no approved_at). Must match the card badge's window.
+    const since = new Date(Date.now() - JUST_JOINED_DAYS * 24 * 60 * 60_000);
+    and.push({
+      OR: [
+        { users: { approved_at: { gte: since } } },
+        { AND: [{ users: { approved_at: null } }, { created_at: { gte: since } }] },
+      ],
+    });
   }
 
   if (f.goldOnly || f.recentlyActive) {

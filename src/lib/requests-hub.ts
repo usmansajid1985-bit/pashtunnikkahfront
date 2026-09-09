@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { type HubCard, compatScore } from "@/lib/requests-hub-shared";
 import { getPlanSettings } from "@/lib/plan-settings";
+import { blockedUserIds } from "@/lib/blocking";
 
 export type { HubCard } from "@/lib/requests-hub-shared";
 export { formatAgeLabel, compatScore } from "@/lib/requests-hub-shared";
@@ -177,6 +178,10 @@ export async function loadRequestsHub(userId: bigint) {
 
   const isGold = (meUser?.plan || "").toLowerCase() === "gold";
 
+  // Mutual blocking: a blocked peer disappears from every hub list except the Blocked tab.
+  const blockedSet = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
+  const notBlocked = (c: HubCard | null) => (c && blockedSet.has(c.peerUserId) ? null : c);
+
   const allRequests = [...incoming, ...sentAll, ...matched, ...ended, ...declined, ...expired];
   const matchRequestIds = [...matched, ...ended].map((r) => r.id);
 
@@ -241,7 +246,8 @@ export async function loadRequestsHub(userId: bigint) {
     });
   }
 
-  const filterCards = (a: (HubCard | null)[]) => a.filter(Boolean) as HubCard[];
+  const filterCards = (a: (HubCard | null)[]) =>
+    a.map(notBlocked).filter(Boolean) as HubCard[];
   const incomingCards = filterCards(incoming.map((r) => mapRequest(r)));
   const sentCards = filterCards(sentAll.map((r) => mapRequest(r)));
   const matchedCards = filterCards(matched.map((r) => mapRequest(r, true)));
@@ -288,8 +294,10 @@ export async function loadRequestsHub(userId: bigint) {
   const savedLimit = settings.savedProfileLimit;
   const savedLocked = false;
 
-  const blocked = filterCards(
-    blockRows.map((b) => {
+  // The Blocked tab lists exactly the peers this user has blocked — it must NOT be run
+  // through `notBlocked`, which would strip every row.
+  const blocked = blockRows
+    .map((b) => {
       const peer = profileMap.get(b.blocked_id.toString());
       if (!peer) return null;
       return toCard(peer, meProfile, {
@@ -298,7 +306,7 @@ export async function loadRequestsHub(userId: bigint) {
         status: "blocked",
       });
     })
-  );
+    .filter(Boolean) as HubCard[];
 
   return {
     isGold,

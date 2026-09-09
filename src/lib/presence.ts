@@ -7,7 +7,13 @@ export const ONLINE_IDLE_MINUTES = Math.max(
   Number(process.env.ONLINE_IDLE_MINUTES) || 5
 );
 
+/** Extra rank nudge for brand-new members — kept short so it doesn't distort activity order. */
 export const NEW_MEMBER_BOOST_DAYS = 4;
+/**
+ * "Just Joined" = the member's first 7 days after joining/approval (PN product rule).
+ * Drives the card badge and the "New members" filter — both use this one window.
+ */
+export const JUST_JOINED_DAYS = 7;
 /** Soften repeat tops: impressions older than this no longer count as "recently seen". */
 export const FAIR_EXPOSURE_WINDOW_DAYS = 3;
 
@@ -26,7 +32,18 @@ export function isJustJoined(approvedOrCreated: Date | string | null | undefined
   if (!approvedOrCreated) return false;
   const t = approvedOrCreated instanceof Date ? approvedOrCreated : new Date(approvedOrCreated);
   if (Number.isNaN(t.getTime())) return false;
-  return now.getTime() - t.getTime() <= NEW_MEMBER_BOOST_DAYS * 24 * 60 * 60_000;
+  return now.getTime() - t.getTime() <= JUST_JOINED_DAYS * 24 * 60 * 60_000;
+}
+
+/** Days since joining/approval, or null when unknown — lets ranking keep a shorter boost window. */
+export function daysSinceJoined(
+  approvedOrCreated: Date | string | null | undefined,
+  now = new Date()
+): number | null {
+  if (!approvedOrCreated) return null;
+  const t = approvedOrCreated instanceof Date ? approvedOrCreated : new Date(approvedOrCreated);
+  if (Number.isNaN(t.getTime())) return null;
+  return (now.getTime() - t.getTime()) / (24 * 60 * 60_000);
 }
 
 /** Coarse activity bucket — lower is better (Online = 0). */

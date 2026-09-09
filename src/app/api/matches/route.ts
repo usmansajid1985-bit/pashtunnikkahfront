@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests, findRelation, nextMatchRequestId, withdrawCooldownBlocked } from "@/lib/matches";
+import { isBlockedBetween } from "@/lib/blocking";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { recordCreditChange } from "@/lib/credit-ledger";
 import { maybeRenewMonthlyCredits } from "@/lib/credit-renewal";
@@ -52,6 +53,11 @@ export async function POST(req: Request) {
 
   if (!peerUserId || peerUserId === me) {
     return NextResponse.json({ error: "Invalid recipient" }, { status: 400 });
+  }
+
+  // Mutual blocking: neither side can send (or auto-accept) a request across a block.
+  if (await isBlockedBetween(me, peerUserId)) {
+    return NextResponse.json({ error: "This member is not available." }, { status: 403 });
   }
 
   async function acceptMatch(matchId: bigint, senderId: bigint, receiverId: bigint) {

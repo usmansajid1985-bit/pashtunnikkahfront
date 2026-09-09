@@ -445,6 +445,12 @@ export async function createMessage(opts: {
     throw new Error("This match is Wali-Only — private chat is not available.");
   }
 
+  // Mutual blocking disables conversation access in both directions.
+  const { isBlockedBetween } = await import("@/lib/blocking");
+  if (await isBlockedBetween(opts.senderId, opts.receiverId)) {
+    throw new Error("This conversation is no longer available.");
+  }
+
   const body = opts.body.trim().slice(0, 4000);
   if (!body) throw new Error("Empty message");
 
@@ -510,6 +516,11 @@ export async function createContactCardMessage(opts: {
   const mode = modeOf(match);
   if (!allowsPrivateChat(mode)) {
     throw new Error("This match is Wali-Only — private chat is not available.");
+  }
+
+  const { isBlockedBetween } = await import("@/lib/blocking");
+  if (await isBlockedBetween(opts.senderId, opts.receiverId)) {
+    throw new Error("This conversation is no longer available.");
   }
 
   const senderProfile = await prisma.profiles.findUnique({

@@ -7,6 +7,7 @@ import {
   SALAH_OPTIONS,
   countActiveFilters,
   filtersToQuery,
+  stripGoldFilters,
 } from "@/lib/browse-filters-shared";
 import { LocationFilter } from "@/components/browse/location-filter";
 import { FilterPresets } from "@/components/browse/filter-presets";
@@ -65,26 +66,45 @@ function Pill({
   );
 }
 
+function GoldTag({ locked }: { locked?: boolean }) {
+  if (locked) {
+    return (
+      <a
+        href="/settings/membership"
+        className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold hover:bg-amber-200"
+      >
+        Gold · Upgrade
+      </a>
+    );
+  }
+  return (
+    <span className="text-[10px] uppercase tracking-wide bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-bold">
+      Gold
+    </span>
+  );
+}
+
 function Field({
   label,
   children,
   gold,
+  locked,
 }: {
   label: string;
   children: React.ReactNode;
   gold?: boolean;
+  /** Gold-gated field, current viewer is not Gold — show as locked and disable the control. */
+  locked?: boolean;
 }) {
   return (
     <label className="block">
       <span className="flex items-center gap-2 text-xs font-semibold text-ink-900 mb-1.5">
         {label}
-        {gold ? (
-          <span className="text-[10px] uppercase tracking-wide bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-bold">
-            Gold
-          </span>
-        ) : null}
+        {gold ? <GoldTag locked={locked} /> : null}
       </span>
-      {children}
+      <fieldset disabled={locked} className={locked ? "opacity-50" : undefined}>
+        {children}
+      </fieldset>
     </label>
   );
 }
@@ -98,11 +118,15 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
   const [open, setOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
   const [draft, setDraft] = useState<BrowseFilters>(filters);
-  const activeCount = countActiveFilters(filters);
+  const locked = !isGold;
+  const activeCount = countActiveFilters(filters, isGold);
 
   function navigate(next: BrowseFilters) {
+    // A Basic viewer can never submit Gold-only filters — strip them so the URL and the
+    // result set always agree with what the UI shows (PN-BROWSE-002).
+    const safe = isGold ? next : stripGoldFilters(next);
     startTransition(() => {
-      router.push(`/browse${filtersToQuery({ ...next, page: 1 })}`);
+      router.push(`/browse${filtersToQuery({ ...safe, page: 1 })}`);
     });
   }
 
@@ -159,22 +183,35 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
           {filters.ageMin} – {filters.ageMax} yrs
         </Pill>
 
-        <Pill
-          active={filters.near}
-          onClick={() => {
-            setDraft(filters);
-            setOpen(true);
-            setLocationOpen(true);
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
-            <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
-            <circle cx="12" cy="10.5" r="2" />
-          </svg>
-          {filters.near && savedLocation?.hasPin
-            ? `${savedLocation.city || savedLocation.country || "Pinned area"} · ${savedLocation.radiusMiles} mi`
-            : "Any location"}
-        </Pill>
+        {locked ? (
+          <a href="/settings/membership" className="pill-btn" title="Distance search is a Gold feature">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
+              <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
+              <circle cx="12" cy="10.5" r="2" />
+            </svg>
+            Distance
+            <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">
+              Gold
+            </span>
+          </a>
+        ) : (
+          <Pill
+            active={filters.near}
+            onClick={() => {
+              setDraft(filters);
+              setOpen(true);
+              setLocationOpen(true);
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
+              <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
+              <circle cx="12" cy="10.5" r="2" />
+            </svg>
+            {filters.near && savedLocation?.hasPin
+              ? `${savedLocation.city || savedLocation.country || "Pinned area"} · ${savedLocation.radiusMiles} mi`
+              : "Any location"}
+          </Pill>
+        )}
 
         <button
           type="button"
@@ -216,8 +253,8 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                 })
               }
             >
-              <option value="newest">Recommended (activity)</option>
-              <option value="recently_active">Recently Active</option>
+              <option value="newest">Most active</option>
+              <option value="recently_active">Recently active</option>
               <option value="age_asc">Age ↑</option>
               <option value="age_desc">Age ↓</option>
             </select>
@@ -268,6 +305,16 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+              {locked ? (
+                <a
+                  href="/settings/membership"
+                  className="block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"
+                >
+                  <span className="font-bold">Upgrade to Gold</span> to use city, distance, tribe,
+                  keyword and activity filters. Age, country, marital status, religious practice and
+                  relocation are always available.
+                </a>
+              ) : null}
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">Basics</h3>
                 <Field label={`Age (${draft.ageMin} – ${draft.ageMax})`}>
@@ -277,6 +324,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                       min={18}
                       max={80}
                       value={draft.ageMin}
+                      aria-label={`Minimum age (${draft.ageMin})`}
                       onChange={(e) =>
                         setDraft((d) => ({
                           ...d,
@@ -290,6 +338,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                       min={18}
                       max={80}
                       value={draft.ageMax}
+                      aria-label={`Maximum age (${draft.ageMax})`}
                       onChange={(e) =>
                         setDraft((d) => ({
                           ...d,
@@ -331,7 +380,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                   </select>
                 </Field>
 
-                <Field label="Islamic background (sect)">
+                <Field label="Islamic background (sect)" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.sect}
@@ -347,8 +396,10 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                 </Field>
               </section>
 
-              <section className="space-y-3">
-                <h3 className="text-sm font-bold text-ink-950">Discovery</h3>
+              <fieldset disabled={locked} className={`space-y-3 ${locked ? "opacity-50" : ""}`}>
+                <h3 className="text-sm font-bold text-ink-950 flex items-center gap-2">
+                  Discovery <GoldTag locked={locked} />
+                </h3>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -356,10 +407,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     onChange={(e) => setDraft({ ...draft, newMembers: e.target.checked })}
                     className="accent-rose-600"
                   />
-                  New members (last 14 days)
-                  <span className="text-[10px] uppercase tracking-wide bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-bold">
-                    Gold
-                  </span>
+                  New members (last 7 days)
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -369,9 +417,6 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     className="accent-rose-600"
                   />
                   Recently active (30 days)
-                  <span className="text-[10px] uppercase tracking-wide bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-bold">
-                    Gold
-                  </span>
                 </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -381,15 +426,12 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     className="accent-rose-600"
                   />
                   Gold members only
-                  <span className="text-[10px] uppercase tracking-wide bg-amber-50 text-amber-800 px-1.5 py-0.5 rounded font-bold">
-                    Gold
-                  </span>
                 </label>
-              </section>
+              </fieldset>
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">Location &amp; tribe</h3>
-                <Field label="City" gold>
+                <Field label="City" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.city}
@@ -403,7 +445,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Distance" gold>
+                <Field label="Distance" gold locked={locked}>
                   <button
                     type="button"
                     onClick={() => setLocationOpen(true)}
@@ -415,7 +457,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     </svg>
                   </button>
                 </Field>
-                <Field label="Tribe" gold>
+                <Field label="Tribe" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.tribe}
@@ -429,7 +471,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Ancestral region" gold>
+                <Field label="Ancestral region" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.ancestral}
@@ -443,7 +485,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Open to relocation" gold>
+                <Field label="Open to relocation">
                   <select
                     className={selectClass}
                     value={draft.relocate}
@@ -461,7 +503,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">Faith &amp; appearance</h3>
-                <Field label="Religious practice" gold>
+                <Field label="Religious practice">
                   <select
                     className={selectClass}
                     value={draft.practice}
@@ -475,7 +517,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Islamic dress (keyword)" gold>
+                <Field label="Islamic dress (keyword)" gold locked={locked}>
                   <input
                     className={selectClass}
                     value={draft.dress}
@@ -483,7 +525,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     placeholder="e.g. hijab, niqab"
                   />
                 </Field>
-                <Field label="Interests (keyword)" gold>
+                <Field label="Interests (keyword)" gold locked={locked}>
                   <input
                     className={selectClass}
                     value={draft.interests}
@@ -491,7 +533,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     placeholder="e.g. reading, travel"
                   />
                 </Field>
-                <Field label="Salah pattern" gold>
+                <Field label="Salah pattern" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.salah}
@@ -505,7 +547,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Appearance / Islamic dress" gold>
+                <Field label="Appearance / Islamic dress" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.appearance}
@@ -523,7 +565,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">About them</h3>
-                <Field label="Height" gold>
+                <Field label="Height" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.height}
@@ -537,7 +579,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Education" gold>
+                <Field label="Education" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.education}
@@ -551,7 +593,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Pashto dialect" gold>
+                <Field label="Pashto dialect" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.dialect}
@@ -565,7 +607,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Language" gold>
+                <Field label="Language" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.language}
@@ -579,7 +621,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     ))}
                   </select>
                 </Field>
-                <Field label="Profession contains…" gold>
+                <Field label="Profession contains…" gold locked={locked}>
                   <input
                     className={selectClass}
                     value={draft.occupation}

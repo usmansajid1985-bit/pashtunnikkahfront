@@ -42,6 +42,7 @@ export function ProfileDesktop({
   photoOverrideUrl,
   photoOverrideVisible,
   viewerCompat,
+  presence,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -59,6 +60,8 @@ export function ProfileDesktop({
   photoOverrideUrl?: string | null;
   photoOverrideVisible?: boolean;
   viewerCompat?: { score: number; reasons: string[] } | null;
+  /** Real presence for the member being viewed — one source of truth with Browse. */
+  presence?: { online: boolean; label: string } | null;
 }) {
   const isOwn = showEditTab;
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
@@ -114,9 +117,20 @@ export function ProfileDesktop({
                     className="w-24 h-24 rounded-2xl object-cover"
                     style={photoVisible ? undefined : { filter: "blur(8px) saturate(0.85)" }}
                   />
-                  <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-ink-900/8 text-[11px] font-semibold text-green-600 shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" /> Online
-                  </span>
+                  {!isOwn && presence ? (
+                    <span
+                      className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-ink-900/8 text-[11px] font-semibold shadow-sm ${
+                        presence.online ? "text-green-600" : "text-ink-700/60"
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          presence.online ? "bg-green-500" : "bg-ink-700/40"
+                        }`}
+                      />
+                      {presence.label}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="pt-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">

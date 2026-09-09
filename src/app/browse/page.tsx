@@ -5,9 +5,11 @@ import {
   BROWSE_PAGE_SIZE,
   buildProfileWhere,
   parseBrowseFilters,
+  stripGoldFilters,
   type BrowseSearchParams,
 } from "@/lib/browse-filters";
 import { locationRadiusIds } from "@/lib/browse-location";
+import { blockedUserIds } from "@/lib/blocking";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { PaymentGraceBanner } from "@/components/settings/payment-grace-banner";
 import { ensureP1Schema } from "@/lib/ensure-p1-schema";
@@ -69,7 +71,7 @@ export default async function BrowsePage({
   await ensureP1Schema();
 
   const sp = await searchParams;
-  const filters = { ...parseBrowseFilters(sp), page: 1 };
+  const rawFilters = { ...parseBrowseFilters(sp), page: 1 };
   const userId = BigInt(session.userId);
 
   const [me, meUser, unreadCount, savedFavourites] = await Promise.all([
@@ -111,6 +113,9 @@ export default async function BrowsePage({
   ]);
   const initialSavedUserIds = savedFavourites.map((f) => f.profile_user_id.toString());
   const isGold = (meUser?.plan ?? "").toLowerCase() === "gold";
+  // Gold-only filters never apply for a Basic viewer — drop them here so the query, the
+  // active-filter count and the grid key all reflect what actually gets used (PN-BROWSE-002).
+  const filters = isGold ? rawFilters : stripGoldFilters(rawFilters);
 
   let paymentGraceUntil: string | null = null;
   if (meUser?.subscription_status === "past_due") {
@@ -122,6 +127,8 @@ export default async function BrowsePage({
       paymentGraceUntil = grace.toISOString();
     }
   }
+
+  const blockedIds = await blockedUserIds(userId);
 
   const locationIds =
     filters.near && me?.location_lat != null && me?.location_lng != null
@@ -136,6 +143,7 @@ export default async function BrowsePage({
 
   const where = buildProfileWhere(filters, {
     excludeUserId: userId,
+    excludeUserIds: blockedIds,
     viewerGender: me?.gender,
     isGold,
     locationIds,
