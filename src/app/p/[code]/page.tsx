@@ -12,6 +12,8 @@ import { compatScore } from "@/lib/requests-hub-shared";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { isOnline, formatLastSeen } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
+import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
+import { signedPhotoUrl } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +142,14 @@ export default async function PublicProfilePage({
     hide_gold_badge: hideGoldBadge,
   });
 
+  // Photo privacy: an unmatched viewer must not receive the photo URL at all; a matched viewer
+  // sees it per the per-match photo-share rules (PN privacy defect — confirmed).
+  const photoVis = await fullProfilePhotoVisibility(viewerId, profile.user_id);
+  const photo = applyPhotoVisibility(view.photoUrl, photoVis);
+  // When the photo is shown to a matched viewer, hand out a short-lived signed URL rather than
+  // the permanent public one.
+  view.photoUrl = photo.photoUrl ? await signedPhotoUrl(photo.photoUrl) : null;
+
   const lastSeenAt = profile.users.last_seen_at;
   const presence = {
     online: isOnline(lastSeenAt),
@@ -156,6 +166,7 @@ export default async function PublicProfilePage({
       unreadCount={unreadCount}
       viewerCompat={viewerCompat}
       presence={presence}
+      photoVisible={photo.photoVisible}
     />
   );
 }

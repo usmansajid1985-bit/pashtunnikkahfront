@@ -70,6 +70,7 @@ export function ProfileDesktop({
   const avatar = avatarSrc || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const photoVisible =
     photoOverrideVisible !== undefined ? photoOverrideVisible : profile.photoStatus === "approved";
+  const photoHidden = photoOverrideVisible === false && !avatarSrc;
 
   return (
     <div className={embedded ? "text-ink-900" : `min-h-screen bg-[#faf8f7] text-ink-900 ${hideNav ? "" : "lg:pl-60"}`}>
@@ -110,13 +111,19 @@ export function ProfileDesktop({
             <div className="card p-6" style={{ background: "linear-gradient(180deg,#fdf6f3,#ffffff)" }}>
               <div className="flex items-start gap-5">
                 <div className="relative shrink-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={avatar}
-                    alt=""
-                    className="w-24 h-24 rounded-2xl object-cover"
-                    style={photoVisible ? undefined : { filter: "blur(8px) saturate(0.85)" }}
-                  />
+                  {photoHidden ? (
+                    <div className="w-24 h-24 rounded-2xl bg-ink-900/5 flex items-center justify-center text-center text-[10px] font-semibold text-ink-700/50 px-2">
+                      Photo hidden until you match
+                    </div>
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={avatar}
+                      alt=""
+                      className="w-24 h-24 rounded-2xl object-cover"
+                      style={photoVisible ? undefined : { filter: "blur(8px) saturate(0.85)" }}
+                    />
+                  )}
                   {!isOwn && presence ? (
                     <span
                       className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-ink-900/8 text-[11px] font-semibold shadow-sm ${

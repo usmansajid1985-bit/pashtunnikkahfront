@@ -54,6 +54,41 @@ export function publicPhotoUrl(objectPath: string) {
   return `${base}/storage/v1/object/public/${BUCKET}/${clean}`;
 }
 
+/**
+ * Extract the storage object path from whatever we stored in `profiles.photo_url` — historically
+ * a full public URL, going forward possibly just the relative path.
+ */
+export function photoObjectPath(stored: string | null | undefined): string | null {
+  if (!stored) return null;
+  const s = String(stored);
+  const m = s.match(/\/storage\/v1\/object\/(?:public|sign)\/[^/]+\/(.+?)(?:\?|$)/);
+  if (m) return decodeURIComponent(m[1]);
+  if (!/^https?:\/\//i.test(s)) return s.replace(/^\/+/, "");
+  return null;
+}
+
+/**
+ * Short-lived signed URL for a stored photo. Falls back to the public URL when the object path
+ * can't be resolved or signing fails, so a misconfiguration never blanks every photo.
+ */
+export async function signedPhotoUrl(
+  stored: string | null | undefined,
+  expiresInSec = 60 * 60
+): Promise<string | null> {
+  const objectPath = photoObjectPath(stored);
+  if (!objectPath) return stored ?? null;
+  try {
+    const client = storageClient();
+    const { data, error } = await client.storage
+      .from(BUCKET)
+      .createSignedUrl(objectPath, expiresInSec);
+    if (error || !data?.signedUrl) return publicPhotoUrl(objectPath);
+    return data.signedUrl;
+  } catch {
+    return publicPhotoUrl(objectPath);
+  }
+}
+
 function extFromMime(mime: string) {
   if (mime.includes("png")) return "png";
   if (mime.includes("webp")) return "webp";

@@ -48,11 +48,15 @@ export function ProfilePreview({
   unreadCount = 0,
   viewerCompat,
   presence,
+  photoVisible,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
   closeHref?: string;
   matchStatus?: MatchRelationStatus;
+  /** Server-resolved: is the viewer allowed to see this photo unblurred? Undefined = use the
+   * profile's own moderation status (own profile / edit preview). */
+  photoVisible?: boolean;
   navProfileCode?: string | null;
   /** Omit the site nav — used for restricted viewers (e.g. wali) who shouldn't see Browse/Chats/Settings links */
   hideNav?: boolean;
@@ -66,6 +70,10 @@ export function ProfilePreview({
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
+  // Server decides for other people's profiles; fall back to moderation status for own/preview.
+  const showPhoto =
+    photoVisible !== undefined ? photoVisible : profile.photoStatus === "approved";
+  const photoHidden = photoVisible === false && !profile.photoUrl;
 
   return (
     <>
@@ -81,6 +89,8 @@ export function ProfilePreview({
           unreadCount={unreadCount}
           viewerCompat={viewerCompat}
           presence={presence}
+          photoOverrideVisible={photoVisible}
+          photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
           footer={
             matchStatus ? (
               <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" />
@@ -135,17 +145,19 @@ export function ProfilePreview({
       <div className="max-w-lg mx-auto px-4 pb-28">
         {/* Hero identity */}
         <div className="pt-5 flex items-start gap-4">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={avatar}
-            alt=""
-            className="w-[88px] h-[88px] rounded-[22px] object-cover shrink-0"
-            style={
-              profile.photoStatus === "approved"
-                ? undefined
-                : { filter: "blur(8px) saturate(0.85)" }
-            }
-          />
+          {photoHidden ? (
+            <div className="w-[88px] h-[88px] rounded-[22px] shrink-0 bg-ink-900/5 flex items-center justify-center text-center text-[9px] font-semibold text-ink-700/50 px-1">
+              Photo hidden until you match
+            </div>
+          ) : (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={avatar}
+              alt=""
+              className="w-[88px] h-[88px] rounded-[22px] object-cover shrink-0"
+              style={showPhoto ? undefined : { filter: "blur(8px) saturate(0.85)" }}
+            />
+          )}
           <div className="pt-1 min-w-0">
             <p className="text-xs font-bold tracking-wide text-rose-600 uppercase">{profile.profileCode}</p>
             <h1 className="text-xl font-bold text-ink-950 mt-0.5 truncate">{profile.fullName}</h1>
