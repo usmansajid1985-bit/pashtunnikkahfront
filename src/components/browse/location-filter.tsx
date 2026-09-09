@@ -31,6 +31,11 @@ type Props = {
 export function LocationFilter({ onClose, onApplied, onClearDistance }: Props) {
   const [state, setState] = useState<LocationState | null>(null);
   const [radiusIdx, setRadiusIdx] = useState(2);
+  // The user's actual saved radius, and whether they've moved the slider this session. We only
+  // persist a new radius once they touch it — snapping a non-standard saved value to the nearest
+  // step and writing that back would silently change their search (PN-BROWSE-006).
+  const [savedRadius, setSavedRadius] = useState<number | null>(null);
+  const [radiusTouched, setRadiusTouched] = useState(false);
   const [countryOnly, setCountryOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,8 +85,22 @@ export function LocationFilter({ onClose, onApplied, onClearDistance }: Props) {
         const data = await res.json();
         const loc = (data.location || {}) as LocationState;
         setState(loc);
-        const idx = LOCATION_RADIUS_STEPS.indexOf(loc.radiusMiles as (typeof LOCATION_RADIUS_STEPS)[number]);
-        setRadiusIdx(idx >= 0 ? idx : 2);
+        setSavedRadius(typeof loc.radiusMiles === "number" ? loc.radiusMiles : null);
+        const exact = LOCATION_RADIUS_STEPS.indexOf(
+          loc.radiusMiles as (typeof LOCATION_RADIUS_STEPS)[number]
+        );
+        if (exact >= 0) {
+          setRadiusIdx(exact);
+        } else if (typeof loc.radiusMiles === "number") {
+          // Nearest step for display only — not persisted unless the user moves the slider.
+          let nearest = 0;
+          LOCATION_RADIUS_STEPS.forEach((step, i) => {
+            if (Math.abs(step - loc.radiusMiles) < Math.abs(LOCATION_RADIUS_STEPS[nearest] - loc.radiusMiles)) {
+              nearest = i;
+            }
+          });
+          setRadiusIdx(nearest);
+        }
         setCountryOnly(Boolean(loc.countryOnly));
         if (loc.lat != null && loc.lng != null) {
           setPlace({
@@ -235,7 +254,9 @@ export function LocationFilter({ onClose, onApplied, onClearDistance }: Props) {
           region: place.region,
           country: place.country,
           countryCode: place.countryCode,
-          radiusMiles,
+          // Only write a radius the user actually chose; otherwise keep their saved value
+          // (or fall back to the current step when nothing was saved).
+          radiusMiles: radiusTouched ? radiusMiles : savedRadius ?? radiusMiles,
           countryOnly,
         }),
       });
@@ -355,7 +376,10 @@ export function LocationFilter({ onClose, onApplied, onClearDistance }: Props) {
             max={LOCATION_RADIUS_STEPS.length - 1}
             step={1}
             value={radiusIdx}
-            onChange={(e) => setRadiusIdx(Number(e.target.value))}
+            onChange={(e) => {
+              setRadiusIdx(Number(e.target.value));
+              setRadiusTouched(true);
+            }}
             className="w-full accent-rose-600"
             aria-label="Search distance"
             aria-valuetext={`Up to ${radiusMiles} miles away`}

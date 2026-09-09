@@ -8,6 +8,7 @@ import {
   stripGoldFilters,
   type BrowseSearchParams,
 } from "@/lib/browse-filters";
+import { isFemaleGender, isMaleGender } from "@/lib/browse-filters-shared";
 import { locationRadiusIds } from "@/lib/browse-location";
 import { blockedUserIds } from "@/lib/blocking";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
@@ -132,16 +133,24 @@ export default async function BrowsePage({
 
   const blockedIds = await blockedUserIds(userId);
 
+  const wantsDistance = filters.near;
+  const hasPin = me?.location_lat != null && me?.location_lng != null;
+  const hasRadius = me?.location_radius_miles != null && me.location_radius_miles > 0;
+  const needsLocation = wantsDistance && (!hasPin || !hasRadius);
+
   const locationIds =
-    filters.near && me?.location_lat != null && me?.location_lng != null
+    wantsDistance && hasPin && hasRadius
       ? await locationRadiusIds({
-          lat: me.location_lat,
-          lng: me.location_lng,
-          radiusMiles: me.location_radius_miles ?? 50,
-          countryOnly: me.location_country_only ?? false,
-          country: me.location_country,
+          lat: me!.location_lat!,
+          lng: me!.location_lng!,
+          radiusMiles: me!.location_radius_miles!,
+          countryOnly: me!.location_country_only ?? false,
+          country: me!.location_country,
+          countryCode: me!.location_country_code,
         })
-      : undefined;
+      : needsLocation
+        ? []
+        : undefined;
 
   const where = buildProfileWhere(filters, {
     excludeUserId: userId,
@@ -229,6 +238,9 @@ export default async function BrowsePage({
         <BrowseFiltersBar
           filters={filters}
           isGold={isGold}
+          targetGender={
+            isMaleGender(me?.gender) ? "female" : isFemaleGender(me?.gender) ? "male" : null
+          }
           savedLocation={{
             city: me?.location_city || me?.city || null,
             country: me?.location_country || me?.country || null,
@@ -238,6 +250,16 @@ export default async function BrowsePage({
           }}
           options={filterOptions}
         />
+
+        {needsLocation ? (
+          <div className="mt-6 card p-6 text-center">
+            <p className="font-semibold text-ink-950">Set your location to search by distance</p>
+            <p className="mt-1 text-sm text-ink-700/70">
+              Pick a point on the map and a search radius, then we&apos;ll only show members within
+              it.
+            </p>
+          </div>
+        ) : null}
 
         <BrowseInfiniteGrid
           key={JSON.stringify({ ...filters, page: 1 })}

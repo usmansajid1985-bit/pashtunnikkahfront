@@ -87,6 +87,16 @@ export async function PATCH(req: Request) {
   const existing = await prisma.profiles.findUnique({ where: { user_id: userId } });
   if (!existing) return NextResponse.json({ error: "No profile" }, { status: 404 });
 
+  // First time a pin is dropped and no radius was ever saved — seed a default so distance
+  // search actually works (it now requires both a pin and a radius).
+  if (
+    data.location_lat !== undefined &&
+    data.location_radius_miles === undefined &&
+    existing.location_radius_miles == null
+  ) {
+    data.location_radius_miles = DEFAULT_RADIUS_MILES;
+  }
+
   const updated = await prisma.profiles.update({
     where: { user_id: userId },
     data,

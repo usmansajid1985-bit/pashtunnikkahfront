@@ -14,6 +14,7 @@ import { FilterPresets } from "@/components/browse/filter-presets";
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
+import { MEN_APPEARANCE, WOMEN_APPEARANCE } from "@/lib/signup";
 
 export type FilterOptions = {
   countries: string[];
@@ -35,6 +36,8 @@ type Props = {
   filters: BrowseFilters;
   options: FilterOptions;
   isGold?: boolean;
+  /** The gender being browsed (opposite of the viewer) — drives the appearance options shown. */
+  targetGender?: "male" | "female" | null;
   savedLocation?: {
     city: string | null;
     country: string | null;
@@ -114,7 +117,19 @@ function Field({
 const selectClass =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white";
 
-export function BrowseFiltersBar({ filters, options, isGold = false, savedLocation }: Props) {
+export function BrowseFiltersBar({
+  filters,
+  options,
+  isGold = false,
+  targetGender = null,
+  savedLocation,
+}: Props) {
+  const appearanceOptions =
+    targetGender === "male"
+      ? MEN_APPEARANCE
+      : targetGender === "female"
+        ? WOMEN_APPEARANCE
+        : [...MEN_APPEARANCE, ...WOMEN_APPEARANCE];
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -555,7 +570,7 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
                   >
                     <option value="">Any</option>
-                    {options.appearances.map((c) => (
+                    {appearanceOptions.map((c) => (
                       <option key={c} value={c}>
                         {c}
                       </option>

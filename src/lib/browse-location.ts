@@ -1,34 +1,16 @@
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-
-function countryAliases(country: string): string[] {
-  const c = country.trim().toLowerCase();
-  if (!c) return [];
-  if (
-    ["united kingdom", "uk", "gb", "great britain", "england", "scotland", "wales", "northern ireland"].includes(c)
-  ) {
-    return ["United Kingdom", "UK", "GB", "Great Britain", "England", "Scotland", "Wales", "Northern Ireland"];
-  }
-  if (["united states", "usa", "us", "united states of america"].includes(c)) {
-    return ["United States", "USA", "US", "United States of America"];
-  }
-  return [country.trim()];
-}
-
-function countryMatchSql(country: string) {
-  const names = countryAliases(country);
-  if (names.length === 0) return Prisma.empty;
-  const ors = names.map(
-    (name) =>
-      Prisma.sql`(lower(trim(coalesce(country, ''))) = lower(${name}) OR lower(trim(coalesce(location_country, ''))) = lower(${name}))`
-  );
-  return Prisma.sql`AND (${Prisma.join(ors, " OR ")})`;
-}
+import { countryByCode, toCountryCode } from "@/lib/country";
 
 /**
- * Ids of approved profiles for the location filter.
- * Country-only uses the profile `country` field (most members have that, not a map pin).
- * Distance only applies to profiles that have coordinates.
+ * Ids of approved profiles within the searching user's saved distance radius (PN-BROWSE-006).
+ *
+ * Rules:
+ *  - The Haversine distance test always applies. A profile with no coordinates cannot be
+ *    proven to be within the radius, so it is **excluded** — we never silently widen the
+ *    user's chosen radius to pull in no-pin members.
+ *  - `countryOnly` adds a hard AND on the canonical country (code first, alias names as a
+ *    fallback for rows not yet backfilled), still combined with the distance test.
  */
 export async function locationRadiusIds(opts: {
   lat: number;
@@ -36,25 +18,28 @@ export async function locationRadiusIds(opts: {
   radiusMiles: number;
   countryOnly: boolean;
   country?: string | null;
+  countryCode?: string | null;
 }): Promise<bigint[]> {
-  const countryClause = opts.countryOnly && opts.country ? countryMatchSql(opts.country) : Prisma.empty;
+  const haversine = Prisma.sql`
+    (3959 * acos(LEAST(1, GREATEST(-1,
+      cos(radians(${opts.lat})) * cos(radians(location_lat)) * cos(radians(location_lng) - radians(${opts.lng}))
+      + sin(radians(${opts.lat})) * sin(radians(location_lat))
+    ))))
+  `;
 
-  if (opts.countryOnly && opts.country) {
-    const rows = await prisma.$queryRaw<{ id: bigint }[]>(Prisma.sql`
-      SELECT id FROM profiles
-      WHERE status = 'approved'
-        AND is_hidden = false
-        ${countryClause}
-        AND (
-          location_lat IS NULL
-          OR location_lng IS NULL
-          OR (3959 * acos(LEAST(1, GREATEST(-1,
-                cos(radians(${opts.lat})) * cos(radians(location_lat)) * cos(radians(location_lng) - radians(${opts.lng}))
-                + sin(radians(${opts.lat})) * sin(radians(location_lat))
-              )))) <= ${opts.radiusMiles}
-        )
-    `);
-    return rows.map((r) => r.id);
+  let countryClause = Prisma.empty;
+  if (opts.countryOnly) {
+    const code = opts.countryCode || toCountryCode(opts.country);
+    const country = countryByCode(code);
+    if (country) {
+      const names = [country.name, ...(country.aliases ?? [])];
+      const nameOrs = names.map(
+        (n) => Prisma.sql`lower(trim(coalesce(location_country, country, ''))) LIKE ${"%" + n.toLowerCase() + "%"}`
+      );
+      countryClause = Prisma.sql`AND (country_code = ${country.code} OR ${Prisma.join(nameOrs, " OR ")})`;
+    } else if (opts.country && opts.country.trim()) {
+      countryClause = Prisma.sql`AND lower(trim(coalesce(location_country, country, ''))) = ${opts.country.trim().toLowerCase()}`;
+    }
   }
 
   const rows = await prisma.$queryRaw<{ id: bigint }[]>(Prisma.sql`
@@ -63,10 +48,8 @@ export async function locationRadiusIds(opts: {
       AND is_hidden = false
       AND location_lat IS NOT NULL
       AND location_lng IS NOT NULL
-      AND (3959 * acos(LEAST(1, GREATEST(-1,
-            cos(radians(${opts.lat})) * cos(radians(location_lat)) * cos(radians(location_lng) - radians(${opts.lng}))
-            + sin(radians(${opts.lat})) * sin(radians(location_lat))
-          )))) <= ${opts.radiusMiles}
+      ${countryClause}
+      AND ${haversine} <= ${opts.radiusMiles}
   `);
   return rows.map((r) => r.id);
 }

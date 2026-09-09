@@ -51,6 +51,7 @@ export async function GET(req: Request) {
         location_radius_miles: true,
         location_country_only: true,
         location_country: true,
+        location_country_code: true,
       },
     }),
     prisma.users.findUnique({ where: { id: userId }, select: { plan: true } }),
@@ -60,16 +61,27 @@ export async function GET(req: Request) {
 
   const blockedIds = await blockedUserIds(userId);
 
+  // Distance search requires a saved pin AND a saved radius. Missing either → return nothing
+  // with a `needsLocation` flag rather than silently falling through to an unfiltered grid
+  // (PN-BROWSE-006).
+  const wantsDistance = filters.near;
+  const hasPin = me?.location_lat != null && me?.location_lng != null;
+  const hasRadius = me?.location_radius_miles != null && me.location_radius_miles > 0;
+  const needsLocation = wantsDistance && (!hasPin || !hasRadius);
+
   const locationIds =
-    filters.near && me?.location_lat != null && me?.location_lng != null
+    wantsDistance && hasPin && hasRadius
       ? await locationRadiusIds({
-          lat: me.location_lat,
-          lng: me.location_lng,
-          radiusMiles: me.location_radius_miles ?? 50,
-          countryOnly: me.location_country_only ?? false,
-          country: me.location_country,
+          lat: me!.location_lat!,
+          lng: me!.location_lng!,
+          radiusMiles: me!.location_radius_miles!,
+          countryOnly: me!.location_country_only ?? false,
+          country: me!.location_country,
+          countryCode: me!.location_country_code,
         })
-      : undefined;
+      : needsLocation
+        ? []
+        : undefined;
 
   const where = buildProfileWhere(filters, {
     excludeUserId: userId,
@@ -137,5 +149,6 @@ export async function GET(req: Request) {
     page: filters.page,
     total,
     hasMore,
+    needsLocation,
   });
 }

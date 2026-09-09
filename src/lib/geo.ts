@@ -2,8 +2,23 @@ export const LOCATION_RADIUS_STEPS = [10, 25, 50, 75, 100, 150, 250] as const;
 
 export const DEFAULT_RADIUS_MILES = 50;
 
-export function isValidRadiusMiles(n: unknown): n is number {
+/** A slider step value. */
+export function isRadiusStep(n: unknown): n is number {
   return typeof n === "number" && (LOCATION_RADIUS_STEPS as readonly number[]).includes(n);
+}
+
+/**
+ * Any radius the app will accept — the slider steps plus any positive value up to the largest
+ * step. This lets a legacy non-standard saved radius round-trip without being force-snapped
+ * (PN-BROWSE-006).
+ */
+export function isValidRadiusMiles(n: unknown): n is number {
+  return (
+    typeof n === "number" &&
+    Number.isFinite(n) &&
+    n > 0 &&
+    n <= LOCATION_RADIUS_STEPS[LOCATION_RADIUS_STEPS.length - 1]
+  );
 }
 
 /** Round to ~1.1km so exact home addresses are never persisted, only an approximate area. */
