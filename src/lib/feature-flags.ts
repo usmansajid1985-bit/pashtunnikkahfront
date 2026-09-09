@@ -11,4 +11,6 @@ export const features = {
   rematch: () => featureEnabled("REMATCH"),
   filterPresets: () => featureEnabled("FILTER_PRESETS"),
   privateBrowsing: () => featureEnabled("PRIVATE_BROWSING"),
+  /** Backup activity emails (match request / accepted / message). Opt-in — off unless "1". */
+  notificationEmails: () => process.env.NOTIFICATION_ACTIVITY_EMAILS === "1",
 } as const;

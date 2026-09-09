@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendMail } from "@/lib/mail";
 import { siteOrigin } from "@/lib/site-url";
 import { ensureNotificationsSchema } from "@/lib/ensure-notifications-schema";
+import { features } from "@/lib/feature-flags";
 
 /**
  * Email is the backup layer (spec §16). Delivery logic:
@@ -86,6 +87,7 @@ export async function maybeSendActivityEmail(opts: {
   groupKey?: string;
 }): Promise<void> {
   try {
+    if (!features.notificationEmails()) return;
     await ensureNotificationsSchema();
 
     if (!(await emailPrefOn(opts.userId, opts.kind))) return;
@@ -121,6 +123,7 @@ export async function maybeSendActivityEmail(opts: {
  * only if no email has gone out for it yet (spec §16).
  */
 export async function processUnreadMessageReminders(): Promise<{ sent: number }> {
+  if (!features.notificationEmails()) return { sent: 0 };
   await ensureNotificationsSchema();
   const now = Date.now();
   const from = new Date(now - 24 * 60 * 60 * 1000);
