@@ -3,6 +3,7 @@ import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { type HubCard, compatScore } from "@/lib/requests-hub-shared";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { blockedUserIds } from "@/lib/blocking";
+import { loadCompatibilityCache, type CachedCompat } from "@/lib/compatibility-cache";
 
 export type { HubCard } from "@/lib/requests-hub-shared";
 export { formatAgeLabel, compatScore } from "@/lib/requests-hub-shared";
@@ -68,10 +69,16 @@ async function loadProfilesByUserId(
 function toCard(
   peer: NonNullable<Awaited<ReturnType<typeof loadProfile>>>,
   me: Awaited<ReturnType<typeof loadProfile>>,
-  extra: Partial<HubCard> & { createdAt: string; id: string }
+  extra: Partial<HubCard> & { createdAt: string; id: string },
+  compatCache?: Map<string, CachedCompat>
 ): HubCard {
   const place = [peer.city, peer.country].filter(Boolean).join(", ");
   const summaryBits = [peer.age ? `${peer.age} yrs` : null, peer.marital_status, peer.tribe].filter(Boolean);
+  // Same rule as Browse / full profile / Smart Matches: show the cached blended score once the
+  // AI compat has been computed for the pair, otherwise the heuristic — so one pair reads the
+  // same everywhere (PN-BROWSE-008).
+  const cached = compatCache?.get(peer.user_id.toString());
+  const compat = cached?.aiComputed ? cached.finalScore : compatScore(me, peer);
   return {
     id: extra.id,
     requestId: extra.requestId,
@@ -85,7 +92,7 @@ function toCard(
     avatarSeed: Number(peer.id % BigInt(70)),
     createdAt: extra.createdAt,
     status: extra.status,
-    compat: compatScore(me, peer),
+    compat,
     lastMessage: extra.lastMessage,
     photoShared: extra.photoShared,
     communicationMode: extra.communicationMode,
@@ -187,14 +194,16 @@ export async function loadRequestsHub(userId: bigint) {
 
   // Two batched lookups replace the old N+1: every peer profile in one query,
   // every thread's latest message in another.
-  const [settings, profileMap, lastMsgRows] = await Promise.all([
+  const allPeerIds = [
+    ...allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id)),
+    ...(isGold ? viewRows.map((v) => v.viewer_id) : []),
+    ...favs.map((f) => f.profile_user_id),
+    ...blockRows.map((b) => b.blocked_id),
+  ];
+
+  const [settings, profileMap, lastMsgRows, compatCache] = await Promise.all([
     getPlanSettings(meUser?.plan),
-    loadProfilesByUserId([
-      ...allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id)),
-      ...(isGold ? viewRows.map((v) => v.viewer_id) : []),
-      ...favs.map((f) => f.profile_user_id),
-      ...blockRows.map((b) => b.blocked_id),
-    ]),
+    loadProfilesByUserId(allPeerIds),
     matchRequestIds.length === 0
       ? Promise.resolve([] as { request_id: bigint; body: string }[])
       : prisma.messages.findMany({
@@ -203,6 +212,9 @@ export async function loadRequestsHub(userId: bigint) {
           distinct: ["request_id"],
           select: { request_id: true, body: true },
         }),
+    loadCompatibilityCache(userId, [
+      ...new Set(allPeerIds.map((id) => id.toString())),
+    ].map((s) => BigInt(s))),
   ]);
 
   const lastMsgByRequest = new Map(
@@ -234,16 +246,21 @@ export async function loadRequestsHub(userId: bigint) {
         : asMatch
           ? r.updated_at
           : r.created_at;
-    return toCard(peer, meProfile, {
-      id: r.id.toString(),
-      requestId: r.id.toString(),
-      createdAt: stamp.toISOString(),
-      status: r.status,
-      lastMessage,
-      photoShared: r.photo_shared,
-      communicationMode: r.communication_mode,
-      introMessage: r.intro_message ?? null,
-    });
+    return toCard(
+      peer,
+      meProfile,
+      {
+        id: r.id.toString(),
+        requestId: r.id.toString(),
+        createdAt: stamp.toISOString(),
+        status: r.status,
+        lastMessage,
+        photoShared: r.photo_shared,
+        communicationMode: r.communication_mode,
+        introMessage: r.intro_message ?? null,
+      },
+      compatCache
+    );
   }
 
   const filterCards = (a: (HubCard | null)[]) =>
@@ -263,10 +280,12 @@ export async function loadRequestsHub(userId: bigint) {
       viewRows.map((v) => {
         const peer = profileMap.get(v.viewer_id.toString());
         if (!peer) return null;
-        return toCard(peer, meProfile, {
-          id: `view-${v.id}`,
-          createdAt: v.viewed_at.toISOString(),
-        });
+        return toCard(
+          peer,
+          meProfile,
+          { id: `view-${v.id}`, createdAt: v.viewed_at.toISOString() },
+          compatCache
+        );
       })
     );
   } else {
@@ -288,7 +307,7 @@ export async function loadRequestsHub(userId: bigint) {
         id: `fav-${f.id}`,
         createdAt: f.created_at.toISOString(),
         note: f.note,
-      });
+      }, compatCache);
     })
   );
   const savedLimit = settings.savedProfileLimit;
@@ -304,7 +323,7 @@ export async function loadRequestsHub(userId: bigint) {
         id: `block-${b.id}`,
         createdAt: b.created_at.toISOString(),
         status: "blocked",
-      });
+      }, compatCache);
     })
     .filter(Boolean) as HubCard[];
 
