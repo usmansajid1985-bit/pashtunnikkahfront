@@ -11,11 +11,13 @@ import {
 } from "@/lib/browse-filters-shared";
 import { LocationFilter } from "@/components/browse/location-filter";
 import { FilterPresets } from "@/components/browse/filter-presets";
+import { RELOCATION_OPTIONS } from "@/lib/relocation";
+import { COUNTRIES } from "@/lib/country";
+import { HEIGHT_FILTER_STEPS } from "@/lib/height";
 
 export type FilterOptions = {
   countries: string[];
   cities: string[];
-  ethnicities: string[];
   marital: string[];
   sects: string[];
   practices: string[];
@@ -142,7 +144,6 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
       ageMax: 60,
       country: "",
       city: "",
-      ethnicity: "",
       marital: "",
       sect: "",
       practice: "",
@@ -357,9 +358,9 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     onChange={(e) => setDraft({ ...draft, country: e.target.value, city: "" })}
                   >
                     <option value="">Any country</option>
-                    {options.countries.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    {COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.flag} {c.name}
                       </option>
                     ))}
                   </select>
@@ -492,9 +493,9 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
                     onChange={(e) => setDraft({ ...draft, relocate: e.target.value })}
                   >
                     <option value="">Any</option>
-                    {options.relocate.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    {RELOCATION_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
                       </option>
                     ))}
                   </select>
@@ -565,16 +566,16 @@ export function BrowseFiltersBar({ filters, options, isGold = false, savedLocati
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">About them</h3>
-                <Field label="Height" gold locked={locked}>
+                <Field label="Minimum height" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.height}
                     onChange={(e) => setDraft({ ...draft, height: e.target.value })}
                   >
                     <option value="">Any</option>
-                    {options.heights.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    {HEIGHT_FILTER_STEPS.map((h) => (
+                      <option key={h.cm} value={h.cm}>
+                        {h.label}
                       </option>
                     ))}
                   </select>

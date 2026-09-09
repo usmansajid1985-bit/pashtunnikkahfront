@@ -10,6 +10,7 @@ import {
   isJustJoined,
   isOnline,
 } from "@/lib/presence";
+import { displayHeight } from "@/lib/height";
 
 export type RankableBrowseRow = {
   id: bigint;
@@ -17,7 +18,7 @@ export type RankableBrowseRow = {
   profile_code: string | null;
   age: number | null;
   height: string | null;
-  ethnicity: string | null;
+  height_cm: number | null;
   country: string | null;
   city: string | null;
   occupation: string | null;
@@ -41,7 +42,7 @@ export type BrowseCardDTO = {
   profileCode: string | null;
   age: number | null;
   height: string | null;
-  ethnicity: string | null;
+  tribe: string | null;
   country: string | null;
   city: string | null;
   occupation: string | null;
@@ -169,8 +170,8 @@ export async function rankBrowseProfiles(
       userId: r.user_id.toString(),
       profileCode: r.profile_code,
       age: r.age,
-      height: r.height,
-      ethnicity: r.ethnicity,
+      height: displayHeight(r.height_cm, r.height),
+      tribe: r.tribe,
       country: r.country,
       city: r.city,
       occupation: r.occupation,
@@ -243,7 +244,7 @@ export const BROWSE_PROFILE_SELECT = {
   profile_code: true,
   age: true,
   height: true,
-  ethnicity: true,
+  height_cm: true,
   country: true,
   city: true,
   occupation: true,

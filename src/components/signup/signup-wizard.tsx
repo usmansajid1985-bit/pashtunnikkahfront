@@ -19,6 +19,7 @@ import {
   type SignupData,
 } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
+import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 
 const STORAGE_KEY = "pn_signup_draft_v1";
@@ -411,21 +412,17 @@ export function SignupWizard() {
                   ))}
                 </select>
                 <p className="pt-3 text-xs font-semibold text-ink-900">Relocation plans</p>
-                <ChoiceGrid count={2}>
-                  <ChoiceTile
-                    label="Open to Relocation"
-                    tone="mint"
-                    icon={I.mapPin}
-                    selected={data.relocation === "Open to Relocation"}
-                    onClick={() => patch({ relocation: "Open to Relocation" })}
-                  />
-                  <ChoiceTile
-                    label="Not Open to Relocation"
-                    tone="sand"
-                    icon={I.mapOff}
-                    selected={data.relocation === "Not Open to Relocation"}
-                    onClick={() => patch({ relocation: "Not Open to Relocation" })}
-                  />
+                <ChoiceGrid count={3}>
+                  {RELOCATION_OPTIONS.map((o) => (
+                    <ChoiceTile
+                      key={o.value}
+                      label={o.label}
+                      tone={o.value === "yes" ? "mint" : "sand"}
+                      icon={o.value === "no" ? I.mapOff : I.mapPin}
+                      selected={normalizeRelocation(data.relocation) === o.value}
+                      onClick={() => patch({ relocation: o.label })}
+                    />
+                  ))}
                 </ChoiceGrid>
               </>
             )}

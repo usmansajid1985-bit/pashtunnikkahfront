@@ -291,6 +291,7 @@ model profiles {
   dob                    DateTime?          @db.Date
   age                    Int?
   height                 String?            @db.VarChar(64)
+  height_cm              Int?
   weight                 String?            @db.VarChar(64)
   build                  String?            @db.VarChar(64)
   complexion             String?            @db.VarChar(64)
@@ -304,6 +305,7 @@ model profiles {
   phone                  String?            @db.VarChar(64)
   phone_country_code     String?            @db.VarChar(16)
   country                String?            @db.VarChar(128)
+  country_code           String?            @db.VarChar(8)
   city                   String?            @db.VarChar(128)
   current_location       String?            @db.VarChar(255)
   ancestral_village      String?            @db.VarChar(255)
@@ -357,6 +359,7 @@ model profiles {
   location_region        String?            @db.VarChar(128)
   location_country       String?            @db.VarChar(128)
   location_country_code  String?            @db.VarChar(8)
+  location_precision     String?            @db.VarChar(16)
   location_radius_miles  Int                @default(50)
   location_country_only  Boolean            @default(false)
   profile_guardians      profile_guardians?

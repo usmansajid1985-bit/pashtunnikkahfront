@@ -14,10 +14,10 @@ import {
   geocodeCityCountry,
   roundCoord,
 } from "@/lib/geo";
+import { normalizeRelocation } from "@/lib/relocation";
+import { toCountryCode, countryLabel } from "@/lib/country";
+import { parseHeightCm } from "@/lib/height";
 
-function stripCountryFlag(country: string) {
-  return country.replace(/^[\u{1F1E6}-\u{1F1FF}\s]+/u, "").trim() || country;
-}
 
 async function nextProfileCode(gender: string) {
   const prefix = gender === "Sister" || gender.toLowerCase() === "female" ? "PNF" : "PNM";
@@ -119,7 +119,8 @@ export async function POST(req: Request) {
 
     const freeSettings = await getPlanSettings("free");
 
-    const country = stripCountryFlag(String(body.country ?? "")) || null;
+    const countryCode = toCountryCode(body.country);
+    const country = countryLabel(countryCode) ?? (String(body.country ?? "").trim() || null);
     const city = String(body.city ?? "").trim() || null;
     // Best-effort pin so Browse "near me" works without a later location setup step.
     const geo = await geocodeCityCountry(city, country);
@@ -137,7 +138,9 @@ export async function POST(req: Request) {
       dob: body.dob ? new Date(String(body.dob)) : null,
       age,
       height: body.height || null,
+      height_cm: parseHeightCm(body.height),
       country,
+      country_code: countryCode,
       city,
       location_lat: geo ? roundCoord(geo.lat) : null,
       location_lng: geo ? roundCoord(geo.lng) : null,
@@ -149,8 +152,8 @@ export async function POST(req: Request) {
       location_country_only: false,
       marital_status: body.maritalStatus || null,
       ancestral_village: body.ancestralRegion || null,
-      willing_to_relocate: body.relocation || null,
-      relocate: body.relocation || null,
+      willing_to_relocate: normalizeRelocation(body.relocation),
+      relocate: null,
       home_language: (body.languages ?? []).join(", ") || null,
       religious_practice: body.religiousPractice || null,
       appearance:

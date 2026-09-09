@@ -10,6 +10,7 @@ import {
 } from "@/lib/browse-filters";
 import { locationRadiusIds } from "@/lib/browse-location";
 import { blockedUserIds } from "@/lib/blocking";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { PaymentGraceBanner } from "@/components/settings/payment-grace-banner";
 import { ensureP1Schema } from "@/lib/ensure-p1-schema";
@@ -69,6 +70,7 @@ export default async function BrowsePage({
   if (!session) redirect("/login");
 
   await ensureP1Schema();
+  await ensureBrowseAndWaliSchema();
 
   const sp = await searchParams;
   const rawFilters = { ...parseBrowseFilters(sp), page: 1 };

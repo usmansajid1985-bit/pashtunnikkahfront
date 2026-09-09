@@ -253,26 +253,9 @@ export const ANCESTRAL_REGIONS = [
   "Other / Mixed",
 ] as const;
 
-export const COUNTRIES = [
-  { flag: "🇬🇧", name: "United Kingdom" },
-  { flag: "🇵🇰", name: "Pakistan" },
-  { flag: "🇦🇫", name: "Afghanistan" },
-  { flag: "🇺🇸", name: "United States" },
-  { flag: "🇨🇦", name: "Canada" },
-  { flag: "🇦🇺", name: "Australia" },
-  { flag: "🇦🇪", name: "United Arab Emirates" },
-  { flag: "🇸🇦", name: "Saudi Arabia" },
-  { flag: "🇶🇦", name: "Qatar" },
-  { flag: "🇩🇪", name: "Germany" },
-  { flag: "🇳🇱", name: "Netherlands" },
-  { flag: "🇳🇴", name: "Norway" },
-  { flag: "🇸🇪", name: "Sweden" },
-  { flag: "🇫🇷", name: "France" },
-  { flag: "🇧🇪", name: "Belgium" },
-  { flag: "🇮🇪", name: "Ireland" },
-  { flag: "🇳🇿", name: "New Zealand" },
-  { flag: "🌍", name: "Other" },
-] as const;
+// Canonical country list lives in `@/lib/country`. Re-exported here in the `{flag, name}`
+// shape the signup / profile forms already consume.
+export { COUNTRIES } from "@/lib/country";
 
 export const HEIGHTS = Array.from({ length: 44 }, (_, i) => {
   const totalIn = 56 + i;

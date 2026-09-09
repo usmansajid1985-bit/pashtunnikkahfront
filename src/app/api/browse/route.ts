@@ -16,12 +16,15 @@ import {
 } from "@/lib/browse-rank";
 import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
 import { blockedUserIds } from "@/lib/blocking";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  await ensureBrowseAndWaliSchema();
 
   const url = new URL(req.url);
   const rawFilters = parseBrowseFilters(Object.fromEntries(url.searchParams.entries()));

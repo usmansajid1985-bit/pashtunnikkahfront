@@ -4,7 +4,7 @@ export type ProfileCardData = {
   profileCode: string | null;
   age: number | null;
   height: string | null;
-  ethnicity: string | null;
+  tribe: string | null;
   country: string | null;
   city: string | null;
   occupation: string | null;
@@ -107,10 +107,10 @@ export function ProfileCard({
                 {p.height}
               </Detail>
             ) : null}
-            {p.ethnicity ? (
+            {p.tribe ? (
               <Detail>
                 <IconFlag />
-                {p.ethnicity}
+                {p.tribe}
               </Detail>
             ) : null}
             {p.country ? (

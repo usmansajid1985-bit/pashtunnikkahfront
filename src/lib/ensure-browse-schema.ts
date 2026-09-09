@@ -24,6 +24,12 @@ export async function ensureBrowseAndWaliSchema() {
         ON browse_impressions (viewer_id, last_shown_at DESC)
     `);
     await prisma.$executeRawUnsafe(`
+      ALTER TABLE profiles
+        ADD COLUMN IF NOT EXISTS country_code VARCHAR(8),
+        ADD COLUMN IF NOT EXISTS height_cm INT,
+        ADD COLUMN IF NOT EXISTS location_precision VARCHAR(16)
+    `);
+    await prisma.$executeRawUnsafe(`
       ALTER TABLE match_requests
         ADD COLUMN IF NOT EXISTS wali_handover_status VARCHAR(32),
         ADD COLUMN IF NOT EXISTS wali_details_requested_at TIMESTAMPTZ,

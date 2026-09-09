@@ -1,4 +1,5 @@
 /** Client-safe types + helpers (no Prisma / Node deps). */
+import { toCountryCode } from "@/lib/country";
 
 export type HubCard = {
   id: string;
@@ -52,7 +53,13 @@ export function compatScore(me: CompatProfile | null, peer: CompatProfile | null
   const same = (a?: string | null, b?: string | null) =>
     Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase());
 
-  if (same(me.country, peer.country)) score += 10;
+  const sameCountry = (a?: string | null, b?: string | null) => {
+    const ca = toCountryCode(a);
+    const cb = toCountryCode(b);
+    return ca && cb ? ca === cb : same(a, b);
+  };
+
+  if (sameCountry(me.country, peer.country)) score += 10;
   if (same(me.city, peer.city)) score += 8;
   if (same(me.religious_practice, peer.religious_practice)) score += 12;
   if (same(me.religious_methodology, peer.religious_methodology)) score += 6;

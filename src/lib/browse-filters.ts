@@ -1,6 +1,8 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { oppositeGenderLabels, type BrowseFilters } from "@/lib/browse-filters-shared";
 import { JUST_JOINED_DAYS } from "@/lib/presence";
+import { normalizeRelocation } from "@/lib/relocation";
+import { countryByCode, toCountryCode } from "@/lib/country";
 
 export {
   BROWSE_PAGE_SIZE,
@@ -73,16 +75,48 @@ export function buildProfileWhere(
     return v || null;
   };
 
-  eq("country", f.country);
+  // Country: the filter submits an ISO code. Match the canonical `country_code`, and also
+  // legacy rows not yet backfilled (country_code NULL) by any alias spelling of the country
+  // name — flag-prefixed or not (PN-BROWSE-001).
+  const countryCode = toCountryCode(f.country) ?? (f.country ? f.country.toUpperCase() : null);
+  const country = countryByCode(countryCode);
+  if (country) {
+    const names = [country.name, ...(country.aliases ?? [])];
+    and.push({
+      OR: [
+        { country_code: country.code },
+        {
+          AND: [
+            { country_code: null },
+            {
+              OR: names.map((n) => ({
+                country: { contains: n, mode: "insensitive" as const },
+              })),
+            },
+          ],
+        },
+      ],
+    });
+  }
+
   eq("marital_status", f.marital);
   eq("religious_practice", f.practice);
 
-  if (f.relocate) {
+  // One canonical relocation field. Match any legacy spelling of the selected preference in
+  // either column, but the value the user picks is normalised (yes|maybe|no) (PN-BROWSE-009).
+  const relocate = normalizeRelocation(f.relocate);
+  if (relocate) {
+    const aliases: Record<string, string[]> = {
+      yes: ["yes", "open to relocation", "open", "willing to relocate"],
+      maybe: ["maybe", "maybe depends", "maybe — depends", "depends", "unsure"],
+      no: ["no", "not open to relocation", "not open", "won't relocate"],
+    };
+    const list = aliases[relocate];
     and.push({
-      OR: [
-        { willing_to_relocate: { equals: f.relocate, mode: "insensitive" } },
-        { relocate: { equals: f.relocate, mode: "insensitive" } },
-      ],
+      OR: list.flatMap((val) => [
+        { willing_to_relocate: { equals: val, mode: "insensitive" as const } },
+        { relocate: { equals: val, mode: "insensitive" as const } },
+      ]),
     });
   }
 
@@ -90,14 +124,19 @@ export function buildProfileWhere(
 
   eq("city", f.city);
 
-  eq("ethnicity", f.ethnicity);
   eq("religious_methodology", f.sect);
   eq("tribe", f.tribe);
   eq("appearance", f.appearance);
   eq("education", f.education);
   eq("dialect", f.dialect);
   eq("ancestral_village", f.ancestral);
-  eq("height", f.height);
+
+  // Minimum-height filter: submits a target in cm, matches validated `height_cm >= target`.
+  // Rows with no parsed height_cm are excluded from a height search (PN-BROWSE-010).
+  const heightCm = Number(f.height);
+  if (f.height && Number.isFinite(heightCm) && heightCm > 0) {
+    and.push({ height_cm: { gte: heightCm } });
+  }
 
   const salah = kw(f.salah);
   if (salah) {

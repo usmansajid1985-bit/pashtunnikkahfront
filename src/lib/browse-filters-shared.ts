@@ -19,7 +19,6 @@ export type BrowseFilters = {
   ageMax: number;
   country: string;
   city: string;
-  ethnicity: string;
   marital: string;
   sect: string;
   practice: string;
@@ -48,7 +47,6 @@ export const DEFAULT_FILTERS: BrowseFilters = {
   ageMax: 60,
   country: "",
   city: "",
-  ethnicity: "",
   marital: "",
   sect: "",
   practice: "",
@@ -81,7 +79,6 @@ export const DEFAULT_FILTERS: BrowseFilters = {
  */
 export const GOLD_ONLY_FILTER_KEYS = [
   "city",
-  "ethnicity",
   "sect",
   "tribe",
   "salah",
@@ -105,7 +102,6 @@ export function stripGoldFilters(f: BrowseFilters): BrowseFilters {
   return {
     ...f,
     city: "",
-    ethnicity: "",
     sect: "",
     tribe: "",
     salah: "",
@@ -139,7 +135,6 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
     ageMax,
     country: firstTrimmed(sp.country),
     city: firstTrimmed(sp.city),
-    ethnicity: firstTrimmed(sp.ethnicity),
     marital: firstTrimmed(sp.marital),
     sect: firstTrimmed(sp.sect),
     practice: firstTrimmed(sp.practice),
@@ -174,7 +169,6 @@ export function countActiveFilters(f: BrowseFilters, isGold = true): number {
   const keys: (keyof BrowseFilters)[] = [
     "country",
     "city",
-    "ethnicity",
     "marital",
     "sect",
     "practice",
@@ -219,7 +213,6 @@ export function filtersToQuery(f: Partial<BrowseFilters>, extras: Record<string,
   set("ageMax", f.ageMax);
   set("country", f.country);
   set("city", f.city);
-  set("ethnicity", f.ethnicity);
   set("marital", f.marital);
   set("sect", f.sect);
   set("practice", f.practice);

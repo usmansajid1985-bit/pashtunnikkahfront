@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
+import { normalizeRelocation } from "@/lib/relocation";
+import { toCountryCode, countryLabel } from "@/lib/country";
+import { parseHeightCm } from "@/lib/height";
 
 export async function GET() {
   const session = await getSession();
@@ -51,13 +54,17 @@ export async function PATCH(req: Request) {
       data: {
         full_name: String(body.fullName ?? existing.full_name ?? "").trim() || existing.full_name,
         height: body.height || null,
+        height_cm: parseHeightCm(body.height),
         city: body.city || null,
-        country: body.country || null,
+        // Canonical country — store the ISO code and derive a clean display name from it.
+        country_code: toCountryCode(body.country),
+        country: countryLabel(toCountryCode(body.country)) ?? (body.country || null),
         marital_status: body.maritalStatus || null,
         tribe: body.tribe || null,
         ancestral_village: body.ancestralRegion || null,
-        willing_to_relocate: body.relocation || null,
-        relocate: body.relocation || null,
+        // One canonical relocation value; legacy `relocate` column no longer written.
+        willing_to_relocate: normalizeRelocation(body.relocation),
+        relocate: null,
         religious_practice: body.religiousPractice || null,
         religious_methodology: body.islamicBackground || null,
         appearance,

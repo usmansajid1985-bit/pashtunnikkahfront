@@ -1,4 +1,6 @@
 import type { profiles, users } from "@/generated/prisma/client";
+import { relocationLabel } from "@/lib/relocation";
+import { displayHeight } from "@/lib/height";
 
 export type ProfileExtras = {
   smoking?: string;
@@ -164,7 +166,7 @@ export function mapProfileView(
     displayLabel: name,
     gender: profile.gender,
     age: profile.age,
-    height: profile.height,
+    height: displayHeight(profile.height_cm, profile.height),
     weight: profile.weight,
     build: profile.build,
     city: profile.city,
@@ -173,7 +175,7 @@ export function mapProfileView(
     tribe: profile.tribe,
     ethnicity: profile.ethnicity,
     ancestralRegion: profile.ancestral_village,
-    relocation: profile.willing_to_relocate || profile.relocate,
+    relocation: relocationLabel(profile.willing_to_relocate || profile.relocate),
     pashto: profile.pashto_level || profile.pashto_speaker,
     dialect: profile.dialect,
     languages,

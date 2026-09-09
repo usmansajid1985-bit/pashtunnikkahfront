@@ -327,7 +327,6 @@ export function ProfileDesktop({
                 <DetailRow label="Children" value={profile.hasChildren} />
                 <DetailRow label="Willing children" value={profile.willingChildren} />
                 <DetailRow label="Tribe / Clan" value={profile.tribe} />
-                <DetailRow label="Ethnicity" value={profile.ethnicity} />
                 <DetailRow label="Country" value={profile.country} />
                 <DetailRow label="City" value={profile.city} />
               </div>

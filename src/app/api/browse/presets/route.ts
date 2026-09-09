@@ -17,7 +17,6 @@ function stripPresetFilters(raw: unknown): Partial<BrowseFilters> {
     ageMax: typeof o.ageMax === "number" ? o.ageMax : DEFAULT_FILTERS.ageMax,
     country: String(o.country ?? ""),
     city: String(o.city ?? ""),
-    ethnicity: String(o.ethnicity ?? ""),
     marital: String(o.marital ?? ""),
     sect: String(o.sect ?? ""),
     practice: String(o.practice ?? ""),

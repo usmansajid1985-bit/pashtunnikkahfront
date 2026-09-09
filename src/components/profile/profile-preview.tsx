@@ -291,11 +291,7 @@ export function ProfilePreview({
         <Section title="Future plans">
           <div className="flex flex-wrap gap-2">
             {profile.relocation ? (
-              <Pill>
-                {profile.relocation.toLowerCase().includes("not")
-                  ? "Won't relocate easily"
-                  : profile.relocation}
-              </Pill>
+              <Pill>{profile.relocation}</Pill>
             ) : (
               <Pill>Relocation not set</Pill>
             )}

@@ -13,6 +13,7 @@ import {
   LANGUAGES_ORDERED,
 } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
+import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
 import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
@@ -269,21 +270,17 @@ export function ProfileEditForm({
           <label className="block text-xs font-semibold">Tribe</label>
           <input className={field} value={form.tribe} onChange={(e) => patch("tribe", e.target.value)} />
           <p className="text-xs font-semibold pt-1">Relocation</p>
-          <ChoiceGrid count={2}>
-            <ChoiceTile
-              label="Open to Relocation"
-              tone="mint"
-              icon={I.mapPin}
-              selected={form.relocation === "Open to Relocation"}
-              onClick={() => patch("relocation", "Open to Relocation")}
-            />
-            <ChoiceTile
-              label="Not Open to Relocation"
-              tone="sand"
-              icon={I.mapOff}
-              selected={form.relocation === "Not Open to Relocation" || form.relocation === "No"}
-              onClick={() => patch("relocation", "Not Open to Relocation")}
-            />
+          <ChoiceGrid count={3}>
+            {RELOCATION_OPTIONS.map((o) => (
+              <ChoiceTile
+                key={o.value}
+                label={o.label}
+                tone={o.value === "yes" ? "mint" : "sand"}
+                icon={o.value === "no" ? I.mapOff : I.mapPin}
+                selected={normalizeRelocation(form.relocation) === o.value}
+                onClick={() => patch("relocation", o.label)}
+              />
+            ))}
           </ChoiceGrid>
         </section>
 

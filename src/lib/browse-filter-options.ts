@@ -1,5 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { RELOCATION_VALUES } from "@/lib/relocation";
 
 async function distinctStrings(column: string): Promise<string[]> {
   const rows = await prisma.$queryRawUnsafe<{ v: string }[]>(
@@ -19,12 +20,10 @@ export const getBrowseFilterOptions = unstable_cache(
     const [
       countries,
       cities,
-      ethnicities,
       marital,
       sects,
       practices,
       tribes,
-      relocate,
       appearances,
       educations,
       dialects,
@@ -34,12 +33,10 @@ export const getBrowseFilterOptions = unstable_cache(
     ] = await Promise.all([
       distinctStrings("country"),
       distinctStrings("city"),
-      distinctStrings("ethnicity"),
       distinctStrings("marital_status"),
       distinctStrings("religious_methodology"),
       distinctStrings("religious_practice"),
       distinctStrings("tribe"),
-      distinctStrings("willing_to_relocate"),
       distinctStrings("appearance"),
       distinctStrings("education"),
       distinctStrings("dialect"),
@@ -50,12 +47,12 @@ export const getBrowseFilterOptions = unstable_cache(
     return {
       countries,
       cities,
-      ethnicities,
       marital,
       sects,
       practices,
       tribes,
-      relocate,
+      // Fixed canonical set — never derived from raw stored values (PN-BROWSE-009).
+      relocate: [...RELOCATION_VALUES],
       appearances,
       educations,
       dialects,
