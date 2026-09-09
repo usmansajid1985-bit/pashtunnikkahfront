@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { getIntroductionStats, getRecentActivity, getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { PushNudge } from "@/components/notifications/push-nudge";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,10 @@ export default async function DashboardPage() {
         <h1 className="text-2xl sm:text-3xl font-bold text-ink-950">
           Welcome back, {firstName} <span aria-hidden>👋</span>
         </h1>
+
+        <div className="mt-5">
+          <PushNudge />
+        </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
           {/* Left column */}

@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView, statusLabel } from "@/lib/profile";
 import { SettingsRow, SettingsShell } from "@/components/settings/settings-ui";
 import { CommunicationModeSettings } from "@/components/settings/communication-mode-settings";
-import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { GoldBadgeSettings } from "@/components/settings/gold-badge-settings";
 import { ReferralsSettings } from "@/components/settings/referrals-settings";
@@ -113,8 +112,6 @@ export default async function SettingsPage() {
         />
       </div>
 
-      <NotificationSettings />
-
       <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />
 
       <ReferralsSettings />
@@ -185,6 +182,19 @@ export default async function SettingsPage() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
               <path d="M13.7 21a2 2 0 0 1-3.4 0" />
+            </svg>
+          }
+        />
+        <SettingsRow
+          href="/settings/notifications"
+          title="Notification settings"
+          description="Push permissions and what you're alerted about"
+          iconBg="#e0f2fe"
+          iconColor="#0369a1"
+          icon={
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14 2h-4l-.8 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1L10 22h4l.8-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z" />
             </svg>
           }
         />
