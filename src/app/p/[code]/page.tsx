@@ -121,22 +121,43 @@ export default async function PublicProfilePage({
       orderBy: { viewed_at: "desc" },
     })
     .then(async (existingView) => {
+      const recentlyViewed =
+        existingView && Date.now() - existingView.viewed_at.getTime() < 6 * 60 * 60 * 1000;
       if (existingView) {
         await prisma.profile_views.update({
           where: { id: existingView.id },
           data: { viewed_at: new Date() },
         });
-        return;
+      } else {
+        const max = await prisma.profile_views.aggregate({ _max: { id: true } });
+        await prisma.profile_views.create({
+          data: {
+            id: (max._max.id ?? BigInt(0)) + BigInt(1),
+            viewer_id: viewerId,
+            viewed_id: profile.user_id,
+            viewed_at: new Date(),
+          },
+        });
       }
-      const max = await prisma.profile_views.aggregate({ _max: { id: true } });
-      await prisma.profile_views.create({
-        data: {
-          id: (max._max.id ?? BigInt(0)) + BigInt(1),
-          viewer_id: viewerId,
-          viewed_id: profile.user_id,
-          viewed_at: new Date(),
-        },
-      });
+
+      // Notify the viewed member (spec §4). Repeat views within the same day fold into one
+      // row; a re-view within 6h doesn't re-notify at all.
+      if (!recentlyViewed) {
+        const { createNotification } = await import("@/lib/notifications");
+        const day = new Date().toISOString().slice(0, 10);
+        const viewerCode = session.profileCode || "A member";
+        await createNotification({
+          recipientUserId: profile.user_id,
+          type: "profile_view",
+          title: `${viewerCode} viewed your profile`,
+          body: "",
+          url: `/p/${session.profileCode ?? ""}`,
+          actorUserId: viewerId,
+          groupKey: `profile_view:${viewerId}:${day}`,
+          groupedTitle: () => `${viewerCode} viewed your profile`,
+          groupedBody: (n) => `Viewed ${n} times today`,
+        }).catch(() => undefined);
+      }
     })
     .catch(() => {});
 

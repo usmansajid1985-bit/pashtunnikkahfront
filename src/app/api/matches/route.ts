@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests, findRelation, nextMatchRequestId, withdrawCooldownBlocked } from "@/lib/matches";
 import { isBlockedBetween } from "@/lib/blocking";
+import { profileCodeOf } from "@/lib/notifications";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { recordCreditChange } from "@/lib/credit-ledger";
 import { maybeRenewMonthlyCredits } from "@/lib/credit-renewal";
@@ -83,12 +84,14 @@ export async function POST(req: Request) {
       wali = female ? await loadWaliContact(female.user_id) : null;
     }
 
+    const accepterCode = await profileCodeOf(receiverId);
     void sendPushNotification(senderId, {
-      title: "Pashtun Nikah",
-      body: "Your Introduction has been accepted. You can now begin your conversation.",
+      title: `${accepterCode} accepted your match request`,
+      body: "You can now begin your conversation.",
       url: `/chats/${matchId}`,
       tag: `match-${matchId}`,
-      type: "match",
+      type: "request_accepted",
+      actorUserId: receiverId,
       relatedRequestId: matchId,
     }).catch((err) => console.error("[push] match-accepted notification failed", err));
 
@@ -258,13 +261,16 @@ export async function POST(req: Request) {
     relatedRequestId: created.id,
   });
 
-  // Privacy-safe: no sender name or intro text in the payload — it can surface on a locked phone.
+  // Privacy-safe: no intro text in the payload — it can surface on a locked phone. The profile
+  // code is fine (that's what the recipient sees in-app too).
+  const senderCode = await profileCodeOf(me);
   void sendPushNotification(peerUserId, {
-    title: "Pashtun Nikah",
-    body: "You have a new Introduction request.",
-    url: "/requests",
+    title: `${senderCode} sent you a match request`,
+    body: "Open Requests to respond.",
+    url: "/requests?tab=incoming",
     tag: `request-${created.id}`,
     type: "match",
+    actorUserId: me,
     relatedRequestId: created.id,
   }).catch((err) => console.error("[push] introduction-request notification failed", err));
 

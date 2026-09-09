@@ -47,6 +47,14 @@ export function categoryForType(type: string): NotificationCategory {
   return TYPE_TO_CATEGORY[type] ?? "account";
 }
 
+/** Public profile code for a user ("PNF306"), for notification titles. */
+export async function profileCodeOf(userId: bigint): Promise<string> {
+  const p = await prisma.profiles
+    .findUnique({ where: { user_id: userId }, select: { profile_code: true } })
+    .catch(() => null);
+  return p?.profile_code || "A member";
+}
+
 const CATEGORY_PREF_COLUMN: Record<NotificationCategory, string | null> = {
   request: "notify_requests",
   message: "notify_messages",

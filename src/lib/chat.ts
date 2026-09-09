@@ -492,15 +492,21 @@ export async function createMessage(opts: {
     data: { updated_at: new Date() },
   });
 
-  // Privacy-safe: never put actual message content in a push payload — it can surface on a
-  // locked phone or shared device.
+  // Privacy-safe: no message content in the payload (spec §8). Repeat messages from the same
+  // sender fold into one bell row: "PNF142 sent you 5 messages" (spec §7).
+  const { profileCodeOf } = await import("@/lib/notifications");
+  const senderCode = await profileCodeOf(opts.senderId);
   void sendPushNotification(opts.receiverId, {
-    title: "Pashtun Nikah",
-    body: "You have a new message.",
+    title: `${senderCode} sent you a message`,
+    body: "1 unread message",
     url: `/chats/${opts.requestId}`,
     tag: `message-${opts.requestId}`,
     type: "message",
+    actorUserId: opts.senderId,
     relatedRequestId: opts.requestId,
+    groupKey: `message:${opts.requestId}`,
+    groupedTitle: (n) => `${senderCode} sent you ${n} messages`,
+    groupedBody: (n) => `${n} unread messages`,
   }).catch((err) => console.error("[push] message notification failed", err));
 
   return serializeMessage(created, replyTo);
@@ -557,13 +563,19 @@ export async function createContactCardMessage(opts: {
     data: { updated_at: new Date() },
   });
 
+  const { profileCodeOf: codeOf } = await import("@/lib/notifications");
+  const cardSenderCode = await codeOf(opts.senderId);
   void sendPushNotification(opts.receiverId, {
-    title: "Pashtun Nikah",
-    body: "You received a wali contact card.",
+    title: `${cardSenderCode} sent you a message`,
+    body: "1 unread message",
     url: `/chats/${opts.requestId}`,
     tag: `message-${opts.requestId}`,
     type: "message",
+    actorUserId: opts.senderId,
     relatedRequestId: opts.requestId,
+    groupKey: `message:${opts.requestId}`,
+    groupedTitle: (n) => `${cardSenderCode} sent you ${n} messages`,
+    groupedBody: (n) => `${n} unread messages`,
   }).catch((err) => console.error("[push] contact-card notification failed", err));
 
   return serializeMessage(created, null, undefined, []);
@@ -578,6 +590,14 @@ export async function markThreadRead(requestId: bigint, userId: bigint) {
     },
     data: { is_read: true },
   });
+  // Opening the conversation clears its aggregated bell notification and resets the counter,
+  // so the next message starts a fresh "sent you 1 message" (spec §7).
+  await prisma.notifications
+    .updateMany({
+      where: { recipient_user_id: userId, group_key: `message:${requestId}` },
+      data: { read_at: new Date(), group_count: 1 },
+    })
+    .catch(() => undefined);
   return result.count;
 }
 

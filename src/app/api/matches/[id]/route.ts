@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests } from "@/lib/matches";
 import { sendPushNotification } from "@/lib/push/server";
+import { profileCodeOf } from "@/lib/notifications";
 import {
   allowsPrivateChat,
   loadWaliContact,
@@ -49,12 +50,14 @@ export async function POST(
       },
     });
 
+    const accepterCode = await profileCodeOf(match.receiver_id);
     void sendPushNotification(match.sender_id, {
-      title: "Pashtun Nikah",
-      body: "Your Introduction has been accepted. You can now begin your conversation.",
+      title: `${accepterCode} accepted your match request`,
+      body: "You can now begin your conversation.",
       url: `/chats/${id}`,
       tag: `match-${id}`,
-      type: "match",
+      type: "request_accepted",
+      actorUserId: match.receiver_id,
       relatedRequestId: id,
     }).catch((err) => console.error("[push] match-accepted notification failed", err));
 

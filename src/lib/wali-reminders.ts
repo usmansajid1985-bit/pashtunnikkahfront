@@ -57,11 +57,11 @@ export async function processWaliReminders(limit = 20) {
     const sisterCode = female.profile_code || "your match";
 
     void sendPushNotification(brotherId, {
-      title: "Pashtun Nikah",
+      title: "Wali contact reminder",
       body: `Wali details were shared for ${sisterCode}. Please attempt contact within 48 hours.`,
       url: `/chats/${row.id}`,
       tag: `wali-reminder-${row.id}`,
-      type: "match",
+      type: "wali",
       relatedRequestId: row.id,
     }).catch((err) => console.error("[push] wali reminder failed", err));
 
