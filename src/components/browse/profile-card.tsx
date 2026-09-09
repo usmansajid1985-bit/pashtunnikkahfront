@@ -27,11 +27,14 @@ export function ProfileCard({
   saved = false,
   saveBusy = false,
   onToggleSave,
+  returnQuery = "",
 }: {
   p: ProfileCardData;
   saved?: boolean;
   saveBusy?: boolean;
   onToggleSave?: () => void;
+  /** Current Browse query string ("?country=GB…") so the profile's back link restores filters. */
+  returnQuery?: string;
 }) {
   const code = p.profileCode || "Member";
   const about =
@@ -156,7 +159,13 @@ export function ProfileCard({
       <p className="mt-3 text-xs text-ink-700/75 leading-relaxed line-clamp-3 flex-1">{about}</p>
       <div className="mt-4 flex items-center gap-2">
         <a
-          href={p.profileCode ? `/p/${encodeURIComponent(p.profileCode)}` : `#profile-${p.id}`}
+          href={
+            p.profileCode
+              ? `/p/${encodeURIComponent(p.profileCode)}${
+                  returnQuery ? `?from=${encodeURIComponent(returnQuery)}` : ""
+                }`
+              : `#profile-${p.id}`
+          }
           className="flex-1 text-center py-2 rounded-full border border-ink-900/12 text-sm font-semibold text-ink-900 hover:border-rose-300 transition"
         >
           Full Profile

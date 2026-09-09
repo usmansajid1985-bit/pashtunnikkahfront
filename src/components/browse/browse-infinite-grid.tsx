@@ -27,6 +27,12 @@ export function BrowseInfiniteGrid({
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pageRef = useRef(1);
+  const itemCountRef = useRef(initialItems.length);
+
+  // Key that identifies "this exact filtered browse" for save/restore.
+  const filtersKey = filtersToQuery({ ...filters, page: 1 });
+  const RESTORE_KEY = "pn_browse_restore";
 
   function showToast(message: string) {
     setToast(message);
@@ -68,10 +74,96 @@ export function BrowseInfiniteGrid({
   useEffect(() => {
     setItems(initialItems);
     setPage(1);
+    pageRef.current = 1;
+    itemCountRef.current = initialItems.length;
     setHasMore(initialHasMore);
     setLoading(false);
     loadingRef.current = false;
   }, [initialItems, initialHasMore, filters]);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
+  useEffect(() => {
+    itemCountRef.current = items.length;
+  }, [items.length]);
+
+  // Save enough to rebuild this view (filters + how many cards + scroll) when the user opens a
+  // profile, so "Back to browse" and the browser Back restore the deep position (PN-BROWSE-007).
+  useEffect(() => {
+    const save = () => {
+      try {
+        sessionStorage.setItem(
+          RESTORE_KEY,
+          JSON.stringify({
+            key: filtersKey,
+            count: itemCountRef.current,
+            page: pageRef.current,
+            scrollY: window.scrollY,
+            ts: Date.now(),
+          })
+        );
+      } catch {
+        /* private mode / disabled storage */
+      }
+    };
+    window.addEventListener("pagehide", save);
+    return () => {
+      save();
+      window.removeEventListener("pagehide", save);
+    };
+  }, [filtersKey]);
+
+  // On mount, if we're returning to the same filtered browse, re-load the pages we had and
+  // restore the scroll position.
+  useEffect(() => {
+    let cancelled = false;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(RESTORE_KEY);
+    } catch {
+      raw = null;
+    }
+    if (!raw) return;
+    let snap: { key: string; count: number; page: number; scrollY: number; ts: number };
+    try {
+      snap = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (
+      snap.key !== filtersKey ||
+      snap.page <= 1 ||
+      Date.now() - snap.ts > 30 * 60_000
+    ) {
+      return;
+    }
+
+    (async () => {
+      let acc = [...initialItems];
+      let more = initialHasMore;
+      for (let p = 2; p <= snap.page && acc.length < snap.count && more && !cancelled; p++) {
+        const res = await fetch(`/api/browse${filtersToQuery({ ...filters, page: p })}`);
+        if (!res.ok) break;
+        const data = await res.json();
+        const seen = new Set(acc.map((it) => it.id));
+        acc = [...acc, ...data.items.filter((it: ProfileCardData) => !seen.has(it.id))];
+        more = Boolean(data.hasMore);
+      }
+      if (cancelled) return;
+      setItems(acc);
+      setPage(snap.page);
+      pageRef.current = snap.page;
+      setHasMore(more);
+      requestAnimationFrame(() => window.scrollTo(0, snap.scrollY));
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // Only attempt a restore on the initial mount for a given filter set.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtersKey]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
@@ -124,6 +216,7 @@ export function BrowseInfiniteGrid({
             saved={savedIds.has(p.userId)}
             saveBusy={savingIds.has(p.userId)}
             onToggleSave={() => void toggleSave(p.userId)}
+            returnQuery={filtersKey}
           />
         ))}
       </div>

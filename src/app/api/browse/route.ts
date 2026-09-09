@@ -137,10 +137,15 @@ export async function GET(req: Request) {
     ? items.slice(start, start + BROWSE_PAGE_SIZE)
     : items.slice(0, BROWSE_PAGE_SIZE);
 
-  void recordBrowseImpressions(
-    userId,
-    pageItems.map((p) => BigInt(p.userId))
-  );
+  // Only record impressions for the first page of a browse session. Recording on every
+  // paginated fetch grew each profile's fair-exposure penalty mid-scroll, reshuffling the
+  // ranked set so profiles silently dropped out from under the user (PN-BROWSE-007).
+  if (filters.page === 1) {
+    void recordBrowseImpressions(
+      userId,
+      pageItems.map((p) => BigInt(p.userId))
+    );
+  }
 
   const hasMore = filters.page * BROWSE_PAGE_SIZE < total;
 

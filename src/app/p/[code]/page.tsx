@@ -19,13 +19,18 @@ export const dynamic = "force-dynamic";
 
 export default async function PublicProfilePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ code: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const { code } = await params;
+  const { from } = await searchParams;
+  // Restore the exact filtered Browse the user came from (PN-BROWSE-003).
+  const browseHref = from && from.startsWith("?") ? `/browse${from}` : "/browse";
   const profile = await prisma.profiles.findFirst({
     where: {
       profile_code: { equals: code, mode: "insensitive" },
@@ -162,7 +167,9 @@ export default async function PublicProfilePage({
       showEditTab={false}
       matchStatus={matchStatus}
       navProfileCode={session.profileCode}
-      closeHref="/browse"
+      closeHref={browseHref}
+      backHref={browseHref}
+      backLabel="Back to browse"
       unreadCount={unreadCount}
       viewerCompat={viewerCompat}
       presence={presence}
