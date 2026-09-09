@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { siteOrigin } from "@/lib/site-url";
 import type { PushPayload } from "@/lib/push/types";
 import { getFirebaseMessaging, firebaseAdminUnavailableReason } from "@/lib/push/firebase-admin";
+import { createNotification, categoryForType, pushAllowedForCategory } from "@/lib/notifications";
 
 let vapidConfigured = false;
 
@@ -23,19 +24,6 @@ function isFcmSub(sub: { endpoint: string; p256dh_key: string }) {
 
 function fcmTokenOf(sub: { endpoint: string; auth_key: string }) {
   return sub.endpoint.startsWith("fcm:") ? sub.endpoint.slice(4) : sub.auth_key;
-}
-
-async function nextNotificationId() {
-  // Prefer the Postgres sequence so concurrent inserts can't collide on a stale MAX(id)+1
-  // (that race threw a unique-constraint error which silently dropped the notification).
-  try {
-    const rows = await prisma.$queryRaw<{ nextval: bigint }[]>`SELECT nextval('notifications_id_seq') as nextval`;
-    if (rows[0]?.nextval) return rows[0].nextval;
-  } catch {
-    /* fall through — notifications_id_seq doesn't exist in this database */
-  }
-  const max = await prisma.notifications.aggregate({ _max: { id: true } });
-  return (max._max.id ?? BigInt(0)) + BigInt(1);
 }
 
 function endpointHost(endpoint: string) {
@@ -70,22 +58,25 @@ export async function sendPushNotification(
   userId: bigint,
   payload: PushPayload
 ): Promise<PushSendResult> {
-  await prisma.notifications.create({
-    data: {
-      id: await nextNotificationId(),
-      recipient_user_id: userId,
-      type: payload.type,
-      title: payload.title,
-      body: payload.body,
-      url: payload.url ?? null,
-      tag: payload.tag ?? null,
-      related_request_id: payload.relatedRequestId ?? null,
-      created_at: new Date(),
-    },
+  // In-app write goes through the domain layer: category muting + repeat-source grouping.
+  await createNotification({
+    recipientUserId: userId,
+    type: payload.type,
+    title: payload.title,
+    body: payload.body,
+    url: payload.url ?? null,
+    tag: payload.tag ?? null,
+    actorUserId: payload.actorUserId ?? null,
+    relatedRequestId: payload.relatedRequestId ?? null,
+    groupKey: payload.groupKey ?? null,
+    groupedTitle: payload.groupedTitle,
+    groupedBody: payload.groupedBody,
   });
 
-  const prefs = await prisma.notification_preferences.findUnique({ where: { user_id: userId } });
-  if (prefs && !prefs.push_enabled) return { delivered: 0, failed: 0, reason: "push_disabled" };
+  // Push follows the per-category preference (account/security always allowed).
+  if (!(await pushAllowedForCategory(userId, categoryForType(payload.type)))) {
+    return { delivered: 0, failed: 0, reason: "push_disabled" };
+  }
 
   const subscriptions = await prisma.push_subscriptions.findMany({ where: { user_id: userId } });
   if (subscriptions.length === 0) return { delivered: 0, failed: 0, reason: "no_subscriptions" };

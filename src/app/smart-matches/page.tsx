@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { getUnreadMessageCount } from "@/lib/dashboard";
+import { getNavCounts } from "@/lib/dashboard";
 import { loadSmartMatches } from "@/lib/smart-matches";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { SmartMatchCard } from "@/components/smart-matches/smart-match-card";
@@ -13,16 +13,16 @@ export default async function SmartMatchesPage() {
   if (!session) redirect("/login");
 
   const viewerId = BigInt(session.userId);
-  const [data, unreadCount] = await Promise.all([
+  const [data, navCounts] = await Promise.all([
     loadSmartMatches(viewerId),
-    getUnreadMessageCount(viewerId),
+    getNavCounts(viewerId),
   ]);
 
   if (!data) redirect("/signup");
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
-      <BrowseAppNav profileCode={session.profileCode} active="smartMatches" unreadCount={unreadCount} />
+      <BrowseAppNav profileCode={session.profileCode} active="smartMatches" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
         <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">Gold intelligence</p>

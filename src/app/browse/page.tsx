@@ -15,7 +15,7 @@ import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { PaymentGraceBanner } from "@/components/settings/payment-grace-banner";
 import { ensureP1Schema } from "@/lib/ensure-p1-schema";
-import { getUnreadMessageCount } from "@/lib/dashboard";
+import { getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { CompletenessBanner, PremiumBanner } from "@/components/browse/banners";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
@@ -77,7 +77,7 @@ export default async function BrowsePage({
   const rawFilters = { ...parseBrowseFilters(sp), page: 1 };
   const userId = BigInt(session.userId);
 
-  const [me, meUser, unreadCount, savedFavourites] = await Promise.all([
+  const [me, meUser, navCounts, savedFavourites] = await Promise.all([
     prisma.profiles.findUnique({
       where: { user_id: userId },
       select: {
@@ -111,7 +111,7 @@ export default async function BrowsePage({
       where: { id: userId },
       select: { plan: true, email_verified: true, subscription_status: true },
     }),
-    getUnreadMessageCount(userId),
+    getNavCounts(userId),
     prisma.favourites.findMany({ where: { user_id: userId }, select: { profile_user_id: true } }),
   ]);
   const initialSavedUserIds = savedFavourites.map((f) => f.profile_user_id.toString());
@@ -219,7 +219,7 @@ export default async function BrowsePage({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
-      <BrowseAppNav profileCode={session.profileCode} active="browse" unreadCount={unreadCount} />
+      <BrowseAppNav profileCode={session.profileCode} active="browse" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8">
         <PremiumBanner isGold={isGold} />

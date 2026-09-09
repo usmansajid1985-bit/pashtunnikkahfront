@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { loadRequestsHub } from "@/lib/requests-hub";
-import { getUnreadMessageCount } from "@/lib/dashboard";
+import { getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { RequestsHub } from "@/components/requests/requests-hub";
 
@@ -18,15 +18,15 @@ export default async function RequestsPage({
 
   const { tab } = await searchParams;
   const userId = BigInt(session.userId);
-  const [hub, unreadCount] = await Promise.all([
+  const [hub, navCounts] = await Promise.all([
     loadRequestsHub(userId),
-    getUnreadMessageCount(userId),
+    getNavCounts(userId),
   ]);
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
       <div className="hidden lg:block">
-        <BrowseAppNav profileCode={session.profileCode} active="introductions" unreadCount={unreadCount} />
+        <BrowseAppNav profileCode={session.profileCode} active="introductions" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
       </div>
 
       <header className="lg:hidden sticky top-0 z-20 bg-[#faf8f7] border-b border-ink-900/6">

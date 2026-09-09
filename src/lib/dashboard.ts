@@ -59,3 +59,25 @@ export async function getRecentActivity(userId: bigint, limit = 6): Promise<Acti
 export async function getUnreadMessageCount(userId: bigint): Promise<number> {
   return prisma.messages.count({ where: { receiver_id: userId, is_read: false } });
 }
+
+export type NavCounts = {
+  /** Bell dot — unread Activity + unread Updates. */
+  bellUnread: number;
+  /** Numbered badge on the Introductions/Requests nav item. */
+  incomingRequests: number;
+  /** Numbered badge on the Messages/Chats nav item. */
+  unreadMessages: number;
+};
+
+/** One call for every count the app nav needs (spec §2/§15 — bell and nav badges are separate). */
+export async function getNavCounts(userId: bigint): Promise<NavCounts> {
+  const { getBellCounts } = await import("@/lib/notifications");
+  const [bell, incomingRequests, unreadMessages] = await Promise.all([
+    getBellCounts(userId).catch(() => ({ bellUnread: 0 })),
+    prisma.match_requests
+      .count({ where: { receiver_id: userId, status: "pending" } })
+      .catch(() => 0),
+    getUnreadMessageCount(userId).catch(() => 0),
+  ]);
+  return { bellUnread: bell.bellUnread, incomingRequests, unreadMessages };
+}

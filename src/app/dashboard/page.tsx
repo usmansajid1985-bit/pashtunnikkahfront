@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
-import { getIntroductionStats, getRecentActivity, getUnreadMessageCount } from "@/lib/dashboard";
+import { getIntroductionStats, getRecentActivity, getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 
 export const dynamic = "force-dynamic";
@@ -32,12 +32,12 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
 
   const userId = BigInt(session.userId);
-  const [user, profile, stats, activity, unreadCount] = await Promise.all([
+  const [user, profile, stats, activity, navCounts] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId } }),
     prisma.profiles.findUnique({ where: { user_id: userId } }),
     getIntroductionStats(userId),
     getRecentActivity(userId),
-    getUnreadMessageCount(userId),
+    getNavCounts(userId),
   ]);
   if (!user || !profile) redirect("/signup");
 
@@ -53,7 +53,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
-      <BrowseAppNav profileCode={session.profileCode} active="overview" unreadCount={unreadCount} />
+      <BrowseAppNav profileCode={session.profileCode} active="overview" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-ink-950">
