@@ -32,7 +32,7 @@ export type ActivityItem = {
   createdAt: string;
 };
 
-const ACTIVITY_TITLES: Record<string, string> = {
+const LEGACY_TITLES: Record<string, string> = {
   message: "New message",
   match: "Introduction update",
   wali: "Family handover",
@@ -49,7 +49,9 @@ export async function getRecentActivity(userId: bigint, limit = 6): Promise<Acti
   return rows.map((r) => ({
     id: r.id.toString(),
     type: r.type,
-    title: ACTIVITY_TITLES[r.type] || "Update",
+    // New notifications carry a real title ("PNF306 sent you a match request"); only fall back
+    // to the generic label for the legacy "Pashtun Nikah" rows.
+    title: !r.title || r.title === "Pashtun Nikah" ? LEGACY_TITLES[r.type] || "Update" : r.title,
     body: r.body,
     url: r.url,
     createdAt: r.created_at.toISOString(),
