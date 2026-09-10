@@ -32,7 +32,7 @@ export function WaliAccessManager() {
     setError(null);
     const trimmed = name.trim();
     if (!trimmed) {
-      setError("Enter a name for this wali.");
+      setError("Enter a name.");
       return;
     }
     setBusy(true);
@@ -56,7 +56,7 @@ export function WaliAccessManager() {
   }
 
   async function revoke(id: string) {
-    if (!confirm("Revoke this wali's access? The link will stop working immediately.")) return;
+    if (!confirm("Revoke this person's access? The link will stop working immediately.")) return;
     const res = await fetch(`/api/profile/wali/${id}`, { method: "DELETE" });
     if (res.ok) {
       setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, revoked: true } : l)));
@@ -108,7 +108,7 @@ export function WaliAccessManager() {
           disabled={busy}
           className="px-4 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
         >
-          {busy ? "Adding…" : "Add wali"}
+          {busy ? "Adding…" : "Add"}
         </button>
       </div>
 
@@ -117,7 +117,7 @@ export function WaliAccessManager() {
       {loading ? (
         <p className="text-sm text-ink-700/50">Loading…</p>
       ) : links.length === 0 ? (
-        <p className="text-sm text-ink-700/50">No wali added yet.</p>
+        <p className="text-sm text-ink-700/50">No one added yet.</p>
       ) : (
         <div className="space-y-2">
           {links.map((l) => (
