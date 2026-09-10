@@ -94,24 +94,27 @@ export async function POST(req: Request) {
       niqabSubMode: body.niqabSubMode ?? "",
       openTo,
       languages: body.languages ?? [],
-      hasPhoto: Boolean(body.photoDataUrl),
+      hasPhoto: false, // set below once photos are saved
     };
+
+    // Up to 3 photos, with a selectable main. Legacy single `photoDataUrl` still accepted.
+    const legacyPhoto = (body as { photoDataUrl?: string }).photoDataUrl;
+    const photoList: string[] = Array.isArray(body.photos)
+      ? (body.photos as unknown[]).map(String)
+      : legacyPhoto
+        ? [String(legacyPhoto)]
+        : [];
+    const mainIndex = Number.isInteger(body.mainPhotoIndex) ? Number(body.mainPhotoIndex) : 0;
 
     let photoUrl: string | null = null;
     let photoVerificationUrl: string | null = null;
-    if (body.photoDataUrl) {
+    if (photoList.length > 0) {
       try {
-        const { saveDataUrlPhoto } = await import("@/lib/photos");
-        const saved = await saveDataUrlPhoto(userId, String(body.photoDataUrl), "public");
-        photoUrl = saved.url;
-        if ((body as { verificationPhotoDataUrl?: string }).verificationPhotoDataUrl) {
-          const ver = await saveDataUrlPhoto(
-            userId,
-            String((body as { verificationPhotoDataUrl?: string }).verificationPhotoDataUrl),
-            "verification"
-          );
-          photoVerificationUrl = ver.url;
-        }
+        const { importSignupPhotos } = await import("@/lib/profile-photos");
+        const res = await importSignupPhotos(userId, photoList, mainIndex);
+        photoUrl = res.mainUrl;
+        photoVerificationUrl = res.mainUrl;
+        extras.hasPhoto = res.count > 0;
       } catch (e) {
         console.error("signup photo save", e);
       }

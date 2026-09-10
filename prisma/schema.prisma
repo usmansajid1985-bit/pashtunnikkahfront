@@ -468,6 +468,23 @@ model announcement_reads {
   @@id([user_id, announcement_id])
 }
 
+/**
+ * Up to 3 profile photos per member, one flagged `is_main`. `profiles.photo_url` /
+ * `photo_status` stay in sync with the main photo so every existing display path keeps working.
+ */
+model profile_photos {
+  id         BigInt   @id @default(autoincrement())
+  user_id    BigInt
+  url        String   @db.VarChar(500)
+  is_main    Boolean  @default(false)
+  status     String   @default("pending") @db.VarChar(16)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id, sort_order])
+}
+
 model referrals {
   id                                 BigInt   @id
   referrer_id                        BigInt

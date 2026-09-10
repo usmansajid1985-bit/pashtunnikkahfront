@@ -22,7 +22,7 @@ import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 
-const STORAGE_KEY = "pn_signup_draft_v1";
+const STORAGE_KEY = "pn_signup_draft_v2";
 
 function Chip({
   selected,
@@ -84,8 +84,13 @@ export function SignupWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [cropSource, setCropSource] = useState<string | null>(null);
+  /** null = adding a new photo; number = replacing the photo at that index. */
+  const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const MAX_PHOTOS = 3;
+  const wearsNiqab = data.gender === "Sister" && data.appearance.includes("Wears Niqab");
 
   const steps = useMemo(() => getSignupSteps(data.gender), [data.gender]);
   const step = steps[stepIndex] ?? steps[0];
@@ -183,6 +188,20 @@ export function SignupWizard() {
     const reader = new FileReader();
     reader.onload = () => setCropSource(String(reader.result || ""));
     reader.readAsDataURL(file);
+  }
+
+  function pickPhoto(index: number | null) {
+    setEditingPhotoIndex(index);
+    if (fileRef.current) fileRef.current.value = "";
+    fileRef.current?.click();
+  }
+
+  function removePhoto(index: number) {
+    const next = data.photos.filter((_, i) => i !== index);
+    let main = data.mainPhotoIndex;
+    if (index === main) main = 0;
+    else if (index < main) main -= 1;
+    patch({ photos: next, mainPhotoIndex: Math.max(0, Math.min(main, next.length - 1)) });
   }
 
   const age = calcAge(data.dob);
@@ -731,28 +750,74 @@ export function SignupWizard() {
 
             {step.id === "photo" && (
               <div className="space-y-4">
-                <button
-                  type="button"
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-rose-200 bg-rose-50/40 flex flex-col items-center justify-center gap-3 overflow-hidden hover:border-rose-400 transition"
-                >
-                  {data.photoDataUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.photoDataUrl} alt="Preview" className="w-full h-full object-cover" />
-                  ) : (
-                    <>
-                      <span className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center text-rose-600">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <p className="text-sm text-ink-700/70">
+                  {wearsNiqab
+                    ? "If you wear a niqab, you may upload yourself in a niqab or choose to upload something else."
+                    : "Upload a clear photo of yourself. Add up to 3 — you choose which is your main photo."}
+                </p>
+
+                {data.photos.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => pickPhoto(null)}
+                    className="w-full aspect-[4/3] rounded-2xl border-2 border-dashed border-rose-200 bg-rose-50/40 flex flex-col items-center justify-center gap-3 overflow-hidden hover:border-rose-400 transition"
+                  >
+                    <span className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center text-rose-600">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M12 5v14M5 12h14" />
+                      </svg>
+                    </span>
+                    <div className="text-center px-6">
+                      <p className="font-semibold text-ink-950">Add a photo</p>
+                      <p className="text-xs text-ink-700/60 mt-1">JPG or PNG · max 6MB · reviewed by humans</p>
+                    </div>
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-3 gap-3">
+                    {data.photos.map((src, i) => (
+                      <div key={i} className="relative">
+                        <div className="aspect-square rounded-xl overflow-hidden border border-ink-900/10">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(i)}
+                          aria-label={`Remove photo ${i + 1}`}
+                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-ink-950 text-white text-xs flex items-center justify-center shadow"
+                        >
+                          ✕
+                        </button>
+                        {data.mainPhotoIndex === i ? (
+                          <span className="absolute bottom-1 left-1 right-1 text-[10px] font-bold uppercase tracking-wide bg-rose-600 text-white rounded px-1 py-0.5 text-center">
+                            Main
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => patch({ mainPhotoIndex: i })}
+                            className="absolute bottom-1 left-1 right-1 text-[10px] font-semibold bg-white/90 text-ink-900 rounded px-1 py-0.5 text-center hover:bg-white"
+                          >
+                            Set main
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {data.photos.length < MAX_PHOTOS ? (
+                      <button
+                        type="button"
+                        onClick={() => pickPhoto(null)}
+                        className="aspect-square rounded-xl border-2 border-dashed border-rose-200 bg-rose-50/40 flex items-center justify-center text-rose-600 hover:border-rose-400"
+                        aria-label="Add another photo"
+                      >
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                           <path d="M12 5v14M5 12h14" />
                         </svg>
-                      </span>
-                      <div className="text-center px-6">
-                        <p className="font-semibold text-ink-950">Upload a clear photo of yourself</p>
-                        <p className="text-xs text-ink-700/60 mt-1">JPG or PNG · max 6MB · reviewed by humans</p>
-                      </div>
-                    </>
-                  )}
-                </button>
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+
                 <input
                   ref={fileRef}
                   type="file"
@@ -760,15 +825,9 @@ export function SignupWizard() {
                   className="hidden"
                   onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
                 />
-                {data.photoDataUrl ? (
-                  <button
-                    type="button"
-                    className="text-sm text-rose-600 font-semibold"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    Change photo
-                  </button>
-                ) : null}
+                <p className="text-xs text-ink-700/55">
+                  Every photo is manually reviewed before it goes live.
+                </p>
               </div>
             )}
 
@@ -945,10 +1004,20 @@ export function SignupWizard() {
       {cropSource ? (
         <PhotoCropModal
           src={cropSource}
-          onCancel={() => setCropSource(null)}
-          onSave={(cropped) => {
-            patch({ photoDataUrl: cropped });
+          onCancel={() => {
             setCropSource(null);
+            setEditingPhotoIndex(null);
+          }}
+          onSave={(cropped) => {
+            const next = [...data.photos];
+            if (editingPhotoIndex != null && editingPhotoIndex < next.length) {
+              next[editingPhotoIndex] = cropped;
+            } else if (next.length < MAX_PHOTOS) {
+              next.push(cropped);
+            }
+            patch({ photos: next });
+            setCropSource(null);
+            setEditingPhotoIndex(null);
           }}
         />
       ) : null}

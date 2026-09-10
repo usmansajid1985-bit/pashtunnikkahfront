@@ -23,7 +23,8 @@ export type SignupData = {
   vaping: string;
   about: string;
   lookingFor: string;
-  photoDataUrl: string;
+  photos: string[]; // up to 3 cropped data-URLs
+  mainPhotoIndex: number;
   communicationMode: string;
   niqabSubMode: string;
   phoneCountry: string;
@@ -56,7 +57,8 @@ export const emptySignupData = (): SignupData => ({
   vaping: "",
   about: "",
   lookingFor: "",
-  photoDataUrl: "",
+  photos: [],
+  mainPhotoIndex: 0,
   communicationMode: "",
   niqabSubMode: "",
   phoneCountry: "+44",
@@ -353,7 +355,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "lookingFor":
       return wordCount(data.lookingFor) >= 30;
     case "photo":
-      return Boolean(data.photoDataUrl);
+      return data.photos.length > 0;
     case "commMode":
       if (!data.communicationMode) return false;
       if (data.communicationMode === "niqab") return Boolean(data.niqabSubMode);

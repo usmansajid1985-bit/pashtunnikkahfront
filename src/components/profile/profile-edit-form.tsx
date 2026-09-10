@@ -17,6 +17,7 @@ import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
 import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
+import { PhotoGallery } from "@/components/profile/photo-gallery";
 
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
@@ -40,9 +41,17 @@ const EMPLOYMENT = [
 export function ProfileEditForm({
   initial,
   unreadCount = 0,
+  photos = [],
 }: {
   initial: ProfileView;
   unreadCount?: number;
+  photos?: {
+    id: string;
+    url: string;
+    isMain: boolean;
+    status: "pending" | "approved" | "rejected";
+    sortOrder: number;
+  }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -154,59 +163,7 @@ export function ProfileEditForm({
           </button>
         </div>
 
-        {/* Photo frame */}
-        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 lg:col-span-2">
-          <h2 className="font-bold text-ink-950">Profile photo</h2>
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-rose-200 bg-rose-50/50 flex items-center justify-center overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={
-                  initial.photoUrl ||
-                  `https://i.pravatar.cc/200?img=${(initial.avatarSeed % 70) + 1}`
-                }
-                alt=""
-                className="w-full h-full object-cover"
-                style={initial.photoUrl ? undefined : { filter: "blur(6px)" }}
-              />
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <p className="text-sm text-ink-700/70">Photos are reviewed before going live.</p>
-              <p className="text-xs text-ink-700/50 mt-1">Status: {initial.photoStatus || "none"}</p>
-              <label className="inline-block mt-3 px-4 py-2 rounded-full border border-ink-900/12 text-sm font-semibold cursor-pointer hover:border-rose-300">
-                Upload new photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      startTransition(async () => {
-                        setError(null);
-                        const res = await fetch("/api/profile/photo", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ photoDataUrl: String(reader.result || "") }),
-                        });
-                        const data = await res.json();
-                        if (!res.ok) {
-                          setError(data.error || "Upload failed");
-                          return;
-                        }
-                        setSaved(true);
-                        router.refresh();
-                      });
-                    };
-                    reader.readAsDataURL(file);
-                  }}
-                />
-              </label>
-            </div>
-          </div>
-        </section>
+        <PhotoGallery initialPhotos={photos} />
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Basics</h2>
