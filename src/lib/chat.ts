@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
+import { isBlockedBetween, blockedUserIds } from "@/lib/blocking";
 import {
   allowsPhotoShare,
   allowsPrivateChat,
@@ -193,6 +194,10 @@ export async function assertAcceptedParticipant(requestId: bigint, userId: bigin
   const req = await prisma.match_requests.findUnique({ where: { id: requestId } });
   if (!req || req.status !== "accepted") return null;
   if (req.sender_id !== userId && req.receiver_id !== userId) return null;
+  // A block (in either direction, applied at any point — even after the match was accepted)
+  // must cut off every chat surface: messages, profile, photo share, reactions, wali handover.
+  // Checked here rather than per-route so nothing new added later can accidentally forget it.
+  if (await isBlockedBetween(req.sender_id, req.receiver_id)) return null;
   return req;
 }
 
@@ -202,6 +207,7 @@ export async function assertMatchParticipant(requestId: bigint, userId: bigint) 
   const req = await prisma.match_requests.findUnique({ where: { id: requestId } });
   if (!req || !["accepted", "ended"].includes(req.status)) return null;
   if (req.sender_id !== userId && req.receiver_id !== userId) return null;
+  if (await isBlockedBetween(req.sender_id, req.receiver_id)) return null;
   return req;
 }
 
@@ -370,18 +376,26 @@ export async function consumePhotoOnce(requestId: bigint, viewerId: bigint) {
 }
 
 export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[]> {
-  const requests = await prisma.match_requests.findMany({
-    where: {
-      status: "accepted",
-      OR: [{ sender_id: userId }, { receiver_id: userId }],
-    },
-    orderBy: { updated_at: "desc" },
+  const [requests, blocked] = await Promise.all([
+    prisma.match_requests.findMany({
+      where: {
+        status: "accepted",
+        OR: [{ sender_id: userId }, { receiver_id: userId }],
+      },
+      orderBy: { updated_at: "desc" },
+    }),
+    blockedUserIds(userId),
+  ]);
+  const blockedSet = new Set(blocked.map((id) => id.toString()));
+  const visible = requests.filter((req) => {
+    const otherId = req.sender_id === userId ? req.receiver_id : req.sender_id;
+    return !blockedSet.has(otherId.toString());
   });
 
   // Each thread's lookups are independent — run them all concurrently instead of
   // walking the list one round-trip at a time.
   const built = await Promise.all(
-    requests.map(async (req) => {
+    visible.map(async (req) => {
       const peerId = await peerUserId(req, userId);
       const [peer, meta, last, unread] = await Promise.all([
         loadPeer(peerId),

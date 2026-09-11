@@ -283,7 +283,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
 
                 <div className="mt-3 flex flex-wrap gap-2">
                   {tab === "incoming" && card.requestId ? (
-                    <RequestActions requestId={card.requestId} mode="incoming" />
+                    <RequestActions requestId={card.requestId} mode="incoming" peerUserId={card.peerUserId} />
                   ) : null}
                   {tab === "sent" && card.requestId && card.status === "pending" ? (
                     <RequestActions requestId={card.requestId} mode="sent" />

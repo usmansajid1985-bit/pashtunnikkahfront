@@ -31,7 +31,7 @@ export default async function SettingsPage() {
   const approved = view.status === "approved";
 
   return (
-    <SettingsShell title="Settings" backHref="/browse" profileCode={view.profileCode} unreadCount={unreadCount}>
+    <SettingsShell title="Settings" backHref="/browse" profileCode={view.profileCode} unreadCount={unreadCount} userId={session.userId}>
       <div className="pt-2 pb-6 lg:pt-0">
         <p className="hidden lg:block text-xs font-semibold uppercase tracking-widest text-rose-600 mb-2">
           Dashboard

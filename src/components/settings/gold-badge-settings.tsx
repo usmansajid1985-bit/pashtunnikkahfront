@@ -46,6 +46,7 @@ export function GoldBadgeSettings({
           type="button"
           role="switch"
           aria-checked={!hide}
+          aria-label="Show Gold badge"
           disabled={pending}
           onClick={() => toggle(!hide)}
           className={`relative shrink-0 w-11 h-6 rounded-full transition disabled:opacity-50 ${

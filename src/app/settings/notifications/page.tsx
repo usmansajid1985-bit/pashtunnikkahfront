@@ -19,6 +19,7 @@ export default async function NotificationSettingsPage() {
       backHref="/settings"
       profileCode={session.profileCode ?? undefined}
       unreadCount={navCounts.unreadMessages}
+      userId={session.userId}
     >
       <h2 className="text-2xl font-bold text-ink-950">Notifications</h2>
       <p className="mt-1 text-sm text-ink-700/65">

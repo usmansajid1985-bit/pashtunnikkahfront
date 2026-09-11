@@ -469,7 +469,10 @@ export function ChatApp({
       try {
         const res = await fetch(`/api/chats/${requestId}`);
         const data = await res.json();
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (res.status === 404) showToast("This conversation is no longer available.");
+          return;
+        }
         setPeer(data.peer);
         setMessages(data.messages || []);
         messagesRef.current = data.messages || [];

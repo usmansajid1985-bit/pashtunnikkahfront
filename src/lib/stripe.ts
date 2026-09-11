@@ -75,6 +75,24 @@ export function topupPriceId() {
   return process.env.STRIPE_TOPUP_PRICE_ID || "";
 }
 
+/**
+ * Resolve the real Stripe Price id to charge for a top-up: the configured env var, or (falling
+ * back, same as checkout does) whatever active one-time price matches the advertised amount.
+ * Shared by the checkout route and the Membership page's "is the top-up actually buyable right
+ * now" check, so the button's disabled state can't drift from what checkout would actually do.
+ */
+export async function resolveTopupPriceId(): Promise<string> {
+  const configured = topupPriceId();
+  if (configured) return configured;
+  try {
+    const stripe = getStripe();
+    const prices = await stripe.prices.list({ active: true, type: "one_time", limit: 20 });
+    return prices.data.find((p) => p.unit_amount === TOPUP_AMOUNT_PENCE)?.id || prices.data[0]?.id || "";
+  } catch {
+    return "";
+  }
+}
+
 async function nextPaymentId() {
   const max = await prisma.payments.aggregate({ _max: { id: true } });
   return (max._max.id ?? BigInt(0)) + BigInt(1);

@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { ensureP3Schema } from "@/lib/ensure-p3-schema";
 import { prisma } from "@/lib/prisma";
 import { SettingsShell } from "@/components/settings/settings-ui";
+import { ChangePasswordForm } from "@/components/settings/change-password-form";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -24,14 +24,12 @@ export default async function SecuritySettingsPage() {
   ]);
 
   return (
-    <SettingsShell title="Security" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount}>
+    <SettingsShell title="Security" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
       <h2 className="text-2xl font-bold text-ink-950">Security</h2>
       <p className="mt-1 text-sm text-ink-700/65">Password, sessions, and recent sign-ins.</p>
 
       <div className="mt-6 card p-4 space-y-3">
-        <Link href="/reset-password" className="block text-sm font-semibold text-rose-600 hover:underline">
-          Change password
-        </Link>
+        <ChangePasswordForm />
         <p className="text-xs text-ink-700/55">
           Sign out on this device from the sidebar. Multi-device session revoke requires a future session store.
         </p>

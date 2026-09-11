@@ -8,10 +8,14 @@ export function MembershipActions({
   isGold,
   activeSubscription,
   credits,
+  topupConfigured = true,
 }: {
   isGold: boolean;
   activeSubscription: boolean;
   credits: number;
+  /** false when no Stripe price is resolvable for the top-up right now — show the CTA disabled
+   * instead of letting it fail at checkout (PN-SETTINGS-006). */
+  topupConfigured?: boolean;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -37,7 +41,7 @@ export function MembershipActions({
         }
         setMessage(
           data.type === "topup"
-            ? `${TOPUP_CREDITS} introductions added to your account.`
+            ? `${TOPUP_CREDITS} Match Requests added to your account.`
             : "Welcome to Gold — your membership is active."
         );
         router.replace("/settings/membership");
@@ -87,13 +91,13 @@ export function MembershipActions({
     });
   }
 
-  const topupLabel = `Buy ${TOPUP_CREDITS} introductions — £${(TOPUP_AMOUNT_PENCE / 100).toFixed(2)}`;
+  const topupLabel = `Buy ${TOPUP_CREDITS} Match Requests — £${(TOPUP_AMOUNT_PENCE / 100).toFixed(2)}`;
 
   return (
     <div className="space-y-3">
       {credits <= 1 ? (
         <p className="text-sm rounded-xl bg-amber-50 text-amber-900 px-3 py-2 border border-amber-100">
-          Running low on credits ({credits} left). Top up or wait for your monthly allowance.
+          Running low on Match Requests ({credits} left). Top up or wait for your monthly allowance.
         </p>
       ) : null}
       {message ? (
@@ -123,11 +127,12 @@ export function MembershipActions({
         )}
         <button
           type="button"
-          disabled={pending}
+          disabled={pending || !topupConfigured}
+          title={topupConfigured ? undefined : "Top-ups are temporarily unavailable"}
           onClick={() => void buyTopup()}
-          className="px-5 py-2.5 rounded-full border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50 disabled:opacity-60"
+          className="px-5 py-2.5 rounded-full border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {pending ? "Redirecting…" : topupLabel}
+          {pending ? "Redirecting…" : topupConfigured ? topupLabel : "Top-ups temporarily unavailable"}
         </button>
       </div>
       <p className="text-[11px] text-ink-700/50">

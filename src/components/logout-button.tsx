@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { writeSessionMarker } from "@/lib/session-marker";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -11,6 +12,7 @@ export function LogoutButton() {
     setLoading(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      writeSessionMarker(null);
       router.push("/login");
       router.refresh();
     } finally {

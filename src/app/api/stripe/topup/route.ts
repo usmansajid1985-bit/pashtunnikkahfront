@@ -5,7 +5,7 @@ import {
   appUrl,
   ensureStripeCustomer,
   getStripe,
-  topupPriceId,
+  resolveTopupPriceId,
   TOPUP_AMOUNT_PENCE,
 } from "@/lib/stripe";
 
@@ -20,16 +20,7 @@ export async function POST() {
 
   try {
     const stripe = getStripe();
-    let priceId = topupPriceId();
-    if (!priceId) {
-      const prices = await stripe.prices.list({
-        active: true,
-        type: "one_time",
-        limit: 20,
-      });
-      priceId =
-        prices.data.find((p) => p.unit_amount === TOPUP_AMOUNT_PENCE)?.id || prices.data[0]?.id || "";
-    }
+    const priceId = await resolveTopupPriceId();
     if (!priceId) {
       return NextResponse.json({ error: "Top-up price is not configured." }, { status: 500 });
     }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { FormEvent, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import { writeSessionMarker } from "@/lib/session-marker";
 
 function LoginForm() {
   const searchParams = useSearchParams();
@@ -49,6 +50,7 @@ function LoginForm() {
         setError(data.error || "Login failed.");
         return;
       }
+      writeSessionMarker(data.user?.id ?? null);
       window.location.assign(data.redirectTo || "/browse");
     } catch {
       setError("Network error. Try again.");

@@ -6,13 +6,17 @@ import { useState, useTransition } from "react";
 export function RequestActions({
   requestId,
   mode,
+  peerUserId,
 }: {
   requestId: string;
   mode: "incoming" | "sent";
+  /** Needed to block an incoming requester without accepting them first. */
+  peerUserId?: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [confirmBlock, setConfirmBlock] = useState(false);
 
   async function act(action: "accept" | "decline" | "withdraw") {
     setError(null);
@@ -31,6 +35,25 @@ export function RequestActions({
         router.push(`/chats/${requestId}`);
         return;
       }
+      router.refresh();
+    });
+  }
+
+  async function block() {
+    if (!peerUserId) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await fetch("/api/blocks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: peerUserId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Could not block");
+        return;
+      }
+      setConfirmBlock(false);
       router.refresh();
     });
   }
@@ -68,6 +91,38 @@ export function RequestActions({
           Accept
         </button>
       </div>
+      {peerUserId ? (
+        confirmBlock ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-700/60">Block this member?</span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => void block()}
+              className="text-xs font-semibold text-rose-700 hover:underline disabled:opacity-50"
+            >
+              Confirm block
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => setConfirmBlock(false)}
+              className="text-xs font-semibold text-ink-700/50 hover:underline"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => setConfirmBlock(true)}
+            className="text-xs font-semibold text-ink-700/40 hover:text-rose-600 disabled:opacity-50"
+          >
+            Block
+          </button>
+        )
+      ) : null}
       {error ? <p className="text-xs text-rose-700">{error}</p> : null}
     </div>
   );

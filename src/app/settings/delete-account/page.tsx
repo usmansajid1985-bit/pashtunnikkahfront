@@ -13,7 +13,7 @@ export default async function DeleteAccountPage() {
   const unreadCount = await getUnreadMessageCount(BigInt(session.userId));
 
   return (
-    <SettingsShell title="Delete account" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount}>
+    <SettingsShell title="Delete account" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
       <h2 className="text-2xl font-bold text-ink-950">Delete account</h2>
       <p className="mt-1 text-sm text-ink-700/65 leading-relaxed">
         Your profile will be hidden and your account scheduled for removal. This action cannot be undone easily.

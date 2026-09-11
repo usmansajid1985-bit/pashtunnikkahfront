@@ -31,7 +31,7 @@ export default async function PrivacySettingsPage() {
   const codeByUser = new Map(blockedUsers.map((p) => [p.user_id.toString(), p.profile_code]));
 
   return (
-    <SettingsShell title="Privacy" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount}>
+    <SettingsShell title="Privacy" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
       <h2 className="text-2xl font-bold text-ink-950">Privacy &amp; safety</h2>
       <p className="mt-1 text-sm text-ink-700/65">Blocked members and safety tools.</p>
 

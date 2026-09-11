@@ -46,8 +46,38 @@ export async function PATCH(req: Request) {
     const appearance = Array.isArray(body.appearance)
       ? body.appearance.join(", ")
       : body.appearance || existing.appearance;
+    const nextCountryCode = toCountryCode(body.country);
+    const nextRelocation = normalizeRelocation(body.relocation);
+    const nextOccupation = body.occupation || body.employment || null;
+    const nextHomeLanguage = Array.isArray(body.languages)
+      ? body.languages.join(", ")
+      : existing.home_language;
 
-    const needsReview = existing.status === "approved";
+    // Pause Profile (visibility only) is submitted through this same form/endpoint as everything
+    // else, so re-review must be keyed on whether a moderation-relevant field actually changed —
+    // not "was this endpoint called while approved". Toggling Pause on its own must not send an
+    // approved profile back through review (PN-SETTINGS-007).
+    const contentChanged =
+      (String(body.fullName ?? "").trim() || existing.full_name) !== existing.full_name ||
+      (body.height || null) !== existing.height ||
+      (body.city || null) !== existing.city ||
+      nextCountryCode !== existing.country_code ||
+      (body.maritalStatus || null) !== existing.marital_status ||
+      (body.tribe || null) !== existing.tribe ||
+      (body.ancestralRegion || null) !== existing.ancestral_village ||
+      nextRelocation !== existing.willing_to_relocate ||
+      (body.religiousPractice || null) !== existing.religious_practice ||
+      (body.islamicBackground || null) !== existing.religious_methodology ||
+      appearance !== existing.appearance ||
+      (body.hasChildren || null) !== existing.has_children ||
+      (body.willingChildren || null) !== existing.wants_children ||
+      (body.education || null) !== existing.education ||
+      nextOccupation !== existing.occupation ||
+      nextHomeLanguage !== existing.home_language ||
+      (body.aboutMe || null) !== existing.about_me ||
+      (body.lookingFor || null) !== existing.partner_preferences;
+
+    const needsReview = existing.status === "approved" && contentChanged;
 
     await prisma.profiles.update({
       where: { user_id: userId },
@@ -57,13 +87,13 @@ export async function PATCH(req: Request) {
         height_cm: parseHeightCm(body.height),
         city: body.city || null,
         // Canonical country — store the ISO code and derive a clean display name from it.
-        country_code: toCountryCode(body.country),
-        country: countryLabel(toCountryCode(body.country)) ?? (body.country || null),
+        country_code: nextCountryCode,
+        country: countryLabel(nextCountryCode) ?? (body.country || null),
         marital_status: body.maritalStatus || null,
         tribe: body.tribe || null,
         ancestral_village: body.ancestralRegion || null,
         // One canonical relocation value; legacy `relocate` column no longer written.
-        willing_to_relocate: normalizeRelocation(body.relocation),
+        willing_to_relocate: nextRelocation,
         relocate: null,
         religious_practice: body.religiousPractice || null,
         religious_methodology: body.islamicBackground || null,
@@ -71,8 +101,8 @@ export async function PATCH(req: Request) {
         has_children: body.hasChildren || null,
         wants_children: body.willingChildren || null,
         education: body.education || null,
-        occupation: body.occupation || body.employment || null,
-        home_language: Array.isArray(body.languages) ? body.languages.join(", ") : existing.home_language,
+        occupation: nextOccupation,
+        home_language: nextHomeLanguage,
         about_me: body.aboutMe || null,
         partner_preferences: body.lookingFor || null,
         is_hidden: Boolean(body.isHidden),

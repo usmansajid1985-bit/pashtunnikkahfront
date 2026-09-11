@@ -1,22 +1,28 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
 
 export function SettingsShell({
   title = "Settings",
   backHref = "/browse",
   profileCode,
   unreadCount = 0,
+  userId,
   children,
 }: {
   title?: string;
   backHref?: string;
   profileCode?: string;
   unreadCount?: number;
+  /** Authenticated user id this page was rendered for — used to detect a stale tab after a
+   * logout/login for a different account elsewhere (PN-SETTINGS-005). */
+  userId?: string;
   children: ReactNode;
 }) {
   return (
     <div className="min-h-screen bg-[#f7f4f2] text-ink-900 lg:pl-60">
+      {userId ? <StaleSessionGuard userId={userId} /> : null}
       {/* Desktop nav */}
       {profileCode ? (
         <div className="hidden lg:block">

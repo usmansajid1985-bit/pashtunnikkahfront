@@ -5,7 +5,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SettingsShell } from "@/components/settings/settings-ui";
 import { MembershipActions } from "@/components/settings/membership-actions";
-import { GOLD_MONTHLY_CREDITS } from "@/lib/stripe";
+import { getPlanSettings } from "@/lib/plan-settings";
+import { resolveTopupPriceId } from "@/lib/stripe";
 import { getRematchBalance } from "@/lib/rematch-tokens";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 
@@ -30,6 +31,10 @@ export default async function MembershipPage() {
 
   const isGold = (user.plan || "").toLowerCase() === "gold";
   const active = (user.subscription_status || "").toLowerCase() === "active";
+  const [goldSettings, topupPriceId] = await Promise.all([
+    getPlanSettings("gold"),
+    resolveTopupPriceId(),
+  ]);
 
   const payments = await prisma.payments.findMany({
     where: { user_id: user.id },
@@ -38,7 +43,7 @@ export default async function MembershipPage() {
   });
 
   return (
-    <SettingsShell title="Membership" backHref="/settings" profileCode={session.profileCode || undefined} unreadCount={unreadCount}>
+    <SettingsShell title="Membership" backHref="/settings" profileCode={session.profileCode || undefined} unreadCount={unreadCount} userId={session.userId}>
       <div className="pb-4">
         <p className="hidden lg:block text-xs font-semibold uppercase tracking-widest text-rose-600 mb-2">
           Billing
@@ -47,8 +52,8 @@ export default async function MembershipPage() {
           Membership &amp; credits
         </h2>
         <p className="mt-1.5 text-sm text-ink-700/65">
-          Gold unlocks views, saved profiles, advanced filters, and {GOLD_MONTHLY_CREDITS} match
-          tokens each month.
+          Gold unlocks views, saved profiles, advanced filters, and {goldSettings.monthlyCredits}{" "}
+          Match Requests every month.
         </p>
       </div>
 
@@ -60,7 +65,7 @@ export default async function MembershipPage() {
               {isGold ? "Gold" : "Basic"}
             </p>
             <p className="text-sm text-ink-700/60 mt-1">
-              {user.requests_remaining} credits · {rematchTokens} rematch tokens · status{" "}
+              {user.requests_remaining} Match Requests · {rematchTokens} rematch tokens · status{" "}
               {user.subscription_status || "none"}
             </p>
           </div>
@@ -69,6 +74,7 @@ export default async function MembershipPage() {
               isGold={isGold}
               activeSubscription={active || isGold}
               credits={user.requests_remaining}
+              topupConfigured={Boolean(topupPriceId)}
             />
           </Suspense>
         </div>
@@ -77,7 +83,7 @@ export default async function MembershipPage() {
           <li className="rounded-xl bg-[#faf8f7] px-3 py-2">Who viewed you</li>
           <li className="rounded-xl bg-[#faf8f7] px-3 py-2">Saved profiles</li>
           <li className="rounded-xl bg-[#faf8f7] px-3 py-2">Advanced browse filters</li>
-          <li className="rounded-xl bg-[#faf8f7] px-3 py-2">{GOLD_MONTHLY_CREDITS} match tokens / month</li>
+          <li className="rounded-xl bg-[#faf8f7] px-3 py-2">{goldSettings.monthlyCredits} Match Requests / month</li>
         </ul>
       </div>
 
