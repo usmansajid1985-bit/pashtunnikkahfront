@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["nodemailer"],
+  // sharp ships a platform-specific native binary — bundling it (the Turbopack/webpack default)
+  // instead of leaving it as a plain external require can break the binary lookup at runtime on
+  // Vercel. Same reason nodemailer is listed here.
+  serverExternalPackages: ["nodemailer", "sharp"],
   async headers() {
     return [
       {
