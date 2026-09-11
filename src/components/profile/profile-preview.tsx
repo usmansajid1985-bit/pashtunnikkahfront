@@ -49,6 +49,7 @@ export function ProfilePreview({
   viewerCompat,
   presence,
   photoVisible,
+  showMobileChrome = true,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -67,6 +68,8 @@ export function ProfilePreview({
   viewerCompat?: { score: number; reasons: string[] } | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
   presence?: { online: boolean; label: string } | null;
+  /** false when embedded inside the Preview/Edit swipe shell, which owns the top bar + bottom CTA. */
+  showMobileChrome?: boolean;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
@@ -99,9 +102,10 @@ export function ProfilePreview({
         />
       </div>
 
-      {/* Mobile — phone-style pill preview */}
+      {/* Mobile — photo-led hero preview */}
       <div className="lg:hidden bg-white min-h-full">
       {/* Top bar */}
+      {showMobileChrome ? (
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <a
@@ -141,46 +145,78 @@ export function ProfilePreview({
           </div>
         ) : null}
       </div>
+      ) : null}
 
-      <div className="max-w-lg mx-auto px-4 pb-28">
-        {/* Hero identity */}
-        <div className="pt-5 flex items-start gap-4">
-          {photoHidden ? (
-            <div className="w-[88px] h-[88px] rounded-[22px] shrink-0 bg-ink-900/5 flex items-center justify-center text-center text-[9px] font-semibold text-ink-700/50 px-1">
+      {/* Photo-led hero */}
+      <div className="relative w-full bg-ink-900/10" style={{ aspectRatio: "4 / 5" }}>
+        {photoHidden ? (
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink-900/10 to-ink-900/5">
+            <p className="text-sm font-semibold text-ink-700/50 px-10 text-center">
               Photo hidden until you match
-            </div>
-          ) : (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={avatar}
-              alt=""
-              className="w-[88px] h-[88px] rounded-[22px] object-cover shrink-0"
-              style={showPhoto ? undefined : { filter: "blur(8px) saturate(0.85)" }}
-            />
-          )}
-          <div className="pt-1 min-w-0">
-            <p className="text-xs font-bold tracking-wide text-rose-600 uppercase">{profile.profileCode}</p>
-            <h1 className="text-xl font-bold text-ink-950 mt-0.5 truncate">{profile.fullName}</h1>
-            <p className="text-sm text-ink-700/70 mt-1">
-              {[profile.age ? `${profile.age} years` : null, location].filter(Boolean).join(" · ") || "—"}
             </p>
-            <div className="mt-2.5 flex flex-wrap gap-1.5">
-              {presence ? (
-                <Pill tone={presence.online ? "green" : "grey"}>
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      presence.online ? "bg-emerald-500" : "bg-ink-700/40"
-                    }`}
-                  />
-                  {presence.label}
-                </Pill>
-              ) : null}
-              {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
-              {profile.pashto ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
-              {profile.plan === "gold" && !profile.hideGoldBadge ? <Pill tone="amber">Gold</Pill> : null}
-            </div>
+          </div>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={avatar}
+            alt=""
+            className="w-full h-full object-cover"
+            style={showPhoto ? undefined : { filter: "blur(18px) saturate(0.85)" }}
+          />
+        )}
+
+        {presence ? (
+          <div className="absolute top-4 left-4">
+            <span
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold backdrop-blur-md ${
+                presence.online ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${presence.online ? "bg-white" : "bg-white/60"}`} />
+              {presence.label}
+            </span>
+          </div>
+        ) : null}
+
+        <div
+          className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none"
+          aria-hidden
+        />
+
+        <div className="absolute inset-x-0 bottom-0 px-5 pb-5 text-white">
+          <p className="text-[22px] font-bold flex items-center gap-1.5 leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
+            {profile.profileCode}
+            {profile.age ? `, ${profile.age}` : ""}
+            {profile.verified ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#60a5fa" className="shrink-0">
+                <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
+              </svg>
+            ) : null}
+          </p>
+          <p className="text-[13px] text-white/80 mt-0.5">{location || "—"}</p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {[profile.occupation, profile.religiousPractice, profile.country, profile.tribe, profile.ancestralRegion, profile.relocation]
+              .filter((v): v is string => Boolean(v))
+              .map((v, i) => (
+                <span
+                  key={`${v}-${i}`}
+                  className="px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11.5px] font-medium text-white border border-white/20"
+                >
+                  {v}
+                </span>
+              ))}
           </div>
         </div>
+      </div>
+
+      <div className={`max-w-lg mx-auto px-4 ${showMobileChrome ? "pb-28" : "pb-6"}`}>
+        {profile.maritalStatus || profile.pashto || (profile.plan === "gold" && !profile.hideGoldBadge) ? (
+          <div className="pt-4 flex flex-wrap gap-1.5">
+            {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
+            {profile.pashto ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
+            {profile.plan === "gold" && !profile.hideGoldBadge ? <Pill tone="amber">Gold</Pill> : null}
+          </div>
+        ) : null}
 
         {viewerCompat ? (
           <section className="mt-5 rounded-2xl border border-rose-100 bg-rose-50/40 p-4">
@@ -200,25 +236,6 @@ export function ProfilePreview({
             )}
           </section>
         ) : null}
-
-        {/* Quick facts 6 */}
-        <div className="mt-5 grid grid-cols-3 gap-2">
-          {[
-            { label: "Practice", value: profile.religiousPractice },
-            { label: "Pashto", value: profile.pashto },
-            { label: "Ancestral", value: profile.ancestralRegion },
-            { label: "Tribe", value: profile.tribe },
-            { label: "Relocation", value: profile.relocation },
-            { label: "Location", value: profile.city || profile.country },
-          ].map((f) => (
-            <div key={f.label} className="rounded-2xl bg-[#f7f4f2] px-2.5 py-3 text-center">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-700/50">{f.label}</p>
-              <p className="mt-1 text-[12px] font-semibold text-ink-950 leading-snug line-clamp-2">
-                {f.value || "—"}
-              </p>
-            </div>
-          ))}
-        </div>
 
         <Section title="About Me">
           <div className="flex flex-wrap gap-2">
@@ -377,7 +394,7 @@ export function ProfilePreview({
       </div>
 
       {/* Bottom CTA — mobile only */}
-      {showEditTab ? (
+      {!showMobileChrome ? null : showEditTab ? (
         <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">
           <div className="max-w-lg mx-auto px-4 flex gap-2">
             <a

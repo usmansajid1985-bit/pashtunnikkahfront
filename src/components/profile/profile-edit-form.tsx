@@ -42,6 +42,7 @@ export function ProfileEditForm({
   initial,
   unreadCount = 0,
   photos = [],
+  hideMobileHeader = false,
 }: {
   initial: ProfileView;
   unreadCount?: number;
@@ -52,6 +53,8 @@ export function ProfileEditForm({
     status: "pending" | "approved" | "rejected";
     sortOrder: number;
   }[];
+  /** true when embedded inside the Preview/Edit swipe shell, which owns the mobile header. */
+  hideMobileHeader?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -125,6 +128,7 @@ export function ProfileEditForm({
       </div>
 
       {/* Mobile header */}
+      {hideMobileHeader ? null : (
       <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/8 lg:hidden">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/profile" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5">
@@ -141,6 +145,7 @@ export function ProfileEditForm({
           <span className="w-10" />
         </div>
       </header>
+      )}
 
       <form
         onSubmit={onSubmit}
