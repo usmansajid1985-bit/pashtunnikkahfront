@@ -5,8 +5,8 @@ import { parseTraits } from "@/lib/communication";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED = new Set(["standard", "wali_oversight", "wali_only", "niqab"]);
-const NIQAB_SUB = new Set(["standard", "wali_oversight", "wali_only"]);
+// Niqab Mode and Wali-Only Mode were removed entirely (QA item 12).
+const ALLOWED = new Set(["standard", "wali_oversight"]);
 
 export async function PATCH(req: Request) {
   const session = await getSession();
@@ -21,26 +21,19 @@ export async function PATCH(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const communicationMode = String(body.communicationMode || "").toLowerCase();
-  const niqabSubMode = String(body.niqabSubMode || "").toLowerCase();
 
   if (!ALLOWED.has(communicationMode)) {
     return NextResponse.json({ error: "Invalid communication mode" }, { status: 400 });
   }
-  if (communicationMode === "niqab" && !NIQAB_SUB.has(niqabSubMode)) {
-    return NextResponse.json({ error: "Pick a niqab chat preference" }, { status: 400 });
-  }
 
   const extras = parseTraits(profile.traits);
-  const next = {
-    ...extras,
-    communicationMode,
-    niqabSubMode: communicationMode === "niqab" ? niqabSubMode : "",
-  };
+  const next = { ...extras, communicationMode };
+  delete (next as { niqabSubMode?: string }).niqabSubMode;
 
   await prisma.profiles.update({
     where: { id: profile.id },
     data: { traits: JSON.stringify(next), updated_at: new Date() },
   });
 
-  return NextResponse.json({ ok: true, communicationMode, niqabSubMode: next.niqabSubMode });
+  return NextResponse.json({ ok: true, communicationMode });
 }

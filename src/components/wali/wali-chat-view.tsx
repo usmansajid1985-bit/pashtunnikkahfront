@@ -13,7 +13,6 @@ export function WaliChatView({
   profileUserId,
   peerName,
   peerCode,
-  privateChat,
   initialMessages,
   realtimeTopic,
 }: {
@@ -21,12 +20,11 @@ export function WaliChatView({
   profileUserId: string;
   peerName: string;
   peerCode: string;
-  privateChat: boolean;
   initialMessages: ChatMessageDTO[];
   realtimeTopic: string;
 }) {
   const [messages, setMessages] = useState(initialMessages);
-  const { connected, joinThread, on } = useChatSocket(privateChat, profileUserId);
+  const { connected, joinThread, on } = useChatSocket(true, profileUserId);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,17 +41,6 @@ export function WaliChatView({
     };
     return on("message:new", onNew);
   }, [requestId, on]);
-
-  if (!privateChat) {
-    return (
-      <div className="bg-white rounded-2xl border border-amber-100 p-5">
-        <p className="font-bold text-ink-950">Wali-Only match</p>
-        <p className="mt-1 text-sm text-ink-700/70">
-          This match is set to Wali-Only mode — there is no in-app chat to view for it.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-white rounded-2xl border border-ink-900/8 overflow-hidden flex flex-col h-[70vh]">

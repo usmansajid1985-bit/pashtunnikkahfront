@@ -311,7 +311,6 @@ export function ChatApp({
   const [photoOnceBusy, setPhotoOnceBusy] = useState(false);
   const [revealedPhotoUrl, setRevealedPhotoUrl] = useState<string | null>(null);
   const [revealedAvatarSeed, setRevealedAvatarSeed] = useState<number | null>(null);
-  const [privateChat, setPrivateChat] = useState(true);
   const [commMode, setCommMode] = useState<string>("standard");
   const [wali, setWali] = useState<{
     name: string;
@@ -481,7 +480,6 @@ export function ChatApp({
         setPhotoVisible(Boolean(data.photoVisible));
         setCanSharePhoto(Boolean(data.canSharePhoto));
         setIsFemaleViewer(Boolean(data.isFemaleViewer));
-        setPrivateChat(data.privateChat !== false);
         setCommMode(data.communicationMode || "standard");
         setWali(data.wali || null);
         setShareConfirm(false);
@@ -1300,13 +1298,11 @@ export function ChatApp({
                           ? `${displayName} is typing…`
                           : !connected
                             ? "Connecting to chat…"
-                            : !privateChat
-                              ? "Wali-Only match"
-                              : photoShared
-                                ? "Photo shared"
-                                : commMode === "wali_oversight"
-                                  ? "Wali oversight · photo private"
-                                  : peer?.code || activeThread?.peerCode}
+                            : photoShared
+                              ? "Photo shared"
+                              : commMode === "wali_oversight"
+                                ? "Wali oversight · photo private"
+                                : peer?.code || activeThread?.peerCode}
                       </p>
                     </div>
                     {!matchEnded ? (
@@ -1318,7 +1314,7 @@ export function ChatApp({
                         End match
                       </button>
                     ) : null}
-                    {!matchEnded && privateChat ? (
+                    {!matchEnded ? (
                       <button
                         type="button"
                         onClick={() => setHeaderMenu((m) => (m === "wali" ? null : "wali"))}
@@ -1756,7 +1752,7 @@ export function ChatApp({
                       ) : null}
                     </div>
 
-                    {/* Composer / Wali-Only / Photo share */}
+                    {/* Composer / Photo share */}
                     <div className="border-t border-ink-900/6 bg-white px-3 sm:px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
                       {matchEnded ? (
                         <div className="rounded-2xl border border-ink-900/8 bg-[#faf8f7] px-4 py-4 mb-2">
@@ -1765,34 +1761,6 @@ export function ChatApp({
                             You can read past messages but cannot send new ones.
                             {endReason ? ` Reason: ${endReason.replace(/_/g, " ")}.` : ""}
                           </p>
-                        </div>
-                      ) : null}
-                      {!matchEnded && !privateChat ? (
-                        <div className="rounded-2xl border border-amber-100 bg-amber-50/70 p-4 mb-2">
-                          <p className="text-sm font-bold text-ink-950">Wali-Only mode</p>
-                          <p className="mt-1 text-[13px] text-ink-700/75 leading-relaxed">
-                            Private chat is not available for this match. Please contact the wali to continue.
-                          </p>
-                          {wali ? (
-                            <div className="mt-3 rounded-xl bg-white border border-ink-900/8 px-3 py-2.5 text-sm">
-                              <p className="font-semibold text-ink-950">{wali.name}</p>
-                              {wali.contact ? (
-                                <a
-                                  href={`https://wa.me/${wali.contact.replace(/[^\d]/g, "")}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="mt-1 inline-block text-rose-600 font-semibold"
-                                >
-                                  {wali.contact}
-                                </a>
-                              ) : (
-                                <p className="text-ink-700/60 mt-1">Wali contact not set yet</p>
-                              )}
-                              {wali.email ? (
-                                <p className="text-xs text-ink-700/55 mt-1">{wali.email}</p>
-                              ) : null}
-                            </div>
-                          ) : null}
                         </div>
                       ) : (
                         <>

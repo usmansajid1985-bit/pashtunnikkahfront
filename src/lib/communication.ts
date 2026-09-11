@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
 import type { ProfileExtras } from "@/lib/profile";
 
-/** Effective chat path after match (niqab uses its sub-mode). */
-export type CommMode = "standard" | "wali_oversight" | "wali_only";
+/**
+ * Communication modes (QA item 12): Niqab Mode and Wali-Only Mode have been removed entirely.
+ * Only Standard and Wali Oversight remain. Legacy stored values of "wali_only" or "niqab" (from
+ * before the removal) are treated as Wali Oversight — the closest surviving mode — rather than
+ * leaving old matches stuck in a mode that can no longer be selected or resolved.
+ */
+export type CommMode = "standard" | "wali_oversight";
 
-export type StoredCommMode = CommMode | "niqab" | "";
+export type StoredCommMode = CommMode | "";
 
 export function parseTraits(traits: string | null | undefined): ProfileExtras {
   if (!traits) return {};
@@ -15,28 +20,21 @@ export function parseTraits(traits: string | null | undefined): ProfileExtras {
   }
 }
 
-export function effectiveCommMode(
-  communicationMode?: string | null,
-  niqabSubMode?: string | null
-): CommMode {
+export function effectiveCommMode(communicationMode?: string | null): CommMode {
   const mode = (communicationMode || "standard").toLowerCase();
-  if (mode === "wali_only") return "wali_only";
   if (mode === "wali_oversight") return "wali_oversight";
-  if (mode === "niqab") {
-    const sub = (niqabSubMode || "standard").toLowerCase();
-    if (sub === "wali_only") return "wali_only";
-    if (sub === "wali_oversight") return "wali_oversight";
-    return "standard";
-  }
+  // Legacy-only: "wali_only" and "niqab" no longer exist as choices.
+  if (mode === "wali_only" || mode === "niqab") return "wali_oversight";
   return "standard";
 }
 
-export function allowsPrivateChat(mode: CommMode) {
-  return mode !== "wali_only";
+/** Both remaining modes allow direct chat and photo sharing (Wali-Only was the one that didn't). */
+export function allowsPrivateChat(_mode: CommMode) {
+  return true;
 }
 
-export function allowsPhotoShare(mode: CommMode) {
-  return mode !== "wali_only";
+export function allowsPhotoShare(_mode: CommMode) {
+  return true;
 }
 
 /** Snapshot female member's mode onto a match (future mode changes won't affect this match). */
@@ -51,10 +49,10 @@ export async function resolveModeForMatch(senderId: bigint, receiverId: bigint):
     // default if gender unclear
     const any = profiles[0];
     const extras = parseTraits(any?.traits);
-    return effectiveCommMode(extras.communicationMode, extras.niqabSubMode);
+    return effectiveCommMode(extras.communicationMode);
   }
   const extras = parseTraits(female.traits);
-  return effectiveCommMode(extras.communicationMode, extras.niqabSubMode);
+  return effectiveCommMode(extras.communicationMode);
 }
 
 export async function loadWaliContact(femaleUserId: bigint) {
@@ -104,7 +102,7 @@ export function femaleUserIdOfMatch(
  * Should the peer's photo be unblurred for the viewer?
  * - Own profile: based on photo_status (handled elsewhere)
  * - Browse / unmatched: always blurred
- * - Matched + photo_shared + mode allows share: visible
+ * - Matched + photo_shared: visible (both remaining modes allow sharing)
  */
 export function peerPhotoVisible(opts: {
   matched: boolean;
@@ -112,7 +110,5 @@ export function peerPhotoVisible(opts: {
   mode: CommMode | string | null;
 }) {
   if (!opts.matched) return false;
-  const mode = effectiveCommMode(opts.mode, null);
-  if (!allowsPhotoShare(mode)) return false;
   return Boolean(opts.photoShared);
 }

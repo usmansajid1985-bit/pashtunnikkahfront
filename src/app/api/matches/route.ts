@@ -14,6 +14,7 @@ import { consumeRematchToken, findPriorEndedMatch, maybeRenewRematchTokens } fro
 import { sendPushNotification } from "@/lib/push/server";
 import {
   allowsPrivateChat,
+  effectiveCommMode,
   loadWaliContact,
   resolveModeForMatch,
 } from "@/lib/communication";
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
         status: "accepted",
         requestId: existing.id.toString(),
         communicationMode: mode,
-        privateChat: allowsPrivateChat(effectiveMode(mode)),
+        privateChat: allowsPrivateChat(effectiveCommMode(mode)),
         message: "Already matched",
       });
     }
@@ -300,9 +301,3 @@ export async function POST(req: Request) {
   });
 }
 
-function effectiveMode(mode: string) {
-  const m = mode.toLowerCase();
-  if (m === "wali_only") return "wali_only" as const;
-  if (m === "wali_oversight") return "wali_oversight" as const;
-  return "standard" as const;
-}

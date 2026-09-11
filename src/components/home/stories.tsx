@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 const stories = [
   {
     quote:
-      "We connected through Wali-Only mode and it made the whole process feel respectful and comfortable for my family.",
+      "We connected through Wali Oversight mode and it made the whole process feel respectful and comfortable for my family.",
     name: "Placeholder Member · Manchester",
     img: "https://images.unsplash.com/photo-1522389903690-657f5318cf1b?q=80&w=300&auto=format&fit=crop",
   },

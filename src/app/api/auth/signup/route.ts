@@ -86,12 +86,17 @@ export async function POST(req: Request) {
       (o: string) => genderLabel === "Male" || o !== "Polygamy"
     );
 
+    // Niqab Mode and Wali-Only Mode no longer exist — reject a crafted/stale value server-side
+    // rather than silently persisting it (QA item 12).
+    const communicationMode = ["standard", "wali_oversight"].includes(String(body.communicationMode))
+      ? String(body.communicationMode)
+      : "standard";
+
     const extras = {
       smoking: body.smoking ?? "",
       vaping: body.vaping ?? "",
       employment: body.employment ?? "",
-      communicationMode: body.communicationMode ?? "",
-      niqabSubMode: body.niqabSubMode ?? "",
+      communicationMode,
       openTo,
       languages: body.languages ?? [],
       hasPhoto: false, // set below once photos are saved

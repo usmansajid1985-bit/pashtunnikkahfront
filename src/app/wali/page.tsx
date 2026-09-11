@@ -95,7 +95,7 @@ export default async function WaliDashboardPage() {
                   <span className="min-w-0 flex-1">
                     <span className="font-semibold text-ink-950 block truncate">{t.peerCode}</span>
                     <span className="text-[13px] text-ink-700/65 block truncate">
-                      {t.privateChat ? t.lastMessage || "No messages yet" : "Wali-Only match"}
+                      {t.lastMessage || "No messages yet"}
                     </span>
                   </span>
                 </Link>

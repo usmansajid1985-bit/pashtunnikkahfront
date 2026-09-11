@@ -105,11 +105,7 @@ export default async function SettingsPage() {
       ) : null}
 
       <div id="wali-settings">
-        <CommunicationModeSettings
-          initialMode={view.communicationMode}
-          initialNiqabSub={view.niqabSubMode}
-          gender={view.gender}
-        />
+        <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
       </div>
 
       <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />

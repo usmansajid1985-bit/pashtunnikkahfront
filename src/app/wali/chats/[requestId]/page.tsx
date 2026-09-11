@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
-import { assertAcceptedParticipant, loadPeer, peerUserId, serializeMessage, threadMetaFor } from "@/lib/chat";
+import { assertAcceptedParticipant, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
 import { threadTopic } from "@/lib/realtime-topics";
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
@@ -37,15 +37,12 @@ export default async function WaliChatThreadPage({
 
   const peerId = await peerUserId(req, profileUserId);
   const peer = await loadPeer(peerId);
-  const meta = await threadMetaFor(req, profileUserId);
 
-  const rows = meta.privateChat
-    ? await prisma.messages.findMany({
-        where: { request_id: requestId },
-        orderBy: { created_at: "asc" },
-        take: 400,
-      })
-    : [];
+  const rows = await prisma.messages.findMany({
+    where: { request_id: requestId },
+    orderBy: { created_at: "asc" },
+    take: 400,
+  });
 
   const replyIds = [...new Set(rows.map((m) => m.reply_to_id).filter(Boolean))] as bigint[];
   const quoted =
@@ -81,7 +78,6 @@ export default async function WaliChatThreadPage({
           profileUserId={session.profileUserId}
           peerName={peer?.name || "Member"}
           peerCode={peer?.code || ""}
-          privateChat={meta.privateChat}
           initialMessages={messages}
           realtimeTopic={threadTopic(raw)}
         />

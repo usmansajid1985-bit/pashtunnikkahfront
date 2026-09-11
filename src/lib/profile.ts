@@ -7,7 +7,6 @@ export type ProfileExtras = {
   vaping?: string;
   employment?: string;
   communicationMode?: string;
-  niqabSubMode?: string;
   openTo?: string[];
   languages?: string[];
   hasPhoto?: boolean;
@@ -53,7 +52,6 @@ export type ProfileView = {
   photoStatus: string | null;
   photoUrl: string | null;
   communicationMode: string | null;
-  niqabSubMode: string | null;
   status: string;
   isHidden: boolean;
   plan: string;
@@ -198,7 +196,6 @@ export function mapProfileView(
     photoStatus: profile.photo_status,
     photoUrl: profile.photo_url || null,
     communicationMode: extras.communicationMode || null,
-    niqabSubMode: extras.niqabSubMode || null,
     status: profile.status,
     isHidden: profile.is_hidden,
     plan: (user.plan || "basic").toLowerCase(),

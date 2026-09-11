@@ -340,7 +340,7 @@ export function ProfileEditForm({
               <ChoiceTile
                 key={o.v}
                 label={o.label}
-                hint={o.v === "Insha'Allah if Allah Wills" ? "if Allah wills" : undefined}
+                hint={o.v === "Insha'Allah if Allah Wills" ? "– if Allah wills" : undefined}
                 tone={o.tone}
                 icon={o.icon}
                 selected={

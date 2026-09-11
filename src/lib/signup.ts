@@ -26,7 +26,6 @@ export type SignupData = {
   photos: string[]; // up to 3 cropped data-URLs
   mainPhotoIndex: number;
   communicationMode: string;
-  niqabSubMode: string;
   phoneCountry: string;
   phone: string;
   email: string;
@@ -60,7 +59,6 @@ export const emptySignupData = (): SignupData => ({
   photos: [],
   mainPhotoIndex: 0,
   communicationMode: "",
-  niqabSubMode: "",
   phoneCountry: "+44",
   phone: "",
   email: "",
@@ -201,7 +199,7 @@ export const LANGUAGES_ORDERED = [
 ] as const;
 
 export const ANCESTRAL_REGIONS = [
-  // KP
+  // Pakhtunkhwa (user-facing label — never "KP", see signup-wizard "Select region" option)
   "Peshawar",
   "Mardan",
   "Swat",
@@ -283,6 +281,7 @@ export const WOMEN_APPEARANCE = [
   "Kamees Partug",
 ] as const;
 
+// Niqab Mode and Wali-Only Mode were removed entirely (QA item 12) — only these two remain.
 export const COMM_MODES = [
   {
     id: "standard",
@@ -293,16 +292,6 @@ export const COMM_MODES = [
     id: "wali_oversight",
     title: "Wali Oversight",
     blurb: "Direct chat with wali oversight and optional notifications.",
-  },
-  {
-    id: "wali_only",
-    title: "Wali-Only",
-    blurb: "No private chat. Contact goes through your wali first.",
-  },
-  {
-    id: "niqab",
-    title: "Niqab Mode",
-    blurb: "Public niqab photo; uncovered photo for moderators only. Then pick a chat preference.",
   },
 ] as const;
 
@@ -357,9 +346,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "photo":
       return data.photos.length > 0;
     case "commMode":
-      if (!data.communicationMode) return false;
-      if (data.communicationMode === "niqab") return Boolean(data.niqabSubMode);
-      return true;
+      return Boolean(data.communicationMode);
     case "phone":
       return data.phone.replace(/\s/g, "").length >= 6;
     case "account":

@@ -254,7 +254,7 @@ export async function loadPeerProfileView(peerId: bigint) {
 }
 
 function modeOf(req: { communication_mode: string | null }): CommMode {
-  return effectiveCommMode(req.communication_mode || "standard", null);
+  return effectiveCommMode(req.communication_mode || "standard");
 }
 
 export async function threadMetaFor(
@@ -300,18 +300,13 @@ export async function threadMetaFor(
 
   // Who may see the female member's wali contact:
   //  - she always sees her own (needed for the handover confirm dialog)
-  //  - the brother sees it in Wali-Only mode, or once she has shared it via handover
+  //  - the brother sees it once she has shared it via handover
   const handoverShared = ["involving", "attempted", "established"].includes(
     req.wali_handover_status || ""
   );
-  const maySeeWali =
-    Boolean(femaleId) && (isFemaleViewer || !privateChat || handoverShared);
+  const maySeeWali = Boolean(femaleId) && (isFemaleViewer || handoverShared);
   const wali =
-    opts?.withWaliContact && maySeeWali && femaleId
-      ? await loadWaliContact(femaleId)
-      : !privateChat && femaleId
-        ? await loadWaliContact(femaleId)
-        : null;
+    opts?.withWaliContact && maySeeWali && femaleId ? await loadWaliContact(femaleId) : null;
 
   return {
     communicationMode: mode,
@@ -406,11 +401,9 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       peerName: peer.name,
       peerVerified: peer.verified,
       peerAvatarSeed: peer.avatarSeed,
-      lastMessage: meta.privateChat
-        ? last?.body ?? null
-        : "Wali-Only — contact through wali",
+      lastMessage: last?.body ?? null,
       lastAt: last?.created_at.toISOString() ?? req.updated_at.toISOString(),
-      unread: meta.privateChat ? unread : 0,
+      unread,
       matchedAt: req.created_at.toISOString(),
       communicationMode: meta.communicationMode,
       privateChat: meta.privateChat,
@@ -440,10 +433,6 @@ export async function createMessage(opts: {
 }) {
   const match = await prisma.match_requests.findUnique({ where: { id: opts.requestId } });
   if (!match || match.status !== "accepted") throw new Error("Chat not found");
-  const mode = modeOf(match);
-  if (!allowsPrivateChat(mode)) {
-    throw new Error("This match is Wali-Only — private chat is not available.");
-  }
 
   // Mutual blocking disables conversation access in both directions.
   const { isBlockedBetween } = await import("@/lib/blocking");
@@ -533,10 +522,6 @@ export async function createContactCardMessage(opts: {
 }) {
   const match = await prisma.match_requests.findUnique({ where: { id: opts.requestId } });
   if (!match || match.status !== "accepted") throw new Error("Chat not found");
-  const mode = modeOf(match);
-  if (!allowsPrivateChat(mode)) {
-    throw new Error("This match is Wali-Only — private chat is not available.");
-  }
 
   const { isBlockedBetween } = await import("@/lib/blocking");
   if (await isBlockedBetween(opts.senderId, opts.receiverId)) {
@@ -621,9 +606,6 @@ export async function setPhotoShared(requestId: bigint, viewerId: bigint, shared
   const meta = await threadMetaFor(match, viewerId);
   if (!meta.canSharePhoto) {
     throw new Error("Only the sister can share or hide her photo in this match.");
-  }
-  if (!allowsPhotoShare(meta.communicationMode)) {
-    throw new Error("Photo sharing is not available in Wali-Only mode.");
   }
   const updated = await prisma.match_requests.update({
     where: { id: requestId },

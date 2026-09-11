@@ -4,32 +4,33 @@ import { useState, useTransition } from "react";
 import { COMM_MODES } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
 
+// Niqab Mode and Wali-Only Mode were removed entirely (QA item 12) — only Standard and
+// Wali Oversight remain selectable here.
+const ICONS = { standard: I.chat, wali_oversight: I.eye } as const;
+
 export function CommunicationModeSettings({
   initialMode,
-  initialNiqabSub,
   gender,
 }: {
   initialMode: string | null;
-  initialNiqabSub: string | null;
   gender: string | null;
 }) {
   const isSister = (gender || "").toLowerCase().startsWith("f");
   const [mode, setMode] = useState(initialMode || "");
-  const [niqabSub, setNiqabSub] = useState(initialNiqabSub || "");
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (!isSister) return null;
 
-  function save(nextMode: string, nextSub: string) {
+  function save(nextMode: string) {
     setError(null);
     setMsg(null);
     startTransition(async () => {
       const res = await fetch("/api/profile/communication-mode", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ communicationMode: nextMode, niqabSubMode: nextSub }),
+        body: JSON.stringify({ communicationMode: nextMode }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -49,57 +50,22 @@ export function CommunicationModeSettings({
       </p>
 
       <div className="mt-4">
-        <ChoiceGrid count={4}>
-          {COMM_MODES.map((m) => {
-            const icons = {
-              standard: I.chat,
-              wali_oversight: I.eye,
-              wali_only: I.phone,
-              niqab: I.veil,
-            } as const;
-            return (
-              <ChoiceTile
-                key={m.id}
-                label={m.title}
-                icon={icons[m.id as keyof typeof icons]}
-                tone={m.id === "standard" ? "sky" : m.id === "wali_oversight" ? "lilac" : m.id === "wali_only" ? "peach" : "rose"}
-                selected={mode === m.id}
-                onClick={() => {
-                  const sub = m.id === "niqab" ? niqabSub || "standard" : "";
-                  setMode(m.id);
-                  if (m.id !== "niqab") setNiqabSub("");
-                  save(m.id, sub);
-                }}
-              />
-            );
-          })}
+        <ChoiceGrid count={2}>
+          {COMM_MODES.map((m) => (
+            <ChoiceTile
+              key={m.id}
+              label={m.title}
+              icon={ICONS[m.id as keyof typeof ICONS]}
+              tone={m.id === "standard" ? "sky" : "lilac"}
+              selected={mode === m.id}
+              onClick={() => {
+                setMode(m.id);
+                save(m.id);
+              }}
+            />
+          ))}
         </ChoiceGrid>
       </div>
-
-      {mode === "niqab" ? (
-        <div className="mt-4">
-          <p className="text-xs font-semibold text-ink-950 mb-2">After matching, prefer:</p>
-          <ChoiceGrid count={3}>
-            {[
-              { id: "standard", label: "Standard", icon: I.chat, tone: "sky" as const },
-              { id: "wali_oversight", label: "Wali Oversight", icon: I.eye, tone: "lilac" as const },
-              { id: "wali_only", label: "Wali-Only", icon: I.phone, tone: "peach" as const },
-            ].map((s) => (
-              <ChoiceTile
-                key={s.id}
-                label={s.label}
-                icon={s.icon}
-                tone={s.tone}
-                selected={niqabSub === s.id}
-                onClick={() => {
-                  setNiqabSub(s.id);
-                  save("niqab", s.id);
-                }}
-              />
-            ))}
-          </ChoiceGrid>
-        </div>
-      ) : null}
 
       {pending ? <p className="mt-3 text-xs text-ink-700/50">Saving…</p> : null}
       {msg ? <p className="mt-3 text-xs text-emerald-700">{msg}</p> : null}

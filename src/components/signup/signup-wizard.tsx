@@ -531,7 +531,7 @@ export function SignupWizard() {
                 <ChoiceGrid count={2}>
                   <ChoiceTile
                     label="Yes, Insha'Allah"
-                    hint="if Allah wills"
+                    hint="– if Allah wills"
                     tone="mint"
                     icon={I.moon}
                     selected={
@@ -833,13 +833,11 @@ export function SignupWizard() {
 
             {step.id === "commMode" && (
               <>
-                <ChoiceGrid count={4}>
+                <ChoiceGrid count={2}>
                   {(
                     [
                       { id: "standard", tone: "sky" as const, icon: I.chat },
                       { id: "wali_oversight", tone: "lilac" as const, icon: I.eye },
-                      { id: "wali_only", tone: "peach" as const, icon: I.phone },
-                      { id: "niqab", tone: "rose" as const, icon: I.veil },
                     ] as const
                   ).map((row) => {
                     const m = COMM_MODES.find((c) => c.id === row.id)!;
@@ -850,12 +848,7 @@ export function SignupWizard() {
                         tone={row.tone}
                         icon={row.icon}
                         selected={data.communicationMode === m.id}
-                        onClick={() =>
-                          patch({
-                            communicationMode: m.id,
-                            niqabSubMode: m.id === "niqab" ? data.niqabSubMode : "",
-                          })
-                        }
+                        onClick={() => patch({ communicationMode: m.id })}
                       />
                     );
                   })}
@@ -864,27 +857,6 @@ export function SignupWizard() {
                   <p className="text-xs text-ink-700/70 leading-relaxed rounded-xl bg-white/70 border border-ink-900/8 px-3 py-2.5">
                     {COMM_MODES.find((c) => c.id === data.communicationMode)?.blurb}
                   </p>
-                ) : null}
-                {data.communicationMode === "niqab" ? (
-                  <div className="pt-3 space-y-2">
-                    <p className="text-xs font-semibold text-ink-900">After matching, prefer…</p>
-                    <ChoiceGrid count={3}>
-                      {[
-                        { id: "standard", label: "Standard", icon: I.chat, tone: "sky" as const },
-                        { id: "wali_oversight", label: "Wali Oversight", icon: I.eye, tone: "lilac" as const },
-                        { id: "wali_only", label: "Wali-Only", icon: I.phone, tone: "peach" as const },
-                      ].map((s) => (
-                        <ChoiceTile
-                          key={s.id}
-                          label={s.label}
-                          tone={s.tone}
-                          icon={s.icon}
-                          selected={data.niqabSubMode === s.id}
-                          onClick={() => patch({ niqabSubMode: s.id })}
-                        />
-                      ))}
-                    </ChoiceGrid>
-                  </div>
                 ) : null}
               </>
             )}
