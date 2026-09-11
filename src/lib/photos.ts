@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { blurImageBuffer } from "@/lib/photo-blur";
 
 /**
  * Photos live in Supabase Storage (bucket "photos"). The app runs on a
@@ -28,12 +29,16 @@ function storageClient(): SupabaseClient {
   return cachedClient;
 }
 
-/** Create the bucket on first use; ignore "already exists". */
+/**
+ * Create the bucket on first use; ignore "already exists". Private — photos are only ever
+ * served through `signedPhotoUrl` (a short-lived signed URL) or a pre-blurred derivative, never
+ * the plain public object URL, so an unauthorised viewer can't fetch the original by URL alone.
+ */
 async function ensureBucket(client: SupabaseClient): Promise<void> {
   if (!bucketReady) {
     bucketReady = (async () => {
       const { error } = await client.storage.createBucket(BUCKET, {
-        public: true,
+        public: false,
         fileSizeLimit: MAX_BYTES,
         allowedMimeTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
       });
@@ -86,6 +91,54 @@ export async function signedPhotoUrl(
     return data.signedUrl;
   } catch {
     return publicPhotoUrl(objectPath);
+  }
+}
+
+/**
+ * Blur `buf` and upload it as a standalone object. Never throws — a failure here must not break
+ * the (already-succeeded) original upload; callers get `null` and can retry later.
+ */
+async function uploadBlurredVariant(
+  client: SupabaseClient,
+  userId: bigint | string,
+  buf: Buffer
+): Promise<string | null> {
+  try {
+    const blurred = await blurImageBuffer(buf);
+    const token = randomBytes(8).toString("hex");
+    const objectPath = `blurred/${userId}-blur-${Date.now()}-${token}.jpg`;
+    const { error } = await client.storage
+      .from(BUCKET)
+      .upload(objectPath, blurred, { contentType: "image/jpeg", upsert: false });
+    if (error) return null;
+    return publicPhotoUrl(objectPath);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Backfill path for photos that predate the blur pipeline: fetch the original bytes and blur +
+ * upload a derivative. Used lazily (on first Browse read) rather than a bulk migration. The
+ * bucket is private, so this must download via the authenticated storage client — a plain
+ * `fetch()` on the stored URL would 400 ("Bucket not found" is Supabase's response for an
+ * unauthenticated request against a private bucket).
+ */
+export async function saveBlurredVariantFromUrl(
+  userId: bigint | string,
+  originalUrl: string
+): Promise<string | null> {
+  try {
+    const client = storageClient();
+    await ensureBucket(client);
+    const objectPath = photoObjectPath(originalUrl);
+    if (!objectPath) return null;
+    const { data, error } = await client.storage.from(BUCKET).download(objectPath);
+    if (error || !data) return null;
+    const buf = Buffer.from(await data.arrayBuffer());
+    return uploadBlurredVariant(client, userId, buf);
+  } catch {
+    return null;
   }
 }
 
@@ -148,9 +201,14 @@ export async function saveDataUrlPhoto(
     )
     .catch(() => undefined);
 
+  // Only "public" photos are ever shown to other members pre-match — verification photos are
+  // admin-only and never need a blurred rendition.
+  const blurUrl = kind === "public" ? await uploadBlurredVariant(client, userId, buf) : null;
+
   return {
     relative: objectPath,
     url: publicPhotoUrl(objectPath),
+    blurUrl,
     watermark,
     bytes: buf.length,
   };

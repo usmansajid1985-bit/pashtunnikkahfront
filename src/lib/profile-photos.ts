@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { saveDataUrlPhoto } from "@/lib/photos";
+import { saveDataUrlPhoto, saveBlurredVariantFromUrl } from "@/lib/photos";
 import { ensurePhotosSchema } from "@/lib/ensure-photos-schema";
 
 export const MAX_PROFILE_PHOTOS = 3;
@@ -7,6 +7,7 @@ export const MAX_PROFILE_PHOTOS = 3;
 export type ProfilePhoto = {
   id: string;
   url: string;
+  blurUrl: string | null;
   isMain: boolean;
   status: "pending" | "approved" | "rejected";
   sortOrder: number;
@@ -15,6 +16,7 @@ export type ProfilePhoto = {
 type Row = {
   id: bigint;
   url: string;
+  blur_url: string | null;
   is_main: boolean;
   status: string;
   sort_order: number;
@@ -22,7 +24,7 @@ type Row = {
 
 async function rows(userId: bigint): Promise<Row[]> {
   return prisma.$queryRaw<Row[]>`
-    SELECT id, url, is_main, status, sort_order
+    SELECT id, url, blur_url, is_main, status, sort_order
     FROM profile_photos WHERE user_id = ${userId}
     ORDER BY sort_order ASC, id ASC
   `.catch(() => [] as Row[]);
@@ -32,6 +34,7 @@ function toPhoto(r: Row): ProfilePhoto {
   return {
     id: r.id.toString(),
     url: r.url,
+    blurUrl: r.blur_url,
     isMain: r.is_main,
     status: (r.status as ProfilePhoto["status"]) ?? "pending",
     sortOrder: r.sort_order,
@@ -51,16 +54,28 @@ async function syncMainPhoto(userId: bigint): Promise<void> {
   const main = pickMain(list);
   const profile = await prisma.profiles.findUnique({
     where: { user_id: userId },
-    select: { photo_url: true, photo_status: true, photo_version: true, status: true },
+    select: { photo_url: true, photo_blur_url: true, photo_status: true, photo_version: true, status: true },
   });
   if (!profile) return;
 
   if (!main) {
     await prisma.profiles.update({
       where: { user_id: userId },
-      data: { photo_url: null, photo_status: null, updated_at: new Date() },
+      data: { photo_url: null, photo_blur_url: null, photo_status: null, updated_at: new Date() },
     });
     return;
+  }
+
+  // Legacy photo rows (backfilled before the blur pipeline existed) may not have a blurred
+  // rendition yet — generate one lazily rather than requiring a bulk migration.
+  let blurUrl = main.blur_url;
+  if (!blurUrl) {
+    blurUrl = await saveBlurredVariantFromUrl(userId, main.url);
+    if (blurUrl) {
+      await prisma.$executeRaw`
+        UPDATE profile_photos SET blur_url = ${blurUrl}, updated_at = NOW() WHERE id = ${main.id}
+      `;
+    }
   }
 
   const urlChanged = profile.photo_url !== main.url;
@@ -72,6 +87,7 @@ async function syncMainPhoto(userId: bigint): Promise<void> {
         where: { user_id: userId },
         data: {
           photo_url: main.url,
+          photo_blur_url: blurUrl,
           photo_verification_url: main.url,
           photo_status: "pending",
           photo_version: (profile.photo_version ?? 0) + 1,
@@ -84,11 +100,19 @@ async function syncMainPhoto(userId: bigint): Promise<void> {
         WHERE user_id = ${userId} AND id = ${main.id} AND status <> 'pending'
       `,
     ]);
-  } else if (profile.photo_status && profile.photo_status !== main.status) {
-    await prisma.$executeRaw`
-      UPDATE profile_photos SET status = ${profile.photo_status}, updated_at = NOW()
-      WHERE user_id = ${userId} AND id = ${main.id}
-    `;
+  } else {
+    if (profile.photo_blur_url !== blurUrl) {
+      await prisma.profiles.update({
+        where: { user_id: userId },
+        data: { photo_blur_url: blurUrl, updated_at: new Date() },
+      });
+    }
+    if (profile.photo_status && profile.photo_status !== main.status) {
+      await prisma.$executeRaw`
+        UPDATE profile_photos SET status = ${profile.photo_status}, updated_at = NOW()
+        WHERE user_id = ${userId} AND id = ${main.id}
+      `;
+    }
   }
 }
 
@@ -138,9 +162,9 @@ export async function addProfilePhoto(
   const isFirst = existing.length === 0;
   const nextOrder = existing.length;
   const created = await prisma.$queryRaw<Row[]>`
-    INSERT INTO profile_photos (user_id, url, is_main, status, sort_order, created_at, updated_at)
-    VALUES (${userId}, ${saved.url}, ${isFirst}, 'pending', ${nextOrder}, NOW(), NOW())
-    RETURNING id, url, is_main, status, sort_order
+    INSERT INTO profile_photos (user_id, url, blur_url, is_main, status, sort_order, created_at, updated_at)
+    VALUES (${userId}, ${saved.url}, ${saved.blurUrl}, ${isFirst}, 'pending', ${nextOrder}, NOW(), NOW())
+    RETURNING id, url, blur_url, is_main, status, sort_order
   `;
   await syncMainPhoto(userId);
   return { ok: true, photo: toPhoto(created[0]) };
@@ -179,27 +203,32 @@ export async function setMainProfilePhoto(userId: bigint, photoId: bigint): Prom
 
 /**
  * One-shot import for the signup flow: persist an ordered list of data-URLs, mark `mainIndex`
- * as the main photo. Returns the main photo's stored URL for `profiles.photo_url`.
+ * as the main photo. Returns the main photo's stored URL (and blurred derivative) for
+ * `profiles.photo_url` / `profiles.photo_blur_url`.
  */
 export async function importSignupPhotos(
   userId: bigint,
   dataUrls: string[],
   mainIndex = 0
-): Promise<{ mainUrl: string | null; count: number }> {
+): Promise<{ mainUrl: string | null; mainBlurUrl: string | null; count: number }> {
   await ensurePhotosSchema();
   const clean = dataUrls.filter((d) => typeof d === "string" && d.startsWith("data:image/")).slice(0, MAX_PROFILE_PHOTOS);
-  if (clean.length === 0) return { mainUrl: null, count: 0 };
+  if (clean.length === 0) return { mainUrl: null, mainBlurUrl: null, count: 0 };
 
   let mainUrl: string | null = null;
+  let mainBlurUrl: string | null = null;
   for (let i = 0; i < clean.length; i++) {
     const saved = await saveDataUrlPhoto(userId, clean[i], "public").catch(() => null);
     if (!saved) continue;
     const isMain = i === Math.min(Math.max(mainIndex, 0), clean.length - 1);
-    if (isMain) mainUrl = saved.url;
+    if (isMain) {
+      mainUrl = saved.url;
+      mainBlurUrl = saved.blurUrl;
+    }
     await prisma.$executeRaw`
-      INSERT INTO profile_photos (user_id, url, is_main, status, sort_order, created_at, updated_at)
-      VALUES (${userId}, ${saved.url}, ${isMain}, 'pending', ${i}, NOW(), NOW())
+      INSERT INTO profile_photos (user_id, url, blur_url, is_main, status, sort_order, created_at, updated_at)
+      VALUES (${userId}, ${saved.url}, ${saved.blurUrl}, ${isMain}, 'pending', ${i}, NOW(), NOW())
     `;
   }
-  return { mainUrl, count: clean.length };
+  return { mainUrl, mainBlurUrl, count: clean.length };
 }

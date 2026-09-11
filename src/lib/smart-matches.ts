@@ -8,6 +8,7 @@ import {
 } from "@/lib/compatibility-cache";
 import { prisma } from "@/lib/prisma";
 import { blockedUserIds } from "@/lib/blocking";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 
 export const SMART_MATCHES_POOL = 50;
 export const SMART_MATCHES_SHOW = 12;
@@ -33,6 +34,7 @@ export async function loadSmartMatches(viewerId: bigint): Promise<{
   isGold: boolean;
   items: SmartMatchItem[];
 } | null> {
+  await ensureBrowseAndWaliSchema();
   const [meUser, me] = await Promise.all([
     prisma.users.findUnique({ where: { id: viewerId }, select: { plan: true } }),
     prisma.profiles.findUnique({

@@ -112,12 +112,14 @@ export async function POST(req: Request) {
     const mainIndex = Number.isInteger(body.mainPhotoIndex) ? Number(body.mainPhotoIndex) : 0;
 
     let photoUrl: string | null = null;
+    let photoBlurUrl: string | null = null;
     let photoVerificationUrl: string | null = null;
     if (photoList.length > 0) {
       try {
         const { importSignupPhotos } = await import("@/lib/profile-photos");
         const res = await importSignupPhotos(userId, photoList, mainIndex);
         photoUrl = res.mainUrl;
+        photoBlurUrl = res.mainBlurUrl;
         photoVerificationUrl = res.mainUrl;
         extras.hasPhoto = res.count > 0;
       } catch (e) {
@@ -179,6 +181,7 @@ export async function POST(req: Request) {
       phone_country_code: body.phoneCountry || null,
       photo_status: photoUrl ? "pending" : null,
       photo_url: photoUrl,
+      photo_blur_url: photoBlurUrl,
       photo_verification_url: photoVerificationUrl,
       photo_version: photoUrl ? 1 : null,
       traits: JSON.stringify(extras),

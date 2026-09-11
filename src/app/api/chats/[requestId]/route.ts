@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -16,6 +16,7 @@ import { ChatBlockedError } from "@/lib/moderation";
 import { processWaliReminders } from "@/lib/wali-reminders";
 import { broadcastChat } from "@/lib/chat-broadcast";
 import { threadTopic } from "@/lib/realtime-topics";
+import { signedPhotoUrl, saveBlurredVariantFromUrl } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -106,13 +107,41 @@ export async function GET(
     ? await loadMessagePage(requestId, null, limit)
     : { messages: [] as ReturnType<typeof serializeMessage>[], hasMore: false };
 
+  // Never send the peer's original photo URL to a viewer who isn't cleared to see it — the
+  // client only ever applies a CSS filter, which doesn't stop the real bytes being read from
+  // this response. Matched-but-not-shared gets the pre-blurred derivative instead.
+  if (!meta.photoVisible && peerProfile?.photoUrl && !peerProfile.photoBlurUrl) {
+    const blurTargetId = peerId;
+    const originalUrl = peerProfile.photoUrl;
+    after(async () => {
+      const blurUrl = await saveBlurredVariantFromUrl(blurTargetId, originalUrl);
+      if (blurUrl) {
+        await prisma.profiles
+          .update({ where: { user_id: blurTargetId }, data: { photo_blur_url: blurUrl } })
+          .catch(() => undefined);
+      }
+    });
+  }
+  const peerProfileSafe = peerProfile
+    ? {
+        ...peerProfile,
+        photoUrl: meta.photoVisible
+          ? peerProfile.photoUrl
+            ? await signedPhotoUrl(peerProfile.photoUrl)
+            : null
+          : peerProfile.photoBlurUrl
+            ? await signedPhotoUrl(peerProfile.photoBlurUrl)
+            : null,
+      }
+    : null;
+
   return NextResponse.json({
     hasMore,
     requestId: requestId.toString(),
     userId: session.userId,
     realtimeTopic: threadTopic(requestId.toString()),
     peer,
-    peerProfile,
+    peerProfile: peerProfileSafe,
     messages,
     matchStatus: req.status,
     matchEnded,

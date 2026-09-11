@@ -1,6 +1,8 @@
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
+import { saveBlurredVariantFromUrl, signedPhotoUrl } from "@/lib/photos";
 import {
   FAIR_EXPOSURE_WINDOW_DAYS,
   NEW_MEMBER_BOOST_DAYS,
@@ -24,6 +26,7 @@ export type RankableBrowseRow = {
   occupation: string | null;
   about_me: string | null;
   photo_url: string | null;
+  photo_blur_url: string | null;
   marital_status: string | null;
   religious_practice: string | null;
   religious_methodology: string | null;
@@ -163,27 +166,48 @@ export async function rankBrowseProfiles(
 
   scored.sort((a, b) => a.sortKey - b.sortKey);
 
-  return scored.map(({ r, lastSeen, joined, sortKey: _sk }) => {
-    const bucket = activityBucket(lastSeen, now);
-    return {
-      id: r.id.toString(),
-      userId: r.user_id.toString(),
-      profileCode: r.profile_code,
-      age: r.age,
-      height: displayHeight(r.height_cm, r.height),
-      tribe: r.tribe,
-      country: r.country,
-      city: r.city,
-      occupation: r.occupation,
-      aboutMe: r.about_me,
-      avatarSeed: Number(r.id % BigInt(70)),
-      photoUrl: r.photo_url,
-      activityBucket: bucket,
-      online: isOnline(lastSeen, now),
-      justJoined: isJustJoined(joined, now),
-      lastSeenLabel: formatLastSeen(lastSeen, now),
-    };
-  });
+  return Promise.all(
+    scored.map(async ({ r, lastSeen, joined, sortKey: _sk }) => {
+      const bucket = activityBucket(lastSeen, now);
+      // Browse must never hand the client the original photo — only a server-blurred derivative
+      // (CSS blur alone can be undone via devtools/network inspection). Photos uploaded before
+      // the blur pipeline existed won't have one yet; backfill it in the background rather than
+      // block this response, and show no photo (card falls back to its placeholder) until ready.
+      if (r.photo_url && !r.photo_blur_url) {
+        const userId = r.user_id;
+        const photoUrl = r.photo_url;
+        after(async () => {
+          const blurUrl = await saveBlurredVariantFromUrl(userId, photoUrl);
+          if (blurUrl) {
+            await prisma.profiles
+              .update({ where: { user_id: userId }, data: { photo_blur_url: blurUrl } })
+              .catch(() => undefined);
+          }
+        });
+      }
+      // The storage bucket is private — the stored blur reference must be resolved to a
+      // short-lived signed URL before it can reach the browser.
+      const photoUrl = r.photo_blur_url ? await signedPhotoUrl(r.photo_blur_url) : null;
+      return {
+        id: r.id.toString(),
+        userId: r.user_id.toString(),
+        profileCode: r.profile_code,
+        age: r.age,
+        height: displayHeight(r.height_cm, r.height),
+        tribe: r.tribe,
+        country: r.country,
+        city: r.city,
+        occupation: r.occupation,
+        aboutMe: r.about_me,
+        avatarSeed: Number(r.id % BigInt(70)),
+        photoUrl,
+        activityBucket: bucket,
+        online: isOnline(lastSeen, now),
+        justJoined: isJustJoined(joined, now),
+        lastSeenLabel: formatLastSeen(lastSeen, now),
+      };
+    })
+  );
 }
 
 /**
@@ -250,6 +274,7 @@ export const BROWSE_PROFILE_SELECT = {
   occupation: true,
   about_me: true,
   photo_url: true,
+  photo_blur_url: true,
   marital_status: true,
   religious_practice: true,
   religious_methodology: true,

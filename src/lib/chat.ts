@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import {
   allowsPhotoShare,
   allowsPrivateChat,
@@ -232,6 +233,7 @@ export async function loadPeer(peerId: bigint) {
 
 /** Full profile view for embedding inline in the chat Profile tab (not the slim Peer header info). */
 export async function loadPeerProfileView(peerId: bigint) {
+  await ensureBrowseAndWaliSchema();
   const [user, profile] = await Promise.all([
     prisma.users.findUnique({
       where: { id: peerId },

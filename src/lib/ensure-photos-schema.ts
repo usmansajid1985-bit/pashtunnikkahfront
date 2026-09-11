@@ -22,6 +22,12 @@ export async function ensurePhotosSchema() {
       CREATE INDEX IF NOT EXISTS idx_profile_photos_user
         ON profile_photos (user_id, sort_order)
     `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE profile_photos ADD COLUMN IF NOT EXISTS blur_url VARCHAR(500)
+    `);
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE profiles ADD COLUMN IF NOT EXISTS photo_blur_url VARCHAR(500)
+    `);
     ensured = true;
   } catch (err) {
     console.error("ensurePhotosSchema", err);

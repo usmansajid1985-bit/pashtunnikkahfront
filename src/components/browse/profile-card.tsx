@@ -10,6 +10,7 @@ export type ProfileCardData = {
   occupation: string | null;
   aboutMe: string | null;
   avatarSeed: number;
+  /** Server-side blurred derivative only — never the original photo. */
   photoUrl?: string | null;
   matchScore?: number;
   matchReasons?: string[];

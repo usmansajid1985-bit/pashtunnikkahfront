@@ -27,7 +27,8 @@ export async function ensureBrowseAndWaliSchema() {
       ALTER TABLE profiles
         ADD COLUMN IF NOT EXISTS country_code VARCHAR(8),
         ADD COLUMN IF NOT EXISTS height_cm INT,
-        ADD COLUMN IF NOT EXISTS location_precision VARCHAR(16)
+        ADD COLUMN IF NOT EXISTS location_precision VARCHAR(16),
+        ADD COLUMN IF NOT EXISTS photo_blur_url VARCHAR(500)
     `);
     await prisma.$executeRawUnsafe(`
       ALTER TABLE match_requests

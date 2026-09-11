@@ -51,6 +51,8 @@ export type ProfileView = {
   interests: string[];
   photoStatus: string | null;
   photoUrl: string | null;
+  /** Pre-blurred server-side derivative — safe to show a viewer who isn't authorised for the original. */
+  photoBlurUrl: string | null;
   communicationMode: string | null;
   status: string;
   isHidden: boolean;
@@ -195,6 +197,7 @@ export function mapProfileView(
     interests,
     photoStatus: profile.photo_status,
     photoUrl: profile.photo_url || null,
+    photoBlurUrl: profile.photo_blur_url || null,
     communicationMode: extras.communicationMode || null,
     status: profile.status,
     isHidden: profile.is_hidden,

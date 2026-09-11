@@ -14,6 +14,7 @@ import { isOnline, formatLastSeen } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
 import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
 import { signedPhotoUrl } from "@/lib/photos";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function PublicProfilePage({
   const session = await getSession();
   if (!session) redirect("/login");
 
+  await ensureBrowseAndWaliSchema();
   const { code } = await params;
   const { from } = await searchParams;
   // Restore the exact filtered Browse the user came from (PN-BROWSE-003).
