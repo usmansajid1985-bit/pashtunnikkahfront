@@ -39,6 +39,16 @@ export async function POST(
       return NextResponse.json({ error: `Cannot accept a ${match.status} request` }, { status: 400 });
     }
 
+    // PN-BACKEND-002: accepting is a relationship-continuing action — the same gate as sending.
+    // Declining/withdrawing are left ungated; those are self-protective, not relationship-forming.
+    const { isProfileApproved } = await import("@/lib/approval");
+    if (!(await isProfileApproved(me))) {
+      return NextResponse.json(
+        { error: "Your profile must be approved before you can accept an Introduction.", code: "profile_pending" },
+        { status: 403 }
+      );
+    }
+
     const mode = await resolveModeForMatch(match.sender_id, match.receiver_id);
     await prisma.match_requests.update({
       where: { id },

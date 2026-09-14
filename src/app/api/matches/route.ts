@@ -164,6 +164,16 @@ export async function POST(req: Request) {
     );
   }
 
+  // PN-REG-004: a profile moved back to Awaiting Approval must not be able to send a new
+  // Introduction (and spend a credit) — this only checked the peer's approval status before.
+  const { isProfileApproved } = await import("@/lib/approval");
+  if (!(await isProfileApproved(me))) {
+    return NextResponse.json(
+      { error: "Your profile must be approved before you can send Introductions.", code: "profile_pending" },
+      { status: 403 }
+    );
+  }
+
   await maybeRenewMonthlyCredits(me);
   await maybeRenewRematchTokens(me);
 

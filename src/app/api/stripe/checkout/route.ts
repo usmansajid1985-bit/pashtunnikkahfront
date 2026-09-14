@@ -60,6 +60,7 @@ export async function POST() {
         type: "subscription",
         plan_or_pack: "gold",
         amount_pence: checkout.amount_total ?? 1000,
+        currency: (checkout.currency || "gbp").toLowerCase(),
         status: "pending",
         created_at: new Date(),
       },

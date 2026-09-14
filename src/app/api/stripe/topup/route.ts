@@ -49,6 +49,7 @@ export async function POST() {
         type: "topup",
         plan_or_pack: "5_credits",
         amount_pence: checkout.amount_total ?? TOPUP_AMOUNT_PENCE,
+        currency: (checkout.currency || "gbp").toLowerCase(),
         status: "pending",
         created_at: new Date(),
       },

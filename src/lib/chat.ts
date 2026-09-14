@@ -198,6 +198,11 @@ export async function assertAcceptedParticipant(requestId: bigint, userId: bigin
   // must cut off every chat surface: messages, profile, photo share, reactions, wali handover.
   // Checked here rather than per-route so nothing new added later can accidentally forget it.
   if (await isBlockedBetween(req.sender_id, req.receiver_id)) return null;
+  // A profile moved back to Awaiting Approval must lose every WRITE surface (message, photo
+  // share, wali action) the same way — checked centrally for the same reason as the block above.
+  // Read access (assertMatchParticipant) is intentionally not gated here.
+  const { isProfileApproved } = await import("@/lib/approval");
+  if (!(await isProfileApproved(userId))) return null;
   return req;
 }
 
@@ -456,6 +461,14 @@ export async function createMessage(opts: {
     throw new Error("This conversation is no longer available.");
   }
 
+  // Defense-in-depth: the route already gates this via assertAcceptedParticipant, but
+  // createMessage duplicates its own status/block checks above rather than calling that helper,
+  // so the approval check needs to be duplicated here too (PN-BACKEND-002).
+  const { isProfileApproved } = await import("@/lib/approval");
+  if (!(await isProfileApproved(opts.senderId))) {
+    throw new Error("Your profile must be approved before you can send messages.");
+  }
+
   const body = opts.body.trim().slice(0, 4000);
   if (!body) throw new Error("Empty message");
 
@@ -546,8 +559,11 @@ export async function createContactCardMessage(opts: {
 
   const senderProfile = await prisma.profiles.findUnique({
     where: { user_id: opts.senderId },
-    select: { gender: true },
+    select: { gender: true, status: true },
   });
+  if (senderProfile?.status !== "approved") {
+    throw new Error("Your profile must be approved before you can do this.");
+  }
   if (!(senderProfile?.gender || "").toLowerCase().startsWith("f")) {
     throw new Error("Only the sister can send a wali contact card.");
   }

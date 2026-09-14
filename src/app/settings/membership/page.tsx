@@ -65,9 +65,20 @@ export default async function MembershipPage() {
               {isGold ? "Gold" : "Basic"}
             </p>
             <p className="text-sm text-ink-700/60 mt-1">
-              {user.requests_remaining} Match Requests · {rematchTokens} rematch tokens · status{" "}
-              {user.subscription_status || "none"}
+              {user.requests_remaining} Match Requests (current balance) · {rematchTokens} rematch tokens ·
+              status {user.subscription_status || "none"}
             </p>
+            {isGold && user.subscription_cancel_at ? (
+              <p className="mt-1.5 text-sm font-semibold text-amber-700">
+                Gold — cancels on{" "}
+                {user.subscription_cancel_at.toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+                . Your membership stays active until then and won&apos;t renew.
+              </p>
+            ) : null}
           </div>
           <Suspense fallback={null}>
             <MembershipActions
@@ -124,8 +135,15 @@ export default async function MembershipPage() {
                   <p className="text-xs text-ink-700/50">{p.created_at.toLocaleString()}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold">${(p.amount_pence / 100).toFixed(2)}</p>
-                  <p className="text-xs capitalize text-ink-700/50">{p.status}</p>
+                  <p className="font-semibold">
+                    {new Intl.NumberFormat("en-GB", {
+                      style: "currency",
+                      currency: (p.currency || "gbp").toUpperCase(),
+                    }).format(p.amount_pence / 100)}
+                  </p>
+                  <p className="text-xs capitalize text-ink-700/50">
+                    {p.status === "pending" ? "Pending / not completed" : p.status}
+                  </p>
                 </div>
               </li>
             ))}

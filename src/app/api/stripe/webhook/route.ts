@@ -11,6 +11,7 @@ import {
   TOPUP_AMOUNT_PENCE,
 } from "@/lib/stripe";
 import { ensureP1Schema } from "@/lib/ensure-p1-schema";
+import { ensureStripeWebhookSchema } from "@/lib/ensure-stripe-webhook-schema";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,6 +37,21 @@ export async function POST(req: Request) {
 
   try {
     await ensureP1Schema();
+    await ensureStripeWebhookSchema();
+
+    // Stripe redelivers on anything but a fast 200 (timeouts, deploys, transient 5xx), and can
+    // occasionally send the same event twice outright. Claim the event id atomically before
+    // doing any work — INSERT ... ON CONFLICT DO NOTHING tells us in one round trip whether we
+    // (or a concurrent delivery) already processed it, without a separate check-then-insert race.
+    const claim = await prisma.$executeRaw`
+      INSERT INTO stripe_webhook_events (event_id, type)
+      VALUES (${event.id}, ${event.type})
+      ON CONFLICT (event_id) DO NOTHING
+    `;
+    if (claim === 0) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
@@ -46,6 +62,7 @@ export async function POST(req: Request) {
             userId: BigInt(userIdRaw),
             sessionId: session.id,
             amountPence: session.amount_total ?? TOPUP_AMOUNT_PENCE,
+            currency: session.currency,
           });
           break;
         }
@@ -61,6 +78,7 @@ export async function POST(req: Request) {
           customerId: customer,
           subscriptionId: sub,
           amountPence: session.amount_total ?? 1000,
+          currency: session.currency,
         });
         break;
       }
@@ -125,6 +143,13 @@ export async function POST(req: Request) {
           await prisma.$executeRaw`UPDATE users SET payment_grace_until = NULL WHERE id = ${user.id}`.catch(
             () => undefined
           );
+          // Cancelled-at-period-end shows as status "active" right up until the period actually
+          // ends — Stripe sets `cancel_at` to that same moment, so it's the one field we need to
+          // let PN show "Gold — cancels on <date>" without a fresh Stripe call (billing QA fix #4).
+          const cancelAt = sub.cancel_at_period_end && sub.cancel_at ? new Date(sub.cancel_at * 1000) : null;
+          await prisma.$executeRaw`
+            UPDATE users SET subscription_cancel_at = ${cancelAt} WHERE id = ${user.id}
+          `.catch(() => undefined);
         } else if (sub.status === "past_due") {
           await markPaymentPastDue(user.id);
         } else if (["canceled", "unpaid", "incomplete_expired"].includes(sub.status)) {

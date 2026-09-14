@@ -131,8 +131,10 @@ export async function activateGoldFromCheckout(opts: {
   customerId?: string | null;
   subscriptionId?: string | null;
   amountPence: number;
+  currency?: string | null;
 }) {
   const now = new Date();
+  const currency = (opts.currency || "gbp").toLowerCase();
   const existingPay = await prisma.payments.findUnique({
     where: { stripe_session_id: opts.sessionId },
   });
@@ -146,6 +148,7 @@ export async function activateGoldFromCheckout(opts: {
         type: "subscription",
         plan_or_pack: "gold",
         amount_pence: opts.amountPence,
+        currency,
         status: "completed",
         created_at: now,
       },
@@ -153,7 +156,7 @@ export async function activateGoldFromCheckout(opts: {
   } else if (existingPay.status !== "completed") {
     await prisma.payments.update({
       where: { id: existingPay.id },
-      data: { status: "completed", amount_pence: opts.amountPence },
+      data: { status: "completed", amount_pence: opts.amountPence, currency },
     });
   }
 
@@ -172,6 +175,10 @@ export async function activateGoldFromCheckout(opts: {
       updated_at: now,
     },
   });
+  // A fresh checkout means any previously-scheduled cancellation no longer applies.
+  await prisma.$executeRaw`
+    UPDATE users SET subscription_cancel_at = NULL WHERE id = ${opts.userId}
+  `.catch(() => undefined);
 
   await applyGoldRenewal(opts.userId, currentUser?.requests_remaining ?? 0);
 
@@ -188,6 +195,7 @@ export async function activateGoldFromCheckout(opts: {
           stripe_payment_intent_id: "",
           plan: "gold",
           amount_pence: opts.amountPence,
+          currency,
           subscription_started_at: now,
           created_at: now,
         },
@@ -205,17 +213,19 @@ export async function downgradeFromGold(userId: bigint, reason = "canceled") {
       updated_at: new Date(),
     },
   });
-  await prisma.$executeRaw`UPDATE users SET payment_grace_until = NULL WHERE id = ${userId}`.catch(
-    () => undefined
-  );
+  await prisma.$executeRaw`
+    UPDATE users SET payment_grace_until = NULL, subscription_cancel_at = NULL WHERE id = ${userId}
+  `.catch(() => undefined);
 }
 
 export async function activateTopupFromCheckout(opts: {
   userId: bigint;
   sessionId: string;
   amountPence: number;
+  currency?: string | null;
 }) {
   const now = new Date();
+  const currency = (opts.currency || "gbp").toLowerCase();
   let paymentId: bigint | null = null;
   const existingPay = await prisma.payments.findUnique({
     where: { stripe_session_id: opts.sessionId },
@@ -231,6 +241,7 @@ export async function activateTopupFromCheckout(opts: {
         type: "topup",
         plan_or_pack: "5_credits",
         amount_pence: opts.amountPence,
+        currency,
         status: "completed",
         created_at: now,
       },
@@ -243,6 +254,7 @@ export async function activateTopupFromCheckout(opts: {
       data: {
         status: "completed",
         amount_pence: opts.amountPence,
+        currency,
         type: "topup",
         plan_or_pack: "5_credits",
       },
@@ -302,6 +314,7 @@ export async function syncCheckoutSession(sessionId: string) {
       userId,
       sessionId: session.id,
       amountPence: session.amount_total ?? TOPUP_AMOUNT_PENCE,
+      currency: session.currency,
     });
     return { ok: true as const, userId: userId.toString(), type: "topup" as const };
   }
@@ -320,6 +333,7 @@ export async function syncCheckoutSession(sessionId: string) {
     customerId: customer,
     subscriptionId: sub,
     amountPence: amount,
+    currency: session.currency,
   });
 
   return { ok: true as const, userId: userId.toString(), type: "gold" as const };
