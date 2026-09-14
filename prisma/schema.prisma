@@ -487,6 +487,42 @@ model profile_photos {
   @@index([user_id, sort_order])
 }
 
+/// V2 Private Photo Reveal (docs/V2_PRIVATE_PHOTO_REVEAL_AND_NOTIFICATIONS.md): a matched member
+/// shares up to 3 of their own `profile_photos` for one server-authoritative 60-second viewing
+/// session. Latest row per (match_request_id, sender_id, recipient_id) is the live session; an
+/// older row is just history. Wali fields let the recipient's wali get their own independent
+/// 60s session over the same share without ever consuming the recipient's own timer.
+model private_photo_shares {
+  id                       BigInt    @id @default(autoincrement())
+  match_request_id         BigInt
+  sender_id                BigInt
+  recipient_id             BigInt
+  photo_ids                BigInt[]
+  status                   String    @default("shared") @db.VarChar(16)
+  shared_at                DateTime  @default(now()) @db.Timestamptz(6)
+  viewing_started_at       DateTime? @db.Timestamptz(6)
+  expires_at               DateTime? @db.Timestamptz(6)
+  wali_allowed_at          DateTime? @db.Timestamptz(6)
+  wali_viewing_started_at  DateTime? @db.Timestamptz(6)
+  wali_expires_at          DateTime? @db.Timestamptz(6)
+  created_at               DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([match_request_id, recipient_id, shared_at], map: "idx_private_photo_shares_recipient")
+  @@index([match_request_id, sender_id, recipient_id, shared_at], map: "idx_private_photo_shares_sender")
+}
+
+/// Audit trail for private photo access (spec §23) — who received, when viewing started/expired,
+/// and any access attempts against an already-expired or unauthorised session.
+model private_photo_access_log {
+  id         BigInt   @id @default(autoincrement())
+  share_id   BigInt
+  event      String   @db.VarChar(32)
+  actor_id   BigInt?
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([share_id, created_at], map: "idx_private_photo_access_log_share")
+}
+
 model referrals {
   id                                 BigInt   @id
   referrer_id                        BigInt

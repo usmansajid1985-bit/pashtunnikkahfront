@@ -16,6 +16,8 @@ import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliHandoverPanel } from "@/components/chat/wali-handover-panel";
+import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
+import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
@@ -311,6 +313,9 @@ export function ChatApp({
   const [photoOnceBusy, setPhotoOnceBusy] = useState(false);
   const [revealedPhotoUrl, setRevealedPhotoUrl] = useState<string | null>(null);
   const [revealedAvatarSeed, setRevealedAvatarSeed] = useState<number | null>(null);
+  const [incomingPrivatePhotoStatus, setIncomingPrivatePhotoStatus] = useState<
+    "none" | "shared" | "active" | "expired"
+  >("none");
   const [commMode, setCommMode] = useState<string>("standard");
   const [wali, setWali] = useState<{
     name: string;
@@ -493,6 +498,7 @@ export function ChatApp({
         setCanRevealPhotoOnce(Boolean(data.canRevealPhotoOnce));
         setRevealedPhotoUrl(null);
         setRevealedAvatarSeed(null);
+        setIncomingPrivatePhotoStatus("none");
         setMatchEnded(Boolean(data.matchEnded));
         setEndReason(data.endReason ?? null);
         setShowEndConfirm(false);
@@ -1301,11 +1307,13 @@ export function ChatApp({
                           ? `${displayName} is typing…`
                           : !connected
                             ? "Connecting to chat…"
-                            : photoShared
-                              ? "Photo shared"
-                              : commMode === "wali_oversight"
-                                ? "Wali oversight · photo private"
-                                : peer?.code || activeThread?.peerCode}
+                            : incomingPrivatePhotoStatus === "shared" || incomingPrivatePhotoStatus === "active"
+                              ? "🔒 Private photos available"
+                              : photoShared
+                                ? "Photo shared"
+                                : commMode === "wali_oversight"
+                                  ? "Wali oversight · photo private"
+                                  : peer?.code || activeThread?.peerCode}
                       </p>
                     </div>
                     {!matchEnded ? (
@@ -1332,20 +1340,23 @@ export function ChatApp({
                         </svg>
                       </button>
                     ) : null}
-                    {!matchEnded && (canSharePhoto || canSendPhotoOnce) ? (
+                    {!matchEnded ? (
                       <button
                         type="button"
                         onClick={() => setHeaderMenu((m) => (m === "photo" ? null : "photo"))}
-                        className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
+                        className={`relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
                           headerMenu === "photo" ? "bg-rose-50 text-rose-700" : "text-ink-700"
                         }`}
-                        aria-label="Photo sharing"
-                        title="Photo"
+                        aria-label="Private photos"
+                        title="Private photos"
                       >
                         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 8a2 2 0 0 1 2-2h2l1.4-2h7.2L20 6h-1a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8Z" />
-                          <circle cx="12" cy="12.5" r="3.5" />
+                          <rect x="5" y="10" width="14" height="10" rx="2" />
+                          <path d="M8 10V7a4 4 0 0 1 8 0v3" />
                         </svg>
+                        {incomingPrivatePhotoStatus === "shared" || incomingPrivatePhotoStatus === "active" ? (
+                          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
+                        ) : null}
                       </button>
                     ) : null}
                     <button
@@ -1389,6 +1400,14 @@ export function ChatApp({
                       Profile
                     </button>
                   </div>
+
+                  {activeId ? (
+                    <PrivatePhotoStatusWatcher
+                      requestId={activeId}
+                      matchEnded={matchEnded}
+                      onStatusChange={setIncomingPrivatePhotoStatus}
+                    />
+                  ) : null}
 
                   {/* Wali / Photo actions live here as popovers to keep the composer uncluttered */}
                   {headerMenu ? (
@@ -1492,90 +1511,15 @@ export function ChatApp({
                             />
                           </div>
                         ) : null}
-                        {headerMenu === "photo" ? (
-                          <div className="p-3.5">
-                            <p className="text-[11px] font-bold uppercase tracking-wide text-ink-700/55">
-                              Photo
-                            </p>
-                            {shareConfirm ? (
-                              <div className="mt-2 rounded-xl border border-rose-100 bg-rose-50/60 p-3">
-                                <p className="text-[13px] text-ink-800 leading-relaxed">
-                                  Once shared, your matched member will be able to view your profile photo. You
-                                  can hide it again at any time.
-                                </p>
-                                <div className="mt-3 flex gap-2">
-                                  <button
-                                    type="button"
-                                    disabled={photoBusy}
-                                    onClick={() => void togglePhotoShare(true)}
-                                    className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
-                                  >
-                                    Show Photo
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setShareConfirm(false)}
-                                    className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="mt-2 flex flex-col gap-2">
-                                {canSharePhoto ? (
-                                  <button
-                                    type="button"
-                                    disabled={photoBusy}
-                                    onClick={() =>
-                                      photoShared
-                                        ? void togglePhotoShare(false)
-                                        : setShareConfirm(true)
-                                    }
-                                    className="w-full py-2.5 rounded-full border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50 disabled:opacity-50"
-                                  >
-                                    {photoBusy
-                                      ? "Saving…"
-                                      : photoShared
-                                        ? "Hide my photo"
-                                        : "Show my photo"}
-                                  </button>
-                                ) : null}
-
-                                {canSendPhotoOnce ? (
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      disabled={photoOnceBusy}
-                                      onClick={() => void sendPhotoOnceHandler()}
-                                      className="flex-1 py-2.5 rounded-full border border-indigo-200 text-indigo-700 text-sm font-semibold hover:bg-indigo-50 disabled:opacity-50"
-                                    >
-                                      {photoOnceBusy
-                                        ? "Sending…"
-                                        : photoOnceStatus === "none"
-                                          ? "Send a one-time photo"
-                                          : "Send a new one-time photo"}
-                                    </button>
-                                    {photoOnceStatus === "pending" ? (
-                                      <span className="shrink-0 text-[11px] font-semibold text-amber-700">
-                                        Sent · not viewed
-                                      </span>
-                                    ) : photoOnceStatus === "viewed" ? (
-                                      <span className="shrink-0 text-[11px] font-semibold text-emerald-700">
-                                        Viewed
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-
-                                <p className="text-[11px] text-ink-700/55 leading-snug">
-                                  <span className="font-semibold">Show my photo</span> stays visible until you
-                                  hide it. <span className="font-semibold">One-time photo</span> can be opened
-                                  once, then it disappears.
-                                </p>
-                              </div>
-                            )}
-                          </div>
+                        {headerMenu === "photo" && activeId ? (
+                          <PrivatePhotoShare
+                            requestId={activeId}
+                            matchEnded={matchEnded}
+                            peerName={displayName}
+                            variant="dropdown"
+                            open
+                            onIncomingStatusChange={setIncomingPrivatePhotoStatus}
+                          />
                         ) : null}
                     </div>
                   ) : null}
@@ -1587,52 +1531,21 @@ export function ChatApp({
                       <p className="text-center text-sm text-ink-700/50 py-16">Loading profile…</p>
                     ) : (
                       <>
-                        {!isFemaleViewer && canRevealPhotoOnce ? (
-                          <div className="m-4 rounded-2xl border border-indigo-200 bg-indigo-50/70 p-4 flex items-center justify-between gap-3">
-                            <div>
-                              <p className="font-bold text-ink-950 text-sm">One-time photo available</p>
-                              <p className="text-xs text-ink-700/70 mt-0.5">
-                                Tap to reveal — it can only be viewed once.
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              disabled={photoOnceBusy}
-                              onClick={() => void revealPhotoOnceHandler()}
-                              className="shrink-0 px-4 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold disabled:opacity-50"
-                            >
-                              {photoOnceBusy ? "Revealing…" : "Reveal"}
-                            </button>
-                          </div>
-                        ) : null}
-                        {!isFemaleViewer && (revealedPhotoUrl !== null || revealedAvatarSeed !== null) ? (
-                          <div className="m-4 rounded-2xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-800 font-medium">
-                            This one-time photo has been revealed and won&apos;t be shown again.
-                          </div>
-                        ) : null}
-                        {!isFemaleViewer &&
-                        !canRevealPhotoOnce &&
-                        photoOnceStatus === "viewed" &&
-                        revealedPhotoUrl === null &&
-                        revealedAvatarSeed === null ? (
-                          <div className="m-4 rounded-2xl border border-ink-900/8 bg-ink-900/[0.02] p-3 text-xs text-ink-700/60 font-medium">
-                            One-time photo already viewed.
-                          </div>
+                        {activeId ? (
+                          <PrivatePhotoShare
+                            requestId={activeId}
+                            matchEnded={matchEnded}
+                            peerName={displayName}
+                            variant="banner"
+                            onIncomingStatusChange={setIncomingPrivatePhotoStatus}
+                          />
                         ) : null}
                         <ProfileDesktop
                           profile={peerProfile}
                           embedded
                           hideNav
-                          photoOverrideUrl={
-                            revealedPhotoUrl !== null || revealedAvatarSeed !== null
-                              ? revealedPhotoUrl || avatarUrl(revealedAvatarSeed ?? seed)
-                              : peerProfile.photoUrl
-                          }
-                          photoOverrideVisible={
-                            revealedPhotoUrl !== null || revealedAvatarSeed !== null
-                              ? true
-                              : photoVisible
-                          }
+                          photoOverrideUrl={peerProfile.photoUrl}
+                          photoOverrideVisible={photoVisible}
                         />
                       </>
                     )}

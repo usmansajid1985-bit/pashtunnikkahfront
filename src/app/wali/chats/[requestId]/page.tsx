@@ -5,6 +5,7 @@ import { threadTopic } from "@/lib/realtime-topics";
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
+import { WaliPrivatePhoto } from "@/components/wali/wali-private-photo";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,7 @@ export default async function WaliChatThreadPage({
             View {peer?.name?.split(" ")[0] || "member"}&apos;s full profile →
           </Link>
         </div>
+        <WaliPrivatePhoto requestId={raw} peerCode={peer?.code || "Member"} />
         <WaliChatView
           requestId={raw}
           profileUserId={session.profileUserId}

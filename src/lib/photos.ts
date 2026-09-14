@@ -118,6 +118,25 @@ async function uploadBlurredVariant(
 }
 
 /**
+ * Fetch the original bytes for a stored photo, authenticated against the private bucket (a plain
+ * `fetch()` on the stored URL 400s — the bucket has no public/anonymous read). Used by the Private
+ * Photo Reveal viewer to run the original through the watermark pipeline server-side rather than
+ * ever handing out a directly-fetchable URL for it (spec §24).
+ */
+export async function fetchPhotoBytes(stored: string | null | undefined): Promise<Buffer | null> {
+  const objectPath = photoObjectPath(stored);
+  if (!objectPath) return null;
+  try {
+    const client = storageClient();
+    const { data, error } = await client.storage.from(BUCKET).download(objectPath);
+    if (error || !data) return null;
+    return Buffer.from(await data.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Backfill path for photos that predate the blur pipeline: fetch the original bytes and blur +
  * upload a derivative. Used lazily (on first Browse read) rather than a bulk migration. The
  * bucket is private, so this must download via the authenticated storage client — a plain
