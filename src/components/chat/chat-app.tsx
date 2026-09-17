@@ -15,6 +15,7 @@ import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } 
 import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import { WaliHandoverPanel } from "@/components/chat/wali-handover-panel";
 import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
@@ -1146,7 +1147,11 @@ export function ChatApp({
               </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            {/* Only shown over the inbox list — an open thread needs the full mobile viewport
+                for its composer, not a persistent tab bar competing for space. */}
+            {!activeId ? <MobileBottomNavGate active="messages" unreadCount={unreadCount} /> : null}
+
+            <div className="flex-1 overflow-y-auto pb-[var(--pn-bottom-nav-h)]">
               {threads.length === 0 ? (
                 <div className="px-6 py-16 text-center">
                   <p className="font-bold text-ink-950">No conversations yet</p>

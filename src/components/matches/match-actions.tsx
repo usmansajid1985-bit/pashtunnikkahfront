@@ -202,7 +202,7 @@ export function MatchActions({
   if (layout === "inline") return <div className="w-full">{actions}</div>;
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-30 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:static lg:bg-none lg:pt-4 lg:pb-0">
+    <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 z-30 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:static lg:bg-none lg:pt-4 lg:pb-0">
       <div className="max-w-lg lg:max-w-none mx-auto px-4 lg:px-0">{actions}</div>
     </div>
   );

@@ -5,6 +5,7 @@ import { BrowseAppNav } from "@/components/browse/app-nav";
 import { getNavCounts } from "@/lib/dashboard";
 import { getActivityFeed, getUpdatesFeed } from "@/lib/notifications";
 import { NotificationsView } from "@/components/notifications/notifications-view";
+import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,7 @@ export default async function NotificationsPage({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] lg:pl-60">
+      <StaleSessionGuard userId={session.userId} />
       <BrowseAppNav
         profileCode={session.profileCode}
         active="overview"
@@ -40,7 +42,7 @@ export default async function NotificationsPage({
         requestsCount={navCounts.incomingRequests}
         bellUnread={navCounts.bellUnread}
       />
-      <main className="max-w-2xl mx-auto px-4 py-6 lg:py-8">
+      <main className="max-w-2xl mx-auto px-4 py-6 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
         <NotificationsView
           initialTab={initialTab}
           initialActivity={activity}

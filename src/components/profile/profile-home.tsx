@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import type { ProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
+import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 
 type PhotoItem = {
   id: string;
@@ -156,6 +157,8 @@ export function ProfileHome({
             <span className="w-10" />
           </div>
         </div>
+
+        <MobileBottomNavGate active="profile" unreadCount={unreadCount} />
 
         <div
           ref={viewportRef}

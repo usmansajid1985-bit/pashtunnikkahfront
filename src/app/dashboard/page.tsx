@@ -56,7 +56,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
       <BrowseAppNav profileCode={session.profileCode} active="overview" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
-      <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]">
         <h1 className="text-2xl sm:text-3xl font-bold text-ink-950">
           Welcome back, {firstName} <span aria-hidden>👋</span>
         </h1>

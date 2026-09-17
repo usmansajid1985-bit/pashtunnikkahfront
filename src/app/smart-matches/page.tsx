@@ -24,7 +24,7 @@ export default async function SmartMatchesPage() {
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
       <BrowseAppNav profileCode={session.profileCode} active="smartMatches" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-8">
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
         <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">Gold intelligence</p>
         <h1 className="mt-1 text-[28px] lg:text-[34px] font-bold text-ink-950 tracking-tight">
           Smart Matches

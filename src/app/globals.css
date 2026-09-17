@@ -13,6 +13,19 @@
   --cream: #fdf6f3;
   --sand: #faf8f6;
   --gold: #cfa25d;
+  /* Height reserved for the sticky mobile bottom nav; 0 unless that style is active (see
+     useMobileNavStyle, which toggles this class) and always 0 on desktop. */
+  --pn-bottom-nav-h: 0px;
+}
+
+body.pn-has-bottom-nav {
+  --pn-bottom-nav-h: calc(3.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 1024px) {
+  body.pn-has-bottom-nav {
+    --pn-bottom-nav-h: 0px;
+  }
 }
 
 @theme inline {
@@ -41,6 +54,7 @@ body {
   color: var(--ink-900);
   background: white;
   overflow-x: hidden;
+  padding-top: env(safe-area-inset-top);
 }
 
 .font-serif {

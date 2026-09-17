@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
 
 export function SettingsShell({
@@ -47,7 +48,11 @@ export function SettingsShell({
         </div>
       </header>
 
-      <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 pb-12 lg:py-10">{children}</main>
+      <MobileBottomNavGate active="settings" unreadCount={unreadCount} />
+
+      <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 pb-[calc(3rem+var(--pn-bottom-nav-h))] lg:py-10">
+        {children}
+      </main>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView, statusLabel } from "@/lib/profile";
 import { SettingsRow, SettingsShell } from "@/components/settings/settings-ui";
+import { MobileNavStyleSettings } from "@/components/settings/mobile-nav-style-settings";
 import { CommunicationModeSettings } from "@/components/settings/communication-mode-settings";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { GoldBadgeSettings } from "@/components/settings/gold-badge-settings";
@@ -109,6 +110,8 @@ export default async function SettingsPage() {
       </div>
 
       <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />
+
+      <MobileNavStyleSettings />
 
       <ReferralsSettings />
 

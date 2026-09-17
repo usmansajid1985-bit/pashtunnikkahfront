@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { LogoutButton } from "@/components/logout-button";
-import { MobileNavMenu } from "@/components/browse/mobile-nav-menu";
+import { MobileNavAuto } from "@/components/browse/mobile-nav-auto";
 import { NAV_ITEMS, type NavKey } from "@/components/browse/nav-items";
 import { NavBell, NavCountBadge } from "@/components/browse/nav-notifications";
 
@@ -78,7 +78,7 @@ export function BrowseAppNav({
           </Link>
           <div className="flex items-center gap-1">
             <NavBell initialUnread={bellUnread} />
-            <MobileNavMenu items={NAV_ITEMS} active={active} unread={unreadCount} requests={requestsCount} />
+            <MobileNavAuto items={NAV_ITEMS} active={active} unread={unreadCount} requests={requestsCount} />
           </div>
         </div>
       </header>

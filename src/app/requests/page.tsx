@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { loadRequestsHub } from "@/lib/requests-hub";
 import { getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import { RequestsHub } from "@/components/requests/requests-hub";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,9 @@ export default async function RequestsPage({
         </div>
       </header>
 
-      <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 py-6">
+      <MobileBottomNavGate active="introductions" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} />
+
+      <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 py-6 pb-[var(--pn-bottom-nav-h)]">
         <div className="hidden lg:block mb-6">
           <h1 className="text-3xl font-bold text-ink-950">Requests</h1>
           <p className="mt-1 text-sm text-ink-700/65">

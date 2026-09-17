@@ -2,6 +2,7 @@ import type { ProfileView } from "@/lib/profile";
 import type { ReactNode } from "react";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
 import { MatchActions } from "@/components/matches/match-actions";
+import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import type { MatchRelationStatus } from "@/lib/matches";
 
 function Pill({
@@ -209,7 +210,11 @@ export function ProfilePreview({
         </div>
       </div>
 
-      <div className={`max-w-lg mx-auto px-4 ${showMobileChrome ? "pb-28" : "pb-6"}`}>
+      <div
+        className={`max-w-lg mx-auto px-4 ${
+          showMobileChrome ? "pb-[calc(7rem+var(--pn-bottom-nav-h))]" : "pb-[calc(1.5rem+var(--pn-bottom-nav-h))]"
+        }`}
+      >
         {profile.maritalStatus || profile.pashto || (profile.plan === "gold" && !profile.hideGoldBadge) ? (
           <div className="pt-4 flex flex-wrap gap-1.5">
             {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
@@ -394,8 +399,11 @@ export function ProfilePreview({
       </div>
 
       {/* Bottom CTA — mobile only */}
+      {!showMobileChrome || hideNav ? null : (
+        <MobileBottomNavGate active="browse" unreadCount={unreadCount} />
+      )}
       {!showMobileChrome ? null : showEditTab ? (
-        <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">
+        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">
           <div className="max-w-lg mx-auto px-4 flex gap-2">
             <a
               href="/profile/edit"
@@ -410,7 +418,7 @@ export function ProfilePreview({
           <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="fixed" />
         </div>
       ) : (
-        <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">
+        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">
           <div className="max-w-lg mx-auto px-4 flex gap-2">
             <a
               href={backHref || "/browse"}

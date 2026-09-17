@@ -85,9 +85,11 @@ export function NavBell({
 export function NavCountBadge({
   kind,
   initialCount = 0,
+  className = "",
 }: {
   kind: "requests" | "messages";
   initialCount?: number;
+  className?: string;
 }) {
   const counts = useNavCounts(
     kind === "requests"
@@ -97,7 +99,9 @@ export function NavCountBadge({
   const n = kind === "requests" ? counts.incomingRequests : counts.unreadMessages;
   if (n <= 0) return null;
   return (
-    <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center">
+    <span
+      className={`min-w-5 h-5 px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center ${className}`}
+    >
       {n > 99 ? "99+" : n}
     </span>
   );

@@ -149,7 +149,7 @@ export function ProfileEditForm({
 
       <form
         onSubmit={onSubmit}
-        className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-28 lg:pb-12"
+        className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(7rem+var(--pn-bottom-nav-h))] lg:pb-12"
       >
         {/* Desktop tabs */}
         <div className="hidden lg:flex lg:col-span-2 items-center justify-between mb-2">
@@ -486,7 +486,7 @@ export function ProfileEditForm({
           </p>
         ) : null}
 
-        <div className="fixed bottom-0 inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
+        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">
             <button
               type="submit"

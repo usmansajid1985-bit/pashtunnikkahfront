@@ -82,7 +82,13 @@ export function ProfileDesktop({
         />
       )}
 
-      <main className={embedded ? "px-4 sm:px-6 py-6" : "max-w-7xl mx-auto px-5 sm:px-8 py-8"}>
+      <main
+        className={
+          embedded
+            ? "px-4 sm:px-6 py-6"
+            : "max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]"
+        }
+      >
         {showEditTab ? (
           <div className="mb-6 flex items-center justify-between gap-4">
             <div className="flex gap-8 text-[15px]">
