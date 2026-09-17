@@ -37,7 +37,7 @@ export function EmailVerificationBanner({
       }`}
     >
       <p className={`${compact ? "text-[13px]" : "text-sm"} text-ink-900 leading-snug`}>
-        <span className="font-semibold">Verify your email</span> to send match introductions.
+        <span className="font-semibold">Verify your email</span> to send match requests.
       </p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <button

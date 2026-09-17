@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { blockedUserIds } from "@/lib/blocking";
 
 export type IntroductionStats = {
   active: number;
@@ -34,7 +35,7 @@ export type ActivityItem = {
 
 const LEGACY_TITLES: Record<string, string> = {
   message: "New message",
-  match: "Introduction update",
+  match: "Request update",
   wali: "Family handover",
   profile_activity: "Profile activity",
   system: "Account update",
@@ -70,6 +71,76 @@ export type NavCounts = {
   /** Numbered badge on the Messages/Chats nav item. */
   unreadMessages: number;
 };
+
+export type ProfileViewItem = {
+  id: string;
+  peerUserId: string;
+  code: string;
+  place: string;
+  viewedAt: string;
+  avatarSeed: number;
+};
+
+export type ProfileViewsData = {
+  isGold: boolean;
+  /** Basic tier: identity is hidden, only aggregate counts are shown. */
+  locked: boolean;
+  summary: { total: number; last7d: number; last30d: number } | null;
+  viewers: ProfileViewItem[];
+};
+
+/** Overview's "Profile Views" section — moved here from the old Requests → Views tab. */
+export async function getProfileViews(userId: bigint, isGold: boolean): Promise<ProfileViewsData> {
+  const viewRows = await prisma.profile_views.findMany({
+    where: { viewed_id: userId },
+    orderBy: { viewed_at: "desc" },
+    take: 60,
+  });
+
+  if (!isGold) {
+    // Free: reveal that they were viewed and roughly when, never who — full identity is Gold-only.
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    return {
+      isGold: false,
+      locked: true,
+      summary: {
+        total: viewRows.length,
+        last7d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
+        last30d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
+      },
+      viewers: [],
+    };
+  }
+
+  const blocked = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
+  const visibleRows = viewRows.filter((v) => !blocked.has(v.viewer_id.toString()));
+  const viewerIds = visibleRows.map((v) => v.viewer_id);
+  const profiles = viewerIds.length
+    ? await prisma.profiles.findMany({
+        where: { user_id: { in: viewerIds } },
+        select: { id: true, user_id: true, profile_code: true, city: true, country: true },
+      })
+    : [];
+  const byUserId = new Map(profiles.map((p) => [p.user_id.toString(), p]));
+
+  const viewers: ProfileViewItem[] = visibleRows
+    .map((v): ProfileViewItem | null => {
+      const p = byUserId.get(v.viewer_id.toString());
+      if (!p) return null;
+      return {
+        id: `view-${v.id}`,
+        peerUserId: v.viewer_id.toString(),
+        code: p.profile_code || "Member",
+        place: [p.city, p.country].filter(Boolean).join(", "),
+        viewedAt: v.viewed_at.toISOString(),
+        avatarSeed: Number(p.id % BigInt(70)),
+      };
+    })
+    .filter((v): v is ProfileViewItem => v !== null);
+
+  return { isGold: true, locked: false, summary: null, viewers };
+}
 
 /** One call for every count the app nav needs (spec §2/§15 — bell and nav badges are separate). */
 export async function getNavCounts(userId: bigint): Promise<NavCounts> {

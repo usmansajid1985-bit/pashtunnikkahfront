@@ -27,7 +27,7 @@ export default async function RequestsPage({
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
       <div className="hidden lg:block">
-        <BrowseAppNav profileCode={session.profileCode} active="introductions" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
+        <BrowseAppNav profileCode={session.profileCode} active="requests" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
       </div>
 
       <header className="lg:hidden sticky top-0 z-20 bg-[#faf8f7] border-b border-ink-900/6">
@@ -44,13 +44,13 @@ export default async function RequestsPage({
         </div>
       </header>
 
-      <MobileBottomNavGate active="introductions" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} />
+      <MobileBottomNavGate active="requests" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} />
 
       <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 py-6 pb-[var(--pn-bottom-nav-h)]">
         <div className="hidden lg:block mb-6">
           <h1 className="text-3xl font-bold text-ink-950">Requests</h1>
           <p className="mt-1 text-sm text-ink-700/65">
-            Incoming, sent, matches, views, saved, and blocked — your connection hub.
+            Incoming, sent, and matched — your connection hub.
           </p>
         </div>
 

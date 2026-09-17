@@ -61,7 +61,7 @@ function VerifyEmailForm() {
         Verify your email
       </h1>
       <p className="mt-2 text-center text-sm text-ink-700/70">
-        One quick step before you can send introductions.
+        One quick step before you can send requests.
       </p>
 
       <div className="mt-8 bg-white rounded-3xl border border-ink-900/8 shadow-sm p-8 space-y-4">

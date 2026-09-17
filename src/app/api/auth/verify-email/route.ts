@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, message: "Email verified. You can send introductions now." });
+    return NextResponse.json({ ok: true, message: "Email verified. You can send requests now." });
   } catch (err) {
     console.error("verify-email error", err);
     return NextResponse.json({ error: "Something went wrong." }, { status: 500 });

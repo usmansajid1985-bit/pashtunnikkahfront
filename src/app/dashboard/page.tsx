@@ -3,9 +3,10 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
-import { getIntroductionStats, getRecentActivity, getNavCounts } from "@/lib/dashboard";
+import { getIntroductionStats, getRecentActivity, getNavCounts, getProfileViews } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { PushNudge } from "@/components/notifications/push-nudge";
+import { ProfileViewsCard } from "@/components/dashboard/profile-views-card";
 
 export const dynamic = "force-dynamic";
 
@@ -44,10 +45,11 @@ export default async function DashboardPage() {
 
   const view = mapProfileView(profile, user);
   const firstName = view.fullName.split(" ")[0] || "there";
+  const profileViews = await getProfileViews(userId, view.plan === "gold");
 
   const introStats: { key: keyof typeof stats; label: string; href: string }[] = [
     { key: "active", label: "Active", href: "/requests" },
-    { key: "accepted", label: "Accepted", href: "/requests?tab=matches" },
+    { key: "accepted", label: "Accepted", href: "/requests?tab=matched" },
     { key: "pending", label: "Pending", href: "/requests" },
     { key: "declined", label: "Declined", href: "/requests" },
   ];
@@ -70,9 +72,9 @@ export default async function DashboardPage() {
           <div className="space-y-5 min-w-0">
             <section className="bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-5">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold text-ink-950">Your Introductions</h2>
+                <h2 className="font-bold text-ink-950">Your Requests</h2>
                 <Link href="/requests" className="text-sm font-semibold text-rose-600 hover:text-rose-700">
-                  View all introductions →
+                  View all requests →
                 </Link>
               </div>
               <div className="mt-5 grid grid-cols-4 gap-2">
@@ -143,6 +145,8 @@ export default async function DashboardPage() {
                 Edit Profile
               </Link>
             </section>
+
+            <ProfileViewsCard data={profileViews} />
 
             <section className="bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-5">
               <h2 className="font-bold text-ink-950">Need Help?</h2>

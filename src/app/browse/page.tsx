@@ -25,7 +25,9 @@ import { loadCompatibilityCache } from "@/lib/compatibility-cache";
 import type { Prisma } from "@/generated/prisma/client";
 import { getBrowseFilterOptions } from "@/lib/browse-filter-options";
 import {
+  BEST_MATCH_POOL,
   BROWSE_PROFILE_SELECT,
+  hardSortByCompat,
   rankBrowseProfiles,
   recordBrowseImpressions,
   softSortGoldCompat,
@@ -160,6 +162,7 @@ export default async function BrowsePage({
     locationIds,
   });
 
+  const isBestMatch = filters.sort === "best_match";
   const useActivityRank = filters.sort === "newest" || filters.sort === "recently_active";
   const orderBy: Prisma.profilesOrderByWithRelationInput =
     filters.sort === "age_asc"
@@ -177,7 +180,7 @@ export default async function BrowsePage({
     prisma.profiles.findMany({
       where,
       orderBy,
-      take: useActivityRank ? BROWSE_PAGE_SIZE * 2 : BROWSE_PAGE_SIZE,
+      take: isBestMatch ? BEST_MATCH_POOL : useActivityRank ? BROWSE_PAGE_SIZE * 2 : BROWSE_PAGE_SIZE,
       select: BROWSE_PROFILE_SELECT,
     }),
     getBrowseFilterOptions(),
@@ -206,7 +209,8 @@ export default async function BrowsePage({
 
   if (isGold && me) {
     initialItems = await applyGoldCompatToBrowseItems(userId, me, initialItems, profiles, compatCache);
-    if (useActivityRank) initialItems = softSortGoldCompat(initialItems);
+    if (isBestMatch) initialItems = hardSortByCompat(initialItems);
+    else if (useActivityRank) initialItems = softSortGoldCompat(initialItems);
   }
 
   initialItems = initialItems.slice(0, BROWSE_PAGE_SIZE);
@@ -264,7 +268,7 @@ export default async function BrowsePage({
         <BrowseInfiniteGrid
           key={JSON.stringify({ ...filters, page: 1 })}
           initialItems={initialItems}
-          initialHasMore={BROWSE_PAGE_SIZE < total}
+          initialHasMore={isBestMatch ? BROWSE_PAGE_SIZE < Math.min(total, BEST_MATCH_POOL) : BROWSE_PAGE_SIZE < total}
           filters={filters}
           initialSavedUserIds={initialSavedUserIds}
         />

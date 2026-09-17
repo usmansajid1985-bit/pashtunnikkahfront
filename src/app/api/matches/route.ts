@@ -157,7 +157,7 @@ export async function POST(req: Request) {
   if (!meUser.email_verified) {
     return NextResponse.json(
       {
-        error: "Verify your email before sending introductions. Check your inbox or resend from Settings.",
+        error: "Verify your email before sending requests. Check your inbox or resend from Settings.",
         code: "email_unverified",
       },
       { status: 403 }
@@ -165,11 +165,11 @@ export async function POST(req: Request) {
   }
 
   // PN-REG-004: a profile moved back to Awaiting Approval must not be able to send a new
-  // Introduction (and spend a credit) — this only checked the peer's approval status before.
+  // request (and spend a credit) — this only checked the peer's approval status before.
   const { isProfileApproved } = await import("@/lib/approval");
   if (!(await isProfileApproved(me))) {
     return NextResponse.json(
-      { error: "Your profile must be approved before you can send Introductions.", code: "profile_pending" },
+      { error: "Your profile must be approved before you can send requests.", code: "profile_pending" },
       { status: 403 }
     );
   }
@@ -183,7 +183,7 @@ export async function POST(req: Request) {
     if (!isRematchRequest) {
       return NextResponse.json(
         {
-          error: "This Introduction requires a rematch token after a previous match ended.",
+          error: "This request requires a rematch token after a previous match ended.",
           code: "rematch_required",
           priorRequestId: priorEnded!.id.toString(),
         },
@@ -235,7 +235,7 @@ export async function POST(req: Request) {
   if (pendingCount >= settings.pendingRequestLimit) {
     return NextResponse.json(
       {
-        error: `You currently have ${pendingCount} pending Introductions. Wait for a response before sending another.`,
+        error: `You currently have ${pendingCount} pending requests. Wait for a response before sending another.`,
       },
       { status: 429 }
     );

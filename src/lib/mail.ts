@@ -107,7 +107,7 @@ export function verificationEmail(verifyUrl: string, displayName?: string) {
   const subject = "Verify your Pashtun Nikah email";
   const text = `Assalamu alaikum ${name},
 
-Please verify your email to send match introductions on Pashtun Nikah.
+Please verify your email to send match requests on Pashtun Nikah.
 
 Open this link (expires in 24 hours):
 ${verifyUrl}
@@ -116,7 +116,7 @@ ${verifyUrl}
   const html = `
     <div style="font-family:Georgia,serif;max-width:520px;margin:0 auto;color:#1c1917;line-height:1.5">
       <p>Assalamu alaikum ${escapeHtml(name)},</p>
-      <p>Please verify your email to send match introductions on Pashtun Nikah.</p>
+      <p>Please verify your email to send match requests on Pashtun Nikah.</p>
       <p style="margin:28px 0">
         <a href="${escapeHtml(verifyUrl)}"
            style="display:inline-block;background:#aa1945;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">

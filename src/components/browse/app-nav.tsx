@@ -56,7 +56,7 @@ export function BrowseAppNav({
                 {item.key === "messages" ? (
                   <NavCountBadge kind="messages" initialCount={unreadCount} />
                 ) : null}
-                {item.key === "introductions" ? (
+                {item.key === "requests" ? (
                   <NavCountBadge kind="requests" initialCount={requestsCount} />
                 ) : null}
               </Link>

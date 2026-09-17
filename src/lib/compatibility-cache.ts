@@ -11,9 +11,6 @@ export const MAX_AI_COMPAT_COMPUTE_PER_REQUEST = 2;
 /** Browse SSR/API: never block on Gemini; scores fill in when opening profiles or scrolling back. */
 export const MAX_AI_COMPAT_COMPUTE_ON_BROWSE = 0;
 
-/** Smart Matches hub: compute more per page load. */
-export const MAX_SMART_MATCHES_COMPUTE = 5;
-
 export type CachedCompat = {
   candidateUserId: string;
   heuristicScore: number;
@@ -255,50 +252,6 @@ export async function resolveGoldMatchScores(
   );
 
   return { scores, cache };
-}
-
-/**
- * Smart Matches: resolve scores + reasons for a batch; compute up to maxCompute new pairs.
- */
-export async function resolveSmartMatchBatch(
-  viewerId: bigint,
-  me: CompatProfile,
-  peers: (RankableProfile & { userId: string })[],
-  maxCompute = MAX_SMART_MATCHES_COMPUTE
-): Promise<Map<string, { score: number; reasons: string[] }>> {
-  const heuristicScored = attachHeuristicScores(me, peers);
-  const candidateIds = peers.map((p) => BigInt(p.userId));
-  const cache = await loadCompatibilityCache(viewerId, candidateIds);
-  const out = new Map<string, { score: number; reasons: string[] }>();
-  const toCompute: (RankableProfile & { userId: string; matchScore: number })[] = [];
-
-  for (const p of heuristicScored) {
-    const cached = cache.get(p.userId);
-    if (cached?.aiComputed) {
-      out.set(p.userId, {
-        score: cached.finalScore,
-        reasons: cached.aiExplanation ?? [],
-      });
-      continue;
-    }
-    out.set(p.userId, { score: p.matchScore, reasons: [] });
-    toCompute.push(p);
-  }
-
-  // Parallel one-time computes for the allowed slice (see resolveGoldMatchScores).
-  await Promise.all(
-    toCompute.slice(0, Math.max(0, maxCompute)).map(async (p) => {
-      const result = await computeCompatibilityOnce(
-        viewerId,
-        me,
-        p,
-        cache.get(p.userId) ?? null
-      );
-      out.set(p.userId, { score: result.finalScore, reasons: result.reasons });
-    })
-  );
-
-  return out;
 }
 
 export function toCompatProfile(me: {

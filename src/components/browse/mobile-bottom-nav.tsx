@@ -7,7 +7,7 @@ import { NavCountBadge } from "@/components/browse/nav-notifications";
 const BOTTOM_TABS: { key: NavKey; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "browse", label: "Browse" },
-  { key: "introductions", label: "Requests" },
+  { key: "requests", label: "Requests" },
   { key: "messages", label: "Chats" },
   { key: "profile", label: "Profile" },
   { key: "settings", label: "Settings" },
@@ -56,7 +56,7 @@ export function MobileBottomNav({
                     className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px]"
                   />
                 ) : null}
-                {key === "introductions" ? (
+                {key === "requests" ? (
                   <NavCountBadge
                     kind="requests"
                     initialCount={requestsCount}

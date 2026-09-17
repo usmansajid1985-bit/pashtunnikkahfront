@@ -9,7 +9,9 @@ import {
 } from "@/lib/browse-filters";
 import { locationRadiusIds } from "@/lib/browse-location";
 import {
+  BEST_MATCH_POOL,
   BROWSE_PROFILE_SELECT,
+  hardSortByCompat,
   rankBrowseProfiles,
   recordBrowseImpressions,
   softSortGoldCompat,
@@ -91,6 +93,7 @@ export async function GET(req: Request) {
     locationIds,
   });
 
+  const isBestMatch = filters.sort === "best_match";
   const useActivityRank = filters.sort === "newest" || filters.sort === "recently_active";
   const orderBy =
     filters.sort === "age_asc"
@@ -99,10 +102,12 @@ export async function GET(req: Request) {
         ? ({ age: "desc" } as const)
         : ({ users: { last_seen_at: "desc" } } as const);
 
-  const overFetch = useActivityRank
-    ? filters.page * BROWSE_PAGE_SIZE + BROWSE_PAGE_SIZE
-    : BROWSE_PAGE_SIZE;
-  const skip = useActivityRank ? 0 : (filters.page - 1) * BROWSE_PAGE_SIZE;
+  const overFetch = isBestMatch
+    ? BEST_MATCH_POOL
+    : useActivityRank
+      ? filters.page * BROWSE_PAGE_SIZE + BROWSE_PAGE_SIZE
+      : BROWSE_PAGE_SIZE;
+  const skip = isBestMatch || useActivityRank ? 0 : (filters.page - 1) * BROWSE_PAGE_SIZE;
 
   const [total, profiles] = await Promise.all([
     prisma.profiles.count({ where }),
@@ -129,11 +134,12 @@ export async function GET(req: Request) {
   // Gold: cached one-time AI compat + heuristic fallback (never touches activity order).
   if (isGold && me) {
     items = await applyGoldCompatToBrowseItems(userId, me, items, profiles);
-    if (useActivityRank) items = softSortGoldCompat(items);
+    if (isBestMatch) items = hardSortByCompat(items);
+    else if (useActivityRank) items = softSortGoldCompat(items);
   }
 
   const start = (filters.page - 1) * BROWSE_PAGE_SIZE;
-  const pageItems = useActivityRank
+  const pageItems = isBestMatch || useActivityRank
     ? items.slice(start, start + BROWSE_PAGE_SIZE)
     : items.slice(0, BROWSE_PAGE_SIZE);
 
@@ -147,7 +153,9 @@ export async function GET(req: Request) {
     );
   }
 
-  const hasMore = filters.page * BROWSE_PAGE_SIZE < total;
+  const hasMore = isBestMatch
+    ? filters.page * BROWSE_PAGE_SIZE < Math.min(total, BEST_MATCH_POOL)
+    : filters.page * BROWSE_PAGE_SIZE < total;
 
   return NextResponse.json({
     items: pageItems,

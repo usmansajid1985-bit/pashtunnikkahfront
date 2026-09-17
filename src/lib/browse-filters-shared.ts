@@ -38,7 +38,7 @@ export type BrowseFilters = {
   newMembers: boolean;
   recentlyActive: boolean;
   near: boolean;
-  sort: "newest" | "recently_active" | "age_asc" | "age_desc";
+  sort: "newest" | "recently_active" | "age_asc" | "age_desc" | "best_match";
   page: number;
 };
 
@@ -101,6 +101,9 @@ export const GOLD_ONLY_FILTER_KEYS = [
 export function stripGoldFilters(f: BrowseFilters): BrowseFilters {
   return {
     ...f,
+    // Best Match ranks by AI/heuristic compatibility, a Gold-only signal — fall back silently
+    // like every other Gold-only filter rather than letting a Basic viewer submit it.
+    sort: f.sort === "best_match" ? "newest" : f.sort,
     city: "",
     sect: "",
     tribe: "",
@@ -126,7 +129,10 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
   const ageMax = Math.min(80, Math.max(ageMin, Number(first(sp.ageMax)) || 60));
   const sortRaw = first(sp.sort);
   const sort =
-    sortRaw === "recently_active" || sortRaw === "age_asc" || sortRaw === "age_desc"
+    sortRaw === "recently_active" ||
+    sortRaw === "age_asc" ||
+    sortRaw === "age_desc" ||
+    sortRaw === "best_match"
       ? sortRaw
       : "newest";
 

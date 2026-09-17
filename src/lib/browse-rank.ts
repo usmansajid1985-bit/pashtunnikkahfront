@@ -14,6 +14,11 @@ import {
 } from "@/lib/presence";
 import { displayHeight } from "@/lib/height";
 
+/** Candidate pool size for the "Best Match" sort — wider than a normal page so the hard
+ * compat-score sort has enough members to pick real winners from (mirrors the old standalone
+ * Smart Matches page's pool before it was folded into Browse). */
+export const BEST_MATCH_POOL = 60;
+
 export type RankableBrowseRow = {
   id: bigint;
   user_id: bigint;
@@ -221,6 +226,23 @@ export function softSortGoldCompat(items: BrowseCardDTO[]): BrowseCardDTO[] {
       const ba = a.p.activityBucket ?? 99;
       const bb = b.p.activityBucket ?? 99;
       if (ba !== bb) return ba - bb;
+      const sa = a.p.matchScore ?? 0;
+      const sb = b.p.matchScore ?? 0;
+      if (sb !== sa) return sb - sa;
+      return a.index - b.index;
+    })
+    .map(({ p }) => p);
+}
+
+/**
+ * "Best Match" sort (Gold, Smart Matches folded into Browse): rank purely by compatibility,
+ * ignoring activity bucket entirely — unlike softSortGoldCompat, a highly compatible but
+ * inactive member can outrank a merely-online one.
+ */
+export function hardSortByCompat(items: BrowseCardDTO[]): BrowseCardDTO[] {
+  return items
+    .map((p, index) => ({ p, index }))
+    .sort((a, b) => {
       const sa = a.p.matchScore ?? 0;
       const sb = b.p.matchScore ?? 0;
       if (sb !== sa) return sb - sa;

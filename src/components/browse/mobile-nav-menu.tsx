@@ -70,7 +70,7 @@ export function MobileNavMenu({
                     {item.key === "messages" ? (
                       <NavCountBadge kind="messages" initialCount={unread} />
                     ) : null}
-                    {item.key === "introductions" ? (
+                    {item.key === "requests" ? (
                       <NavCountBadge kind="requests" initialCount={requests} />
                     ) : null}
                   </Link>

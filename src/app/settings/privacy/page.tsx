@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { SettingsShell } from "@/components/settings/settings-ui";
+import { BlockedProfiles, type BlockedProfileRow } from "@/components/settings/blocked-profiles";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ export default async function PrivacySettingsPage() {
     prisma.blocks.findMany({
       where: { blocker_id: userId },
       orderBy: { created_at: "desc" },
-      take: 20,
+      take: 60,
     }),
     getUnreadMessageCount(userId),
   ]);
@@ -29,6 +29,12 @@ export default async function PrivacySettingsPage() {
     : [];
 
   const codeByUser = new Map(blockedUsers.map((p) => [p.user_id.toString(), p.profile_code]));
+  const blockedRows: BlockedProfileRow[] = blocks.map((b) => ({
+    id: b.id.toString(),
+    peerUserId: b.blocked_id.toString(),
+    code: codeByUser.get(b.blocked_id.toString()) || b.blocked_id.toString(),
+    blockedAt: b.created_at.toISOString(),
+  }));
 
   return (
     <SettingsShell title="Privacy" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
@@ -37,24 +43,11 @@ export default async function PrivacySettingsPage() {
 
       <div className="mt-6 card p-4">
         <h3 className="font-semibold text-ink-950">Blocked profiles</h3>
-        {blocks.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-700/55">You have not blocked anyone.</p>
-        ) : (
-          <ul className="mt-3 space-y-2 text-sm">
-            {blocks.map((b) => (
-              <li key={b.id.toString()} className="flex justify-between gap-2">
-                <span>{codeByUser.get(b.blocked_id.toString()) || b.blocked_id.toString()}</span>
-                <span className="text-xs text-ink-700/45">{b.created_at.toLocaleDateString()}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        <BlockedProfiles initial={blockedRows} />
         <p className="mt-3 text-xs text-ink-700/50">
-          Block someone from their profile or the Requests → Blocked tab.
+          Block someone when declining an incoming request, or from a chat&apos;s menu.
+          They&apos;ll disappear from Browse and Requests until you unblock them here.
         </p>
-        <Link href="/requests?tab=blocked" className="mt-2 inline-block text-sm font-semibold text-rose-600">
-          Manage blocked list
-        </Link>
       </div>
 
       <div className="mt-6 card p-4">

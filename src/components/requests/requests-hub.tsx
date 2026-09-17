@@ -2,56 +2,40 @@
 
 import Link from "next/link";
 import { RematchButton } from "@/components/matches/rematch-button";
-import { useEffect, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import type { HubCard } from "@/lib/requests-hub-shared";
 import { formatAgeLabel } from "@/lib/requests-hub-shared";
 import { RequestActions } from "@/components/matches/request-actions";
 
-type Tab = "incoming" | "sent" | "matches" | "views" | "saved" | "blocked";
+type Tab = "incoming" | "sent" | "matched";
 
 type HubData = {
   isGold: boolean;
   counts: {
     incoming: number;
     sent: number;
-    matches: number;
+    matched: number;
     ended?: number;
-    views: number | null;
-    saved: number | null;
-    blocked: number;
   };
   incoming: HubCard[];
   sent: HubCard[];
-  matches: HubCard[];
+  matched: HubCard[];
   ended?: HubCard[];
   declined: HubCard[];
   expired: HubCard[];
-  views: HubCard[];
-  viewsLocked: boolean;
-  viewsSummary: { total: number; last7d: number; last30d: number } | null;
-  saved: HubCard[];
-  savedLocked: boolean;
-  savedLimit: number | null;
-  blocked: HubCard[];
 };
 
 function avatarUrl(seed: number) {
   return `https://i.pravatar.cc/120?img=${(seed % 70) + 1}`;
 }
 
-const TAB_IDS: Tab[] = ["incoming", "sent", "matches", "views", "saved", "blocked"];
+const TAB_IDS: Tab[] = ["incoming", "sent", "matched"];
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
-  const router = useRouter();
   const [tab, setTab] = useState<Tab>(
     TAB_IDS.includes(initialTab as Tab) ? (initialTab as Tab) : "incoming"
   );
   const [sort, setSort] = useState<"newest" | "oldest" | "compat">("newest");
-  const [pending, startTransition] = useTransition();
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
-  const [noteSavedId, setNoteSavedId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialTab && TAB_IDS.includes(initialTab as Tab)) setTab(initialTab as Tab);
@@ -60,20 +44,14 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
   const tabs: { id: Tab; label: string; count?: number | null }[] = [
     { id: "incoming", label: "Incoming", count: data.counts.incoming },
     { id: "sent", label: "Sent", count: data.counts.sent },
-    { id: "matches", label: "Matches", count: data.counts.matches },
-    { id: "views", label: "Views", count: data.counts.views },
-    { id: "saved", label: "Saved", count: data.counts.saved },
-    { id: "blocked", label: "Blocked", count: data.counts.blocked },
+    { id: "matched", label: "Matched", count: data.counts.matched },
   ];
 
   const list = useMemo(() => {
     let rows: HubCard[] = [];
     if (tab === "incoming") rows = data.incoming;
     else if (tab === "sent") rows = data.sent;
-    else if (tab === "matches") rows = data.matches;
-    else if (tab === "views") rows = data.views;
-    else if (tab === "saved") rows = data.saved;
-    else rows = data.blocked;
+    else rows = data.matched;
 
     const sorted = [...rows];
     if (sort === "newest") sorted.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
@@ -81,60 +59,6 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
     if (sort === "compat") sorted.sort((a, b) => b.compat - a.compat);
     return sorted;
   }, [tab, sort, data]);
-
-  async function unsave(peerUserId: string) {
-    startTransition(async () => {
-      await fetch("/api/favourites", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: peerUserId }),
-      });
-      router.refresh();
-    });
-  }
-
-  async function save(peerUserId: string) {
-    setSaveError(null);
-    startTransition(async () => {
-      const res = await fetch("/api/favourites", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: peerUserId }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        setSaveError(data.error || "Could not save this profile.");
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  async function saveNote(peerUserId: string, cardId: string, note: string) {
-    await fetch("/api/favourites", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: peerUserId, note }),
-    });
-    setNoteSavedId(cardId);
-    setTimeout(() => setNoteSavedId((id) => (id === cardId ? null : id)), 1800);
-    router.refresh();
-  }
-
-  async function unblock(peerUserId: string) {
-    startTransition(async () => {
-      await fetch("/api/blocks", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: peerUserId }),
-      });
-      router.refresh();
-    });
-  }
-
-  const viewsIdentityLocked = tab === "views" && data.viewsLocked && !data.isGold;
-  const savedCapped = tab === "saved" && !data.isGold && data.savedLimit != null;
-  const savedAtCap = savedCapped && data.saved.length >= (data.savedLimit ?? 0);
 
   return (
     <div>
@@ -160,7 +84,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         ))}
       </div>
 
-      {!viewsIdentityLocked && (tab === "incoming" || tab === "matches" || tab === "views" || tab === "saved") ? (
+      {tab === "incoming" || tab === "matched" ? (
         <div className="mt-4 flex items-center gap-2">
           <label className="text-xs font-semibold text-ink-700/60">Sort</label>
           <select
@@ -175,54 +99,8 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         </div>
       ) : null}
 
-      {savedCapped ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3">
-          <p className="text-sm text-ink-800">
-            <span className="font-semibold">
-              {data.saved.length} of {data.savedLimit} saved
-            </span>{" "}
-            — Free members can save up to {data.savedLimit}. Upgrade to Gold for unlimited.
-          </p>
-          <Link
-            href="/settings/membership"
-            className="shrink-0 px-3.5 py-1.5 rounded-full bg-amber-600 text-white text-xs font-semibold"
-          >
-            Upgrade
-          </Link>
-        </div>
-      ) : null}
-
-      {saveError ? (
-        <p className="mt-4 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
-          {saveError}
-        </p>
-      ) : null}
-
-      <div className={`mt-4 space-y-2 ${pending ? "opacity-60" : ""}`}>
-        {viewsIdentityLocked ? (
-          <div className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 to-white p-6 text-center">
-            <p className="font-bold text-ink-950 text-lg">
-              {data.viewsSummary && data.viewsSummary.total > 0
-                ? `${data.viewsSummary.total} people viewed your profile`
-                : "No one has viewed your profile yet"}
-            </p>
-            {data.viewsSummary && data.viewsSummary.total > 0 ? (
-              <p className="mt-1 text-sm text-ink-700/60">
-                {data.viewsSummary.last7d} in the last 7 days · {data.viewsSummary.last30d} in the last 30
-                days
-              </p>
-            ) : null}
-            <p className="mt-2 text-sm text-ink-700/70 max-w-sm mx-auto">
-              Upgrade to Gold to reveal who visited you, see compatibility, and send a request.
-            </p>
-            <Link
-              href="/settings/membership"
-              className="inline-block mt-5 px-5 py-2.5 rounded-full bg-amber-600 text-white text-sm font-semibold"
-            >
-              Upgrade to Gold
-            </Link>
-          </div>
-        ) : list.length === 0 && !(tab === "matches" && (data.ended?.length ?? 0) > 0) ? (
+      <div className="mt-4 space-y-2">
+        {list.length === 0 && !(tab === "matched" && (data.ended?.length ?? 0) > 0) ? (
           <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-8 text-center">
             Nothing here yet.
           </p>
@@ -240,12 +118,12 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                   alt=""
                   className="w-14 h-14 rounded-2xl object-cover"
                   style={
-                    tab === "matches" && card.photoShared
+                    tab === "matched" && card.photoShared
                       ? undefined
                       : { filter: "blur(6px) saturate(0.85)" }
                   }
                 />
-                {tab === "matches" ? (
+                {tab === "matched" ? (
                   <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[9px] font-bold uppercase tracking-wide border border-rose-100">
                     matched
                   </span>
@@ -267,7 +145,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                         “{card.introMessage}”
                       </p>
                     ) : null}
-                    {tab === "matches" && card.lastMessage ? (
+                    {tab === "matched" && card.lastMessage ? (
                       <p className="text-[12px] text-ink-700 mt-1 line-clamp-1">“{card.lastMessage}”</p>
                     ) : null}
                     {tab === "sent" && card.status ? (
@@ -288,7 +166,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                   {tab === "sent" && card.requestId && card.status === "pending" ? (
                     <RequestActions requestId={card.requestId} mode="sent" />
                   ) : null}
-                  {tab === "matches" && card.requestId ? (
+                  {tab === "matched" && card.requestId ? (
                     <>
                       <Link
                         href={`/chats/${card.requestId}`}
@@ -304,101 +182,11 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                       </Link>
                     </>
                   ) : null}
-                  {tab === "views" ? (
-                    <>
-                      <Link
-                        href={`/p/${card.code}`}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Open profile
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => void save(card.peerUserId)}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Save
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const res = await fetch("/api/matches", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ profileCode: card.code }),
-                          });
-                          const body = await res.json();
-                          if (body.status === "accepted") router.push(`/chats/${body.requestId}`);
-                          else router.refresh();
-                        }}
-                        className="px-3 py-1.5 rounded-full bg-rose-600 text-white text-sm font-semibold"
-                      >
-                        Send request
-                      </button>
-                    </>
-                  ) : null}
-                  {tab === "saved" ? (
-                    <>
-                      <Link
-                        href={`/p/${card.code}`}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Open profile
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => void unsave(card.peerUserId)}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Remove
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          await fetch("/api/matches", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ profileCode: card.code }),
-                          });
-                          router.refresh();
-                        }}
-                        className="px-3 py-1.5 rounded-full bg-rose-600 text-white text-sm font-semibold"
-                      >
-                        Send request
-                      </button>
-                    </>
-                  ) : null}
-                  {tab === "blocked" ? (
-                    <button
-                      type="button"
-                      onClick={() => void unblock(card.peerUserId)}
-                      className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                    >
-                      Unblock
-                    </button>
-                  ) : null}
                 </div>
-
-                {tab === "saved" ? (
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <input
-                      value={noteDrafts[card.id] ?? card.note ?? ""}
-                      onChange={(e) =>
-                        setNoteDrafts((prev) => ({ ...prev, [card.id]: e.target.value }))
-                      }
-                      onBlur={(e) => void saveNote(card.peerUserId, card.id, e.target.value)}
-                      placeholder="Private note (only you can see this)"
-                      className="flex-1 min-w-0 text-[12.5px] rounded-lg border border-ink-900/10 bg-[#faf8f7] px-2.5 py-1.5 focus:outline-none focus:border-rose-300 focus:bg-white"
-                    />
-                    {noteSavedId === card.id ? (
-                      <span className="text-[11px] text-emerald-700 font-medium shrink-0">Saved</span>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             </article>
           ))}
-          {tab === "matches" && (data.ended?.length ?? 0) > 0 ? (
+          {tab === "matched" && (data.ended?.length ?? 0) > 0 ? (
             <section className="mt-8">
               <h3 className="text-sm font-bold text-ink-950 mb-2">Past matches</h3>
               <div className="space-y-2">

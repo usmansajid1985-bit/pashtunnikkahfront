@@ -269,6 +269,7 @@ export function BrowseFiltersBar({
                 })
               }
             >
+              <option value="best_match">{isGold ? "Best Match" : "Best Match (Gold)"}</option>
               <option value="newest">Most active</option>
               <option value="recently_active">Recently active</option>
               <option value="age_asc">Age ↑</option>

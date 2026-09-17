@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     },
   });
 
-  // Mutual disappearance: tear down the live relationship both ways. Pending introductions are
+  // Mutual disappearance: tear down the live relationship both ways. Pending requests are
   // cancelled; saved entries removed. Accepted matches are left in place but chat access is
   // gated at the chat layer (see chat route / loadThread block check).
   await Promise.all([

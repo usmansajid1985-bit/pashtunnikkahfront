@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { type HubCard, compatScore } from "@/lib/requests-hub-shared";
-import { getPlanSettings } from "@/lib/plan-settings";
 import { blockedUserIds } from "@/lib/blocking";
 import { loadCompatibilityCache, type CachedCompat } from "@/lib/compatibility-cache";
 
@@ -103,89 +102,62 @@ function toCard(
 export async function loadRequestsHub(userId: bigint) {
   await ensureMatchRequestsSchema();
 
-  // Fresh DB read of plan — a JWT session claim can be stale until next login/refresh,
-  // and this gates real limits (saved-profile cap, viewer identity), not just cosmetics.
+  // Fresh DB read of plan — a JWT session claim can be stale until next login/refresh.
   const meUserP = prisma.users.findUnique({ where: { id: userId }, select: { plan: true } });
 
   // All top-level list reads fire together — previously each block awaited the
   // one before it, and every card then did its own per-peer profile lookup.
-  const [
-    meUser,
-    meProfile,
-    incoming,
-    sentAll,
-    matched,
-    ended,
-    declined,
-    expired,
-    viewRows,
-    favs,
-    blockRows,
-  ] = await Promise.all([
-    meUserP,
-    loadProfile(userId),
-    prisma.match_requests.findMany({
-      where: { receiver_id: userId, status: "pending" },
-      orderBy: { created_at: "desc" },
-      take: 80,
-    }),
-    prisma.match_requests.findMany({
-      where: { sender_id: userId },
-      orderBy: { created_at: "desc" },
-      take: 80,
-    }),
-    prisma.match_requests.findMany({
-      where: {
-        status: "accepted",
-        OR: [{ sender_id: userId }, { receiver_id: userId }],
-      },
-      orderBy: { updated_at: "desc" },
-      take: 80,
-    }),
-    prisma.match_requests.findMany({
-      where: {
-        status: "ended",
-        OR: [{ sender_id: userId }, { receiver_id: userId }],
-      },
-      orderBy: { ended_at: "desc" },
-      take: 40,
-    }),
-    prisma.match_requests.findMany({
-      where: {
-        status: "declined",
-        OR: [{ sender_id: userId }, { receiver_id: userId }],
-      },
-      orderBy: { updated_at: "desc" },
-      take: 40,
-    }),
-    prisma.match_requests.findMany({
-      where: {
-        status: "expired",
-        OR: [{ sender_id: userId }, { receiver_id: userId }],
-      },
-      orderBy: { updated_at: "desc" },
-      take: 40,
-    }),
-    prisma.profile_views.findMany({
-      where: { viewed_id: userId },
-      orderBy: { viewed_at: "desc" },
-      take: 60,
-    }),
-    prisma.favourites.findMany({
-      where: { user_id: userId },
-      orderBy: { created_at: "desc" },
-      take: 60,
-    }),
-    prisma.blocks.findMany({
-      where: { blocker_id: userId },
-      orderBy: { created_at: "desc" },
-      take: 60,
-    }),
-  ]);
+  const [meUser, meProfile, incoming, sentAll, matched, ended, declined, expired] =
+    await Promise.all([
+      meUserP,
+      loadProfile(userId),
+      prisma.match_requests.findMany({
+        where: { receiver_id: userId, status: "pending" },
+        orderBy: { created_at: "desc" },
+        take: 80,
+      }),
+      prisma.match_requests.findMany({
+        where: { sender_id: userId },
+        orderBy: { created_at: "desc" },
+        take: 80,
+      }),
+      prisma.match_requests.findMany({
+        where: {
+          status: "accepted",
+          OR: [{ sender_id: userId }, { receiver_id: userId }],
+        },
+        orderBy: { updated_at: "desc" },
+        take: 80,
+      }),
+      prisma.match_requests.findMany({
+        where: {
+          status: "ended",
+          OR: [{ sender_id: userId }, { receiver_id: userId }],
+        },
+        orderBy: { ended_at: "desc" },
+        take: 40,
+      }),
+      prisma.match_requests.findMany({
+        where: {
+          status: "declined",
+          OR: [{ sender_id: userId }, { receiver_id: userId }],
+        },
+        orderBy: { updated_at: "desc" },
+        take: 40,
+      }),
+      prisma.match_requests.findMany({
+        where: {
+          status: "expired",
+          OR: [{ sender_id: userId }, { receiver_id: userId }],
+        },
+        orderBy: { updated_at: "desc" },
+        take: 40,
+      }),
+    ]);
 
   const isGold = (meUser?.plan || "").toLowerCase() === "gold";
 
-  // Mutual blocking: a blocked peer disappears from every hub list except the Blocked tab.
+  // Mutual blocking: a blocked peer disappears from every Requests hub list.
   const blockedSet = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
   const notBlocked = (c: HubCard | null) => (c && blockedSet.has(c.peerUserId) ? null : c);
 
@@ -194,15 +166,9 @@ export async function loadRequestsHub(userId: bigint) {
 
   // Two batched lookups replace the old N+1: every peer profile in one query,
   // every thread's latest message in another.
-  const allPeerIds = [
-    ...allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id)),
-    ...(isGold ? viewRows.map((v) => v.viewer_id) : []),
-    ...favs.map((f) => f.profile_user_id),
-    ...blockRows.map((b) => b.blocked_id),
-  ];
+  const allPeerIds = allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id));
 
-  const [settings, profileMap, lastMsgRows, compatCache] = await Promise.all([
-    getPlanSettings(meUser?.plan),
+  const [profileMap, lastMsgRows, compatCache] = await Promise.all([
     loadProfilesByUserId(allPeerIds),
     matchRequestIds.length === 0
       ? Promise.resolve([] as { request_id: bigint; body: string }[])
@@ -272,84 +238,19 @@ export async function loadRequestsHub(userId: bigint) {
   const declinedCards = filterCards(declined.map((r) => mapRequest(r)));
   const expiredCards = filterCards(expired.map((r) => mapRequest(r)));
 
-  let views: HubCard[] = [];
-  let viewsSummary: { total: number; last7d: number; last30d: number } | null = null;
-  const viewsLocked = !isGold;
-  if (isGold) {
-    views = filterCards(
-      viewRows.map((v) => {
-        const peer = profileMap.get(v.viewer_id.toString());
-        if (!peer) return null;
-        return toCard(
-          peer,
-          meProfile,
-          { id: `view-${v.id}`, createdAt: v.viewed_at.toISOString() },
-          compatCache
-        );
-      })
-    );
-  } else {
-    // Free: reveal that they were viewed and roughly when, never who — full identity is Gold-only.
-    const now = Date.now();
-    const day = 24 * 60 * 60 * 1000;
-    viewsSummary = {
-      total: viewRows.length,
-      last7d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
-      last30d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
-    };
-  }
-
-  const saved = filterCards(
-    favs.map((f) => {
-      const peer = profileMap.get(f.profile_user_id.toString());
-      if (!peer) return null;
-      return toCard(peer, meProfile, {
-        id: `fav-${f.id}`,
-        createdAt: f.created_at.toISOString(),
-        note: f.note,
-      }, compatCache);
-    })
-  );
-  const savedLimit = settings.savedProfileLimit;
-  const savedLocked = false;
-
-  // The Blocked tab lists exactly the peers this user has blocked — it must NOT be run
-  // through `notBlocked`, which would strip every row.
-  const blocked = blockRows
-    .map((b) => {
-      const peer = profileMap.get(b.blocked_id.toString());
-      if (!peer) return null;
-      return toCard(peer, meProfile, {
-        id: `block-${b.id}`,
-        createdAt: b.created_at.toISOString(),
-        status: "blocked",
-      }, compatCache);
-    })
-    .filter(Boolean) as HubCard[];
-
   return {
     isGold,
     counts: {
       incoming: incomingCards.length,
       sent: sentCards.length,
-      matches: matchedCards.length,
+      matched: matchedCards.length,
       ended: endedCards.length,
-      views: viewRows.length,
-      saved: saved.length,
-      blocked: blocked.length,
     },
     incoming: incomingCards,
     sent: sentCards,
-    matches: matchedCards,
+    matched: matchedCards,
     ended: endedCards,
     declined: declinedCards,
     expired: expiredCards,
-    views,
-    viewsLocked,
-    viewsSummary,
-    saved,
-    savedLocked,
-    savedLimit,
-    blocked,
   };
 }

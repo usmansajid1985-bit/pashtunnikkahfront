@@ -44,7 +44,7 @@ export async function POST(
     const { isProfileApproved } = await import("@/lib/approval");
     if (!(await isProfileApproved(me))) {
       return NextResponse.json(
-        { error: "Your profile must be approved before you can accept an Introduction.", code: "profile_pending" },
+        { error: "Your profile must be approved before you can accept a request.", code: "profile_pending" },
         { status: 403 }
       );
     }

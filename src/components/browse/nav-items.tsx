@@ -3,10 +3,8 @@ import type { ReactNode } from "react";
 export type NavKey =
   | "overview"
   | "browse"
-  | "smartMatches"
-  | "introductions"
+  | "requests"
   | "messages"
-  | "matches"
   | "profile"
   | "settings";
 
@@ -45,19 +43,9 @@ export const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
-    key: "smartMatches",
-    href: "/smart-matches",
-    label: "Smart Matches",
-    icon: (
-      <svg {...iconProps}>
-        <path d="M12 2l2.2 4.6L19 7.2l-3.4 3.3.8 4.8L12 13.5 7.6 15.3l.8-4.8L5 7.2l4.8-.6L12 2Z" />
-      </svg>
-    ),
-  },
-  {
-    key: "introductions",
+    key: "requests",
     href: "/requests",
-    label: "Introductions",
+    label: "Requests",
     icon: (
       <svg {...iconProps}>
         <circle cx="9" cy="8" r="3" />
@@ -73,16 +61,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: (
       <svg {...iconProps}>
         <path d="M21 12a8 8 0 1 1-3.2-6.4L21 4l-1 3.6A7.96 7.96 0 0 1 21 12Z" />
-      </svg>
-    ),
-  },
-  {
-    key: "matches",
-    href: "/requests?tab=matches",
-    label: "Matches",
-    icon: (
-      <svg {...iconProps} fill="currentColor" stroke="none">
-        <path d="M12 21s-7-4.35-9-8.5C1.4 9 3 5.5 6.5 5.5c2 0 3.7 1.2 5.5 3.3 1.8-2.1 3.5-3.3 5.5-3.3 3.5 0 5.1 3.5 3.5 7C19 16.65 12 21 12 21Z" />
       </svg>
     ),
   },
