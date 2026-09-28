@@ -148,9 +148,12 @@ export function SignupWizard() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (res.status === 409 && (json.code === "EMAIL_EXISTS" || json.redirectTo)) {
-          localStorage.removeItem(STORAGE_KEY);
-          router.push(String(json.redirectTo || `/login?email=${encodeURIComponent(data.email.trim())}&existing=1`));
+        if (res.status === 409 && json.code === "EMAIL_EXISTS") {
+          // Don't clear the draft or navigate away — the member just spent several steps filling
+          // this in. Let them fix the email (or deliberately go log in) without losing anything.
+          setError(
+            "An account with this email already exists. Use a different email, or log in instead."
+          );
           return;
         }
         setError(json.error || "Signup failed.");
@@ -475,7 +478,7 @@ export function SignupWizard() {
                   {(
                     [
                       { v: "Divorcees", tone: "peach" as const, icon: I.split },
-                      { v: "Widows", tone: "rose" as const, icon: I.flower },
+                      { v: "Widowed", tone: "rose" as const, icon: I.flower },
                       { v: "Single parents", tone: "sky" as const, icon: I.parent },
                       { v: "Reverts", tone: "mint" as const, icon: I.spark },
                       // Polygamy is only a relevant openness for male members.
