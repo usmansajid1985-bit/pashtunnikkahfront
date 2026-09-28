@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { refreshHomeCoords } from "@/lib/browse-location";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,12 +21,37 @@ export async function GET() {
   return NextResponse.json({ profile: await withOwnerPhotoUrls(mapProfileView(profile, user)) });
 }
 
+const TEXT_LIMITS: [field: string, label: string, max: number][] = [
+  ["fullName", "Name", 120],
+  ["city", "City", 128],
+  ["tribe", "Tribe", 128],
+  ["education", "Education", 128],
+  ["occupation", "Profession", 100],
+  ["employment", "Profession", 100],
+  ["aboutMe", "About Me", 2000],
+  ["lookingFor", "Partner preferences", 2000],
+];
+
 export async function PATCH(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const body = await req.json();
+    const raw = await req.json();
+    // P03: whitespace-only text is treated as empty everywhere.
+    const body = Object.fromEntries(
+      Object.entries(raw ?? {}).map(([k, v]) => [k, typeof v === "string" ? v.trim() : v])
+    ) as typeof raw;
+    // P05: clear, field-specific limits instead of a generic "Could not save profile.".
+    for (const [field, label, max] of TEXT_LIMITS) {
+      const v = body[field];
+      if (typeof v === "string" && v.length > max) {
+        return NextResponse.json(
+          { error: `${label} is too long — please keep it under ${max} characters.`, field },
+          { status: 400 }
+        );
+      }
+    }
     const userId = BigInt(session.userId);
     const existing = await prisma.profiles.findUnique({ where: { user_id: userId } });
     if (!existing) return NextResponse.json({ error: "No profile" }, { status: 404 });
@@ -78,7 +105,9 @@ export async function PATCH(req: Request) {
       (body.aboutMe || null) !== existing.about_me ||
       (body.lookingFor || null) !== existing.partner_preferences;
 
-    const needsReview = existing.status === "approved" && contentChanged;
+    // F01: an approved member keeps their Approved status when they edit. Content changes are
+    // time-stamped for admin re-review instead of pulling the member back into Awaiting Approval.
+    const flagForReview = existing.status === "approved" && contentChanged;
 
     await prisma.profiles.update({
       where: { user_id: userId },
@@ -106,12 +135,23 @@ export async function PATCH(req: Request) {
         home_language: nextHomeLanguage,
         about_me: body.aboutMe || null,
         partner_preferences: body.lookingFor || null,
-        is_hidden: Boolean(body.isHidden),
+        // Only touch Pause when the caller actually sent it — never un-pause as a side effect.
+        ...(typeof body.isHidden === "boolean" ? { is_hidden: body.isHidden } : {}),
         traits: JSON.stringify(extras),
-        status: needsReview ? "pending" : existing.status,
         updated_at: new Date(),
       },
     });
+    // B07: keep home coordinates in step with the member's city.
+    const nextCountry = countryLabel(nextCountryCode) ?? (body.country || null);
+    if ((body.city || null) !== existing.city || nextCountry !== existing.country) {
+      await refreshHomeCoords(userId, body.city || null, nextCountry);
+    }
+    if (flagForReview) {
+      await ensureBrowseAndWaliSchema();
+      await prisma.$executeRaw`UPDATE profiles SET edited_since_review_at = NOW() WHERE user_id = ${userId}`.catch(
+        () => undefined
+      );
+    }
 
     if (body.fullName) {
       await prisma.users.update({

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { saveHomeCoords } from "@/lib/browse-location";
 import { prisma } from "@/lib/prisma";
 import {
   createSessionToken,
@@ -242,6 +243,10 @@ export async function POST(req: Request) {
       await tx.profiles.create({ data: profileData });
       return savedUser;
     });
+
+    // B07: the member's own (home) coordinates — separate from location_*, which is their
+    // Browse search centre and changes whenever they search another area.
+    if (geo) await saveHomeCoords(user.id, geo.lat, geo.lng);
 
     if (photoUrl) {
       const { logModeration } = await import("@/lib/moderation");

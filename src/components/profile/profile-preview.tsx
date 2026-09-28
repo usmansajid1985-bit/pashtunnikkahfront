@@ -69,7 +69,7 @@ export function ProfilePreview({
   /** Gold viewer compatibility breakdown for the profile being viewed */
   viewerCompat?: { score: number; reasons: string[] } | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
-  presence?: { online: boolean; label: string } | null;
+  presence?: { online: boolean; label: string; justJoined?: boolean } | null;
   /** false when embedded inside the Preview/Edit swipe shell, which owns the top bar + bottom CTA. */
   showMobileChrome?: boolean;
   /** Rendered under the photo (e.g. the matched member's Private Photo Reveal entry, PH06). */
@@ -119,11 +119,10 @@ export function ProfilePreview({
           <a
             href={closeHref}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
-            aria-label="Close"
+            aria-label="Back"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="5" y1="5" x2="19" y2="19" />
-              <line x1="19" y1="5" x2="5" y2="19" />
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
             </svg>
           </a>
           <div className="flex items-center gap-1.5">
@@ -183,6 +182,11 @@ export function ProfilePreview({
               <span className={`w-1.5 h-1.5 rounded-full ${presence.online ? "bg-white" : "bg-white/60"}`} />
               {presence.label}
             </span>
+            {presence.justJoined ? (
+              <span className="ml-1.5 inline-flex items-center px-2.5 py-1.5 rounded-full text-[12px] font-semibold bg-amber-400/90 text-ink-950 backdrop-blur-md">
+                ✨ Just Joined
+              </span>
+            ) : null}
           </div>
         ) : null}
 

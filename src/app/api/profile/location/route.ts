@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { signedPhotoUrl } from "@/lib/photos";
 import { isValidLatLng, isValidRadiusMiles, roundCoord, DEFAULT_RADIUS_MILES } from "@/lib/geo";
 
 export async function GET() {
@@ -39,7 +40,7 @@ export async function GET() {
       countryCode: profile.location_country_code,
       radiusMiles: profile.location_radius_miles ?? DEFAULT_RADIUS_MILES,
       countryOnly: profile.location_country_only,
-      photoUrl: profile.photo_url,
+      photoUrl: profile.photo_url ? await signedPhotoUrl(profile.photo_url) : null,
     },
   });
 }

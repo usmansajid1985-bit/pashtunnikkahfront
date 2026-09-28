@@ -188,8 +188,9 @@ export function LocationFilter({ onClose, onApplied, onClearDistance }: Props) {
   }, [radiusMiles]);
 
   function recenter(lat: number, lng: number, zoom = 11) {
-    mapRef.current?.panTo({ lat, lng });
-    mapRef.current?.setZoom(zoom);
+    // L03: set centre + zoom in ONE camera move — panTo() followed by setZoom() lets the zoom
+    // cancel the pan, leaving the map (and pin) where it was.
+    mapRef.current?.setOptions({ center: { lat, lng }, zoom });
     circleRef.current?.setCenter({ lat, lng });
   }
 

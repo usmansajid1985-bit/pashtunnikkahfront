@@ -93,6 +93,28 @@ export function ProfileEditForm({
     isHidden: initial.isHidden,
   });
 
+  const [pauseSaving, setPauseSaving] = useState(false);
+
+  /** Pause saves on its own, immediately — it isn't part of the big Save (F01). */
+  async function togglePause(paused: boolean) {
+    const previous = form.isHidden;
+    setForm((f) => ({ ...f, isHidden: paused }));
+    setPauseSaving(true);
+    try {
+      const res = await fetch("/api/profile/visibility", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paused }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      setForm((f) => ({ ...f, isHidden: previous }));
+      setError("Could not update Pause. Please try again.");
+    } finally {
+      setPauseSaving(false);
+    }
+  }
+
   function patch<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
     setSaved(false);
@@ -469,9 +491,17 @@ export function ProfileEditForm({
               type="checkbox"
               className="accent-rose-600 w-5 h-5"
               checked={form.isHidden}
-              onChange={(e) => patch("isHidden", e.target.checked)}
+              disabled={pauseSaving}
+              onChange={(e) => void togglePause(e.target.checked)}
             />
           </label>
+          <p className="text-xs text-ink-700/55" aria-live="polite">
+            {pauseSaving
+              ? "Saving…"
+              : form.isHidden
+                ? "Paused — you're hidden from Browse. Existing matches and chats still work."
+                : "Active — you appear in Browse."}
+          </p>
         </section>
 
         {isSister ? <GuardianContactManager /> : null}
@@ -482,7 +512,7 @@ export function ProfileEditForm({
         ) : null}
         {saved ? (
           <p className="lg:col-span-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-            Saved. Changes may need review before going live.
+            Saved.
           </p>
         ) : null}
 

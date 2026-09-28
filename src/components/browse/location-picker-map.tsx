@@ -103,8 +103,8 @@ export function LocationPickerMap({ initialLat, initialLng, photoUrl, onClose, o
   }, []);
 
   function recenter(lat: number, lng: number, zoom = 12) {
-    mapRef.current?.panTo({ lat, lng });
-    mapRef.current?.setZoom(zoom);
+    // One camera move — panTo() + setZoom() lets the zoom cancel the pan (L03).
+    mapRef.current?.setOptions({ center: { lat, lng }, zoom });
   }
 
   function onSearchChange(value: string) {

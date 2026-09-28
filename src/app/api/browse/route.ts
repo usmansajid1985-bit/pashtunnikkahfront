@@ -95,6 +95,17 @@ export async function GET(req: Request) {
 
   const where = whereFor(filters, wantsDistance);
 
+  // B20: cheap "who became active since I loaded Browse?" check — ids only, no ranking.
+  const freshSince = Number(url.searchParams.get("freshSince") || 0);
+  if (freshSince > 0) {
+    const fresh = await prisma.profiles.findMany({
+      where: { AND: [where, { users: { last_seen_at: { gt: new Date(freshSince) } } }] },
+      select: { user_id: true },
+      take: 50,
+    });
+    return NextResponse.json({ userIds: fresh.map((f) => f.user_id.toString()) });
+  }
+
   // B12/B21/B22 — expanded discovery once the member's own filters are exhausted.
   const stageParam = Number(url.searchParams.get("x") || 0);
   if (stageParam > 0) {

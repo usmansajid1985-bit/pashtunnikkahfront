@@ -19,6 +19,8 @@ export type ProfileCardData = {
   lastSeenLabel?: string;
   /** Set when the card comes from expanded discovery — says which preference it falls outside. */
   expandedLabel?: string;
+  /** Coarse activity bucket (0 = active in the last few minutes) — internal, never displayed. */
+  activityBucket?: number;
 };
 
 function Detail({ children }: { children: React.ReactNode }) {
@@ -44,13 +46,9 @@ export function ProfileCard({
     p.aboutMe?.trim() ||
     "This member has not written an about section yet. Open the full profile to learn more.";
 
-  const presenceLabel = p.online
-    ? "Online"
-    : p.justJoined
-      ? "Just Joined"
-      : p.lastSeenLabel && p.lastSeenLabel !== "Online"
-        ? p.lastSeenLabel
-        : "Offline";
+  // B13/B14: simple activity wording only; Just Joined is its own badge, never a replacement.
+  const presenceLabel = p.lastSeenLabel || "Not recently active";
+  const activeToday = presenceLabel === "Active today";
 
   return (
     <article className="card p-4 flex flex-col">
@@ -67,22 +65,19 @@ export function ProfileCard({
             ) : null}
           </div>
 
-          <p
-            className={`mt-2.5 flex items-center gap-1.5 text-xs font-semibold ${
-              p.online ? "text-emerald-700" : p.justJoined ? "text-amber-800" : "text-ink-700/65"
-            }`}
-          >
-            <span
-              className={`relative inline-flex h-2 w-2 shrink-0 rounded-full ${
-                p.online ? "bg-emerald-500" : p.justJoined ? "bg-amber-500" : "bg-rose-400/80"
-              }`}
-              aria-hidden
-            >
-              {p.online ? (
-                <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-60" />
-              ) : null}
+          <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
+            <span className={`inline-flex items-center gap-1.5 ${activeToday ? "text-emerald-700" : "text-ink-700/65"}`}>
+              <span
+                className={`inline-flex h-2 w-2 shrink-0 rounded-full ${activeToday ? "bg-emerald-500" : "bg-ink-700/30"}`}
+                aria-hidden
+              />
+              {presenceLabel}
             </span>
-            <span>{presenceLabel}</span>
+            {p.justJoined ? (
+              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                ✨ Just Joined
+              </span>
+            ) : null}
           </p>
 
           {p.matchScore != null ? (

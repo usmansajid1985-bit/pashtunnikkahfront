@@ -252,18 +252,17 @@ export function BrowseFiltersBar({
             </svg>
             <select
               className="bg-transparent text-sm font-medium outline-none"
-              value={filters.sort}
+              value={filters.sort === "recently_active" ? "newest" : filters.sort}
               onChange={(e) =>
                 navigate({
                   ...filters,
                   sort: e.target.value as BrowseFilters["sort"],
-                  recentlyActive: e.target.value === "recently_active" ? true : filters.recentlyActive,
                 })
               }
             >
-              <option value="best_match">{isGold ? "Best Match" : "Best Match (Gold)"}</option>
-              <option value="newest">Most active</option>
-              <option value="recently_active">Recently active</option>
+              {/* B23: "newest" is the activity ranking — shown as Recently active. */}
+              <option value="newest">Recently active</option>
+              <option value="best_match">{isGold ? "Compatibility" : "Compatibility (Gold)"}</option>
               <option value="age_asc">Age ↑</option>
               <option value="age_desc">Age ↓</option>
             </select>

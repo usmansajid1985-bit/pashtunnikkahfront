@@ -61,7 +61,7 @@ export function ProfileDesktop({
   photoOverrideVisible?: boolean;
   viewerCompat?: { score: number; reasons: string[] } | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
-  presence?: { online: boolean; label: string } | null;
+  presence?: { online: boolean; label: string; justJoined?: boolean } | null;
 }) {
   const isOwn = showEditTab;
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
@@ -142,6 +142,7 @@ export function ProfileDesktop({
                         }`}
                       />
                       {presence.label}
+                      {presence.justJoined ? <span className="text-amber-700">· ✨ Just Joined</span> : null}
                     </span>
                   ) : null}
                 </div>

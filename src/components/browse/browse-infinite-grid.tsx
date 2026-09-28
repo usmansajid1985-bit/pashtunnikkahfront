@@ -2,7 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
+import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
+
+const FRESH_CHECK_MS = 60_000;
 
 type Props = {
   initialItems: ProfileCardData[];
@@ -24,6 +27,8 @@ export function BrowseInfiniteGrid({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
+  const [freshActivity, setFreshActivity] = useState(false);
+  const router = useRouter();
   // 0 = the member's own filters; >0 = expanded discovery stage currently being paged.
   const [stage, setStage] = useState(0);
   const [nextStage, setNextStage] = useState<number | null>(initialNextStage);
@@ -120,10 +125,20 @@ export function BrowseInfiniteGrid({
         /* private mode / disabled storage */
       }
     };
+    let t: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (t) return;
+      t = setTimeout(() => {
+        t = null;
+        save();
+      }, 300);
+    };
     window.addEventListener("pagehide", save);
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      save();
+      if (t) clearTimeout(t);
       window.removeEventListener("pagehide", save);
+      window.removeEventListener("scroll", onScroll);
     };
   }, [filtersKey]);
 
@@ -144,11 +159,10 @@ export function BrowseInfiniteGrid({
     } catch {
       return;
     }
-    if (
-      snap.key !== filtersKey ||
-      snap.page <= 1 ||
-      Date.now() - snap.ts > 30 * 60_000
-    ) {
+    if (snap.key !== filtersKey || Date.now() - snap.ts > 30 * 60_000) return;
+    // B02: page 1 needs no re-fetch — just put the member back where they were.
+    if (snap.page <= 1) {
+      requestAnimationFrame(() => window.scrollTo(0, snap.scrollY));
       return;
     }
 
@@ -177,6 +191,29 @@ export function BrowseInfiniteGrid({
     // Only attempt a restore on the initial mount for a given filter set.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
+
+  // B20: keep the list stable, but tell the member when someone who wasn't already near the
+  // top has become active since this Browse was loaded.
+  useEffect(() => {
+    const loadedAt = Date.now();
+    setFreshActivity(false);
+    const alreadyActive = new Set(
+      initialItems.filter((it) => (it.activityBucket ?? 99) <= 2).map((it) => it.userId)
+    );
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch(`/api/browse${filtersToQuery({ ...filters, page: 1 })}&freshSince=${loadedAt}`);
+        if (!res.ok) return;
+        const data: { userIds: string[] } = await res.json();
+        if (data.userIds.some((id) => !alreadyActive.has(id))) setFreshActivity(true);
+      } catch {
+        /* offline */
+      }
+    };
+    const id = window.setInterval(check, FRESH_CHECK_MS);
+    return () => window.clearInterval(id);
+  }, [initialItems, filters]);
 
   const loadMore = useCallback(async () => {
     if (loadingRef.current) return;
@@ -238,6 +275,21 @@ export function BrowseInfiniteGrid({
 
   return (
     <>
+      {freshActivity ? (
+        <div className="sticky top-3 z-30 flex justify-center">
+          <button
+            type="button"
+            onClick={() => {
+              setFreshActivity(false);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              router.refresh();
+            }}
+            className="mt-3 inline-flex items-center gap-2 rounded-full bg-ink-950 px-4 py-2 text-sm font-semibold text-white shadow-lg"
+          >
+            New activity available — Refresh
+          </button>
+        </div>
+      ) : null}
       <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {strictCount === 0 ? expandedDivider : null}
         {items.map((p, i) => (

@@ -66,11 +66,14 @@ export type BrowseCardDTO = {
   lastSeenLabel: string;
 };
 
-/** Day-stable salt so the same viewer + filters don't reshuffle on every refresh. */
-function daySalt(viewerId: bigint, now = new Date()) {
-  const day = now.toISOString().slice(0, 10);
+/** Rotation window: results stay stable while browsing, then rotate for the next session. */
+const ROTATION_WINDOW_MS = 4 * 60 * 60_000;
+
+/** Viewer + session-window salt — refreshes don't reshuffle, later sessions rotate (B02/B17). */
+function sessionSalt(viewerId: bigint, now = new Date()) {
+  const windowIdx = Math.floor(now.getTime() / ROTATION_WINDOW_MS);
   let h = 0;
-  const s = `${viewerId}:${day}`;
+  const s = `${viewerId}:${windowIdx}`;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return h;
 }
@@ -135,36 +138,44 @@ export async function rankBrowseProfiles(
       ])
   );
 
-  const salt = daySalt(viewerId, now);
+  const salt = sessionSalt(viewerId, now);
 
   const pendingByUser = new Map(
     pendingRows.map((p) => [p.receiver_id.toString(), p._count._all])
   );
 
+  // Activity bucket always wins. Inside a bucket (similarly active members) the order blends
+  // relative freshness with Browse Memory (B16: recently shown/opened members sink) and a
+  // controlled rotation that changes between sessions but is stable within one (B17/B02).
+  const byBucket = new Map<number, typeof rows>();
+  for (const r of rows) {
+    const b = activityBucket(r.users?.last_seen_at ?? null, now);
+    if (!byBucket.has(b)) byBucket.set(b, []);
+    byBucket.get(b)!.push(r);
+  }
+
   const scored = rows.map((r) => {
     const lastSeen = r.users?.last_seen_at ?? null;
     const joined = r.users?.approved_at ?? r.created_at ?? null;
     const bucket = activityBucket(lastSeen, now);
+    const peers = byBucket.get(bucket)!;
+    // 0 = freshest in this bucket, 1 = stalest.
+    const freshRank =
+      peers.length > 1
+        ? peers.filter((p) => (p.users?.last_seen_at?.getTime() ?? 0) > (lastSeen?.getTime() ?? 0)).length /
+          (peers.length - 1)
+        : 0;
     const imp = seen.get(r.user_id.toString());
     const recentlySeen = Boolean(imp);
-    // Soft demotion only — never enough to cross an activity bucket boundary.
-    // Skip/X was removed as a Browse action — the algorithm no longer depends on a skipped state.
-    const seenPenalty = imp
-      ? Math.min(50, imp.n * 8 + (imp.opened ? 18 : 0))
-      : 0;
-    const popularPenalty = Math.min(35, (pendingByUser.get(r.user_id.toString()) ?? 0) * 4);
+    // Browse Memory: each time shown adds weight, opening the profile adds more (capped).
+    const memoryPenalty = imp ? Math.min(45, imp.n * 10 + (imp.opened ? 20 : 0)) : 0;
+    const popularPenalty = Math.min(15, (pendingByUser.get(r.user_id.toString()) ?? 0) * 3);
     const joinedDays = daysSinceJoined(joined, now);
-    const newBoost =
-      joinedDays != null && joinedDays <= NEW_MEMBER_BOOST_DAYS && !recentlySeen ? 12 : 0;
-    const lastMs = lastSeen ? lastSeen.getTime() : 0;
-    // Lower sortKey = higher in list. Bucket dominates; then freshness; then fair exposure; then stable salt.
-    const sortKey =
-      bucket * 1_000_000_000 -
-      lastMs / 1000 +
-      seenPenalty * 1000 +
-      popularPenalty * 800 -
-      newBoost * 100 +
-      tieBreak(r.user_id, salt);
+    const newBoost = joinedDays != null && joinedDays <= NEW_MEMBER_BOOST_DAYS && !recentlySeen ? 8 : 0;
+    const rotation = tieBreak(r.user_id, salt) / 1000; // 0..1, per viewer per session window
+    // Lower = higher in the list.
+    const withinBucket = freshRank * 40 + memoryPenalty + popularPenalty - newBoost + rotation * 25;
+    const sortKey = bucket * 1_000 + withinBucket;
 
     return { r, sortKey, lastSeen, joined };
   });
@@ -234,20 +245,23 @@ export function softSortGoldCompat(items: BrowseCardDTO[]): BrowseCardDTO[] {
     .map(({ p }) => p);
 }
 
+/** How much stale activity costs in the Compatibility sort (points of compatibility). */
+function inactivityPenalty(bucket: number | undefined) {
+  const b = bucket ?? 10;
+  if (b <= 4) return 0; // active today
+  if (b <= 7) return 5; // this week
+  if (b <= 9) return 15; // this month
+  return 30; // long inactive
+}
+
 /**
- * "Best Match" sort (Gold, Smart Matches folded into Browse): rank purely by compatibility,
- * ignoring activity bucket entirely — unlike softSortGoldCompat, a highly compatible but
- * inactive member can outrank a merely-online one.
+ * "Compatibility" sort (Gold, B23/B24): stronger compatibility first, but activity still counts —
+ * a long-inactive member can't dominate genuinely active ones just on score.
  */
 export function hardSortByCompat(items: BrowseCardDTO[]): BrowseCardDTO[] {
   return items
-    .map((p, index) => ({ p, index }))
-    .sort((a, b) => {
-      const sa = a.p.matchScore ?? 0;
-      const sb = b.p.matchScore ?? 0;
-      if (sb !== sa) return sb - sa;
-      return a.index - b.index;
-    })
+    .map((p, index) => ({ p, index, key: (p.matchScore ?? 0) - inactivityPenalty(p.activityBucket) }))
+    .sort((a, b) => (b.key !== a.key ? b.key - a.key : a.index - b.index))
     .map(({ p }) => p);
 }
 

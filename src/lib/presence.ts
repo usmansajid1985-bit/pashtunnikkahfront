@@ -65,18 +65,31 @@ export function activityBucket(lastSeenAt: Date | string | null | undefined, now
   return 10;
 }
 
+/** Calendar day key in the community's main timezone, so "today"/"yesterday" match what members expect. */
+function dayKey(d: Date) {
+  return d.toLocaleDateString("en-GB", { timeZone: "Europe/London" });
+}
+
+/** True when the member was genuinely active earlier today (drives the green "Active today" style). */
+export function isActiveToday(lastSeenAt: Date | string | null | undefined, now = new Date()) {
+  if (!lastSeenAt) return false;
+  const t = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
+  if (Number.isNaN(t.getTime())) return false;
+  return now.getTime() - t.getTime() < 24 * 60 * 60_000 && dayKey(t) === dayKey(now);
+}
+
+/**
+ * Privacy-friendly activity wording (B13/K13, V2 QA): members only ever see a coarse bucket —
+ * never minutes/hours or "Online". The exact timestamp is still used internally for ranking.
+ */
 export function formatLastSeen(lastSeenAt: Date | string | null | undefined, now = new Date()): string {
-  if (isOnline(lastSeenAt, now)) return "Online";
   if (!lastSeenAt) return "Not recently active";
   const t = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
   if (Number.isNaN(t.getTime())) return "Not recently active";
-  const mins = Math.max(0, Math.floor((now.getTime() - t.getTime()) / 60_000));
-  if (mins < 60) return `Active ${mins || 1} min ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `Active ${hours} hr${hours === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hours / 24);
-  if (days === 1) return "Active yesterday";
-  if (days < 7) return `Active ${days} days ago`;
-  if (days < 30) return "Active this month";
+  if (isActiveToday(t, now)) return "Active today";
+  const days = (now.getTime() - t.getTime()) / (24 * 60 * 60_000);
+  if (days < 2 && dayKey(t) === dayKey(new Date(now.getTime() - 24 * 60 * 60_000))) return "Active yesterday";
+  if (days < 7) return "Active this week";
+  if (days < 30) return "Active recently";
   return "Not recently active";
 }

@@ -10,7 +10,7 @@ import { recordBrowseOpened } from "@/lib/browse-rank";
 import { computeCompatibilityOnce, getCachedCompatDetail, toCompatProfile } from "@/lib/compatibility-cache";
 import { compatScore } from "@/lib/requests-hub-shared";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
-import { isOnline, formatLastSeen } from "@/lib/presence";
+import { formatLastSeen, isActiveToday, isJustJoined } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
 import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
 import { signedPhotoUrl } from "@/lib/photos";
@@ -183,8 +183,9 @@ export default async function PublicProfilePage({
 
   const lastSeenAt = profile.users.last_seen_at;
   const presence = {
-    online: isOnline(lastSeenAt),
+    online: isActiveToday(lastSeenAt),
     label: formatLastSeen(lastSeenAt),
+    justJoined: isJustJoined(profile.users.approved_at ?? profile.created_at),
   };
 
   return (
