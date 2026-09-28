@@ -110,7 +110,13 @@ export function ProfileHome({
       {/* Desktop: unchanged — a real page per tab, plain navigation, no drag. */}
       <div className="hidden lg:block">
         {initialTab === "preview" ? (
-          <ProfilePreview profile={profile} showEditTab closeHref="/settings" unreadCount={unreadCount} />
+          <ProfilePreview
+            profile={profile}
+            showEditTab
+            closeHref="/settings"
+            unreadCount={unreadCount}
+            photos={photos}
+          />
         ) : (
           <ProfileEditForm initial={profile} unreadCount={unreadCount} photos={photos} />
         )}
@@ -177,6 +183,7 @@ export function ProfileHome({
               closeHref="/settings"
               unreadCount={unreadCount}
               showMobileChrome={false}
+              photos={photos}
             />
           </div>
 

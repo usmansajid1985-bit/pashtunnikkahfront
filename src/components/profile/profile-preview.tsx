@@ -5,6 +5,7 @@ import { ProfileDesktop } from "@/components/profile/profile-desktop";
 import { MatchActions } from "@/components/matches/match-actions";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import type { MatchRelationStatus } from "@/lib/matches";
+import { ProfilePhotoSlider, type ProfileSlide } from "@/components/profile/profile-photo-slider";
 
 function Pill({
   icon,
@@ -54,6 +55,7 @@ export function ProfilePreview({
   photoVisible,
   showMobileChrome = true,
   photoAccessory,
+  photos = [],
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -78,9 +80,20 @@ export function ProfilePreview({
   showMobileChrome?: boolean;
   /** Rendered under the photo (e.g. the matched member's Private Photo Reveal entry, PH06). */
   photoAccessory?: ReactNode;
+  /** Extra profile photos (own preview, or a matched viewer). Main photo first. */
+  photos?: ProfileSlide[];
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
+  const slides: ProfileSlide[] = (
+    photos.length > 0
+      ? [...photos]
+          .filter((p) => p.url)
+          .sort((a, b) => Number(!!b.isMain) - Number(!!a.isMain))
+      : profile.photoUrl
+        ? [{ id: "main", url: profile.photoUrl }]
+        : []
+  );
   // Server decides for other people's profiles; the owner always sees their own photo (K10).
   const showPhoto = photoVisible !== undefined ? photoVisible : true;
   const photoHidden = photoVisible === false && !profile.photoUrl;
@@ -159,7 +172,7 @@ export function ProfilePreview({
       ) : null}
 
       {/* Photo-led hero */}
-      <div className="relative w-full bg-ink-900/10" style={{ aspectRatio: "4 / 5" }}>
+      <div className="relative w-full overflow-hidden bg-ink-900/10" style={{ aspectRatio: "4 / 5" }}>
         {photoHidden ? (
           <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink-900/10 to-ink-900/5">
             <p className="text-sm font-semibold text-ink-700/50 px-10 text-center">
@@ -167,17 +180,11 @@ export function ProfilePreview({
             </p>
           </div>
         ) : (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={avatar}
-            alt=""
-            className="w-full h-full object-cover"
-            style={showPhoto ? undefined : { filter: "blur(18px) saturate(0.85)" }}
-          />
+          <ProfilePhotoSlider slides={slides} showPhoto={showPhoto} fallbackSrc={avatar} />
         )}
 
         {presence ? (
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-4 left-4 z-20 pointer-events-none">
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold backdrop-blur-md ${
                 presence.online ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
@@ -199,7 +206,7 @@ export function ProfilePreview({
           aria-hidden
         />
 
-        <div className="absolute inset-x-0 bottom-0 px-5 pb-5 text-white">
+        <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5 text-white pointer-events-none">
           <p className="text-[22px] font-bold flex items-center gap-1.5 leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
             {profile.profileCode}
             {profile.age ? `, ${profile.age}` : ""}

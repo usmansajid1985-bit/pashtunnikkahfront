@@ -195,20 +195,32 @@ export function ProfileEditForm({
         className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(7rem+var(--pn-bottom-nav-h))] lg:pb-12"
       >
         {/* Desktop tabs */}
-        <div className="hidden lg:flex lg:col-span-2 items-center justify-between mb-2">
+        <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2">
           <div className="flex gap-8 text-[15px]">
             <Link href="/profile" className="pb-2 font-medium text-ink-700/50 hover:text-ink-900">
               Preview
             </Link>
             <span className="pb-2 font-bold text-ink-950 border-b-[3px] border-rose-600">Edit</span>
           </div>
-          <button
-            type="submit"
-            disabled={pending}
-            className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
-          >
-            {pending ? "Saving…" : "Save changes"}
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            {saved && !error ? (
+              <p className="text-sm font-medium text-emerald-700" aria-live="polite">
+                Your profile has been updated
+              </p>
+            ) : null}
+            {error ? (
+              <p className="text-sm font-medium text-rose-700 max-w-xs text-right" aria-live="polite">
+                {error}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={pending}
+              className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+            >
+              {pending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
         </div>
 
         <PhotoGallery initialPhotos={photos} />
@@ -538,17 +550,18 @@ export function ProfileEditForm({
         {isSister ? <GuardianContactManager /> : null}
         {isSister ? <WaliAccessManager /> : null}
 
-        {error ? (
-          <p className="lg:col-span-2 text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{error}</p>
-        ) : null}
-        {saved ? (
-          <p className="lg:col-span-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-            Saved.
-          </p>
-        ) : null}
-
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">
+            {saved && !error ? (
+              <p className="mb-2 text-center text-sm font-medium text-emerald-700" aria-live="polite">
+                Your profile has been updated
+              </p>
+            ) : null}
+            {error ? (
+              <p className="mb-2 text-center text-sm font-medium text-rose-700" aria-live="polite">
+                {error}
+              </p>
+            ) : null}
             <button
               type="submit"
               disabled={pending}
