@@ -8,6 +8,8 @@ export type SignupData = {
   height: string;
   country: string;
   city: string;
+  /** R04: true only once the city was picked from the real-place list. */
+  cityConfirmed?: boolean;
   ancestralRegion: string;
   relocation: string;
   languages: string[];
@@ -322,7 +324,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "height":
       return Boolean(data.height);
     case "location":
-      return Boolean(data.country && data.city.trim());
+      return Boolean(data.country && data.city.trim() && data.cityConfirmed);
     case "roots":
       return Boolean(data.ancestralRegion && data.relocation);
     case "languages":

@@ -23,6 +23,13 @@ export function waliTopic(linkId: string) {
   return `${raw}:${signTopic(raw)}`;
 }
 
+/** S03/S04: one shared Browse topic — carries only "member X left/returned to Browse" events.
+ * Handed to signed-in members by the Browse page. */
+export function browseTopic() {
+  const raw = "browse:all";
+  return `${raw}:${signTopic(raw)}`;
+}
+
 export function userTopic(userId: string) {
   const raw = `user:${userId}`;
   return `${raw}:${signTopic(raw)}`;

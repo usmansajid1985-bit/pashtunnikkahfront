@@ -41,10 +41,11 @@ export async function POST(
     const match = await assertAcceptedParticipant(requestId, userId);
     if (match) {
       const peerId = await peerUserId(match, userId);
+      // PH09: `kind`/`fromCode` let the recipient's app show the in-app reveal banner anywhere in PN.
       broadcastChat(
         "private-photo:update",
         [`thread:${raw}`, `user:${peerId.toString()}`],
-        { requestId: raw, fromUserId: session.userId }
+        { requestId: raw, fromUserId: session.userId, fromCode: session.profileCode, kind: "shared" }
       );
     }
     return NextResponse.json({ ok: true, shareId: share.id.toString() });

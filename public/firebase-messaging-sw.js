@@ -12,14 +12,17 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// K11/N03: every push (message, request, photo, grouped…) is drawn here with the same PN look:
+// the sender's blurred photo (or the PN logo) as the icon and the monochrome PN heart as the
+// Android status-bar badge. A full-colour badge is what rendered as a solid square before.
 function showFromPayload(payload) {
   const n = (payload && payload.notification) || {};
   const d = (payload && payload.data) || {};
   const title = n.title || d.title || "Pashtun Nikah";
   return self.registration.showNotification(title, {
     body: n.body || d.body || "",
-    icon: "/icons/pn-icon-192.png",
-    badge: "/icons/pn-icon-96.png",
+    icon: d.icon || "/icons/pn-icon-192.png",
+    badge: d.badge || "/icons/pn-badge-96.png",
     tag: d.tag || n.tag || "pashtun-nikah",
     requireInteraction: true,
     data: { url: d.url || "/", type: d.type || "system" },

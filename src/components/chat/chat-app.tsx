@@ -11,6 +11,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
 import { outboxAdd, outboxAll, outboxFor, outboxRemove, readDrafts, saveDraft } from "@/lib/chat-outbox";
 import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } from "@/lib/chat";
 import type { ProfileView } from "@/lib/profile";
@@ -448,6 +449,7 @@ export function ChatApp({
   const [unreadMarker, setUnreadMarker] = useState<{ id: string; count: number } | null>(null);
   const activeIdRef = useRef<string | null>(initialRequestId);
   const inFlightRef = useRef<Set<string>>(new Set());
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
@@ -1304,41 +1306,21 @@ export function ChatApp({
     }
   }
 
-  async function reportMessage(m: ChatMessageDTO) {
-    try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: m.senderId,
-          reason: `Reported message: "${m.body.slice(0, 300)}"`,
-        }),
-      });
-      showToast(res.ok ? "Message reported" : "Could not report message");
-    } catch {
-      showToast("Could not report message");
-    }
+  // A02: both report entry points open the reason + details popup instead of sending instantly.
+  function reportMessage(m: ChatMessageDTO) {
+    if (!peer) return;
+    setReportTarget({
+      userId: m.senderId,
+      code: peer.code,
+      requestId: activeId,
+      message: { id: m.id, body: m.body },
+    });
   }
 
-  async function reportMember() {
-    if (!peer || moreBusy) return;
-    setMoreBusy(true);
-    try {
-      const res = await fetch("/api/reports", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: peer.userId,
-          reason: `Reported ${peer.code} from chat`,
-        }),
-      });
-      showToast(res.ok ? "Member reported to the PN team" : "Could not report member");
-    } catch {
-      showToast("Could not report member");
-    } finally {
-      setMoreBusy(false);
-      setHeaderMenu(null);
-    }
+  function reportMember() {
+    if (!peer) return;
+    setHeaderMenu(null);
+    setReportTarget({ userId: peer.userId, code: peer.code, requestId: activeId });
   }
 
   async function blockMember() {
@@ -1436,6 +1418,15 @@ export function ChatApp({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+      <ReportDialog
+        target={reportTarget}
+        onClose={() => setReportTarget(null)}
+        onDone={(ok) => {
+          const wasMessage = Boolean(reportTarget?.message);
+          setReportTarget(null);
+          if (ok) showToast(wasMessage ? "Message reported to the PN team" : "Member reported to the PN team");
+        }}
+      />
       <div className="hidden lg:block">
         <BrowseAppNav profileCode={profileCode} active="messages" unreadCount={unreadCount} />
       </div>
@@ -1767,7 +1758,7 @@ export function ChatApp({
                               type="button"
                               role="menuitem"
                               disabled={moreBusy}
-                              onClick={() => void reportMember()}
+                              onClick={() => reportMember()}
                               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-ink-800 hover:bg-ink-900/5 disabled:opacity-50"
                             >
                               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9">
@@ -1924,7 +1915,7 @@ export function ChatApp({
                               }}
                               onReact={(m, emoji) => void reactToMessage(m.id, emoji)}
                               onCopy={(m) => void copyMessage(m)}
-                              onReport={(m) => void reportMessage(m)}
+                              onReport={(m) => reportMessage(m)}
                               onRetry={(m) => void retryMessage(m)}
                             />
                           ) : null

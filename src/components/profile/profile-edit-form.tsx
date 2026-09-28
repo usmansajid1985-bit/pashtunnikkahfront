@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState, useTransition } from "react";
+import { FormEvent, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileView } from "@/lib/profile";
 import {
@@ -18,9 +18,16 @@ import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
 import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
 import { PhotoGallery } from "@/components/profile/photo-gallery";
+import { useLeaveGuard } from "@/hooks/use-leave-guard";
+import { CityPicker } from "@/components/location/city-picker";
 
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
+
+/** P10: comparable form state — Pause saves instantly on its own, so it never counts as unsaved. */
+function snapshot(f: object) {
+  return JSON.stringify({ ...f, isHidden: undefined });
+}
 
 function optionsWithCurrent(options: string[], current: string) {
   if (!current) return options;
@@ -94,6 +101,13 @@ export function ProfileEditForm({
   });
 
   const [pauseSaving, setPauseSaving] = useState(false);
+  /** R04: a city edited here must be re-picked from the list before saving. */
+  const [cityConfirmed, setCityConfirmed] = useState(true);
+
+  // P10: what's on screen vs. what was last saved. Pause saves instantly, so it never counts.
+  const [savedSnapshot, setSavedSnapshot] = useState(() => snapshot(form));
+  const dirty = useMemo(() => snapshot(form) !== savedSnapshot, [form, savedSnapshot]);
+  const { dialog: leaveDialog } = useLeaveGuard(dirty);
 
   /** Pause saves on its own, immediately — it isn't part of the big Save (F01). */
   async function togglePause(paused: boolean) {
@@ -123,6 +137,10 @@ export function ProfileEditForm({
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!cityConfirmed) {
+      setError("Please choose your city from the suggestions list.");
+      return;
+    }
     startTransition(async () => {
       try {
         const res = await fetch("/api/profile", {
@@ -136,6 +154,7 @@ export function ProfileEditForm({
           return;
         }
         setSaved(true);
+        setSavedSnapshot(snapshot(form));
         router.refresh();
       } catch {
         setError("Network error.");
@@ -145,6 +164,7 @@ export function ProfileEditForm({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+      {leaveDialog}
       <div className="hidden lg:block">
         <BrowseAppNav profileCode={initial.profileCode} active="profile" unreadCount={unreadCount} />
       </div>
@@ -208,7 +228,16 @@ export function ProfileEditForm({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold mb-1">City</label>
-              <input className={field} value={form.city} onChange={(e) => patch("city", e.target.value)} />
+              <CityPicker
+                className={field}
+                value={form.city}
+                country={form.country}
+                initiallyConfirmed
+                onChange={(city, confirmed) => {
+                  patch("city", city);
+                  setCityConfirmed(confirmed);
+                }}
+              />
             </div>
             <div>
               <label className="block text-xs font-semibold mb-1">Country</label>

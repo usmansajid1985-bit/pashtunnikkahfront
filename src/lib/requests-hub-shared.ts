@@ -14,6 +14,9 @@ export type HubCard = {
   avatarSeed: number;
   createdAt: string;
   status?: string;
+  /** Q06: when the request was sent, and when it reached its current status. */
+  requestedAt?: string;
+  statusAt?: string;
   compat: number;
   lastMessage?: string | null;
   photoShared?: boolean;
@@ -30,6 +33,25 @@ export function formatAgeLabel(iso: string) {
   if (hrs < 48) return `${hrs}h ago`;
   const days = Math.floor(hrs / 24);
   return `${days}d ago`;
+}
+
+/** Q06: "Requested on 22 Sep, 14:30" style line for a request/match card (member's local time). */
+export function statusDateLabel(card: Pick<HubCard, "status" | "requestedAt" | "statusAt" | "createdAt">) {
+  const verb: Record<string, string> = {
+    pending: "Requested",
+    accepted: "Matched",
+    ended: "Ended",
+    declined: "Declined",
+    cancelled: "Withdrawn",
+    expired: "Expired",
+  };
+  const status = card.status || "pending";
+  const iso = status === "pending" ? card.requestedAt || card.createdAt : card.statusAt || card.createdAt;
+  const d = new Date(iso);
+  const sameYear = d.getFullYear() === new Date().getFullYear();
+  const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${verb[status] ?? "Updated"} on ${date}, ${time}`;
 }
 
 /** Lightweight compatibility heuristic for UI (0–99). */

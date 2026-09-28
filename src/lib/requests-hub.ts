@@ -196,6 +196,7 @@ export async function loadRequestsHub(userId: bigint) {
       created_at: Date;
       updated_at: Date;
       ended_at?: Date | null;
+      accepted_at?: Date | null;
       communication_mode: string | null;
       photo_shared: boolean;
       intro_message?: string | null;
@@ -220,6 +221,15 @@ export async function loadRequestsHub(userId: bigint) {
         requestId: r.id.toString(),
         createdAt: stamp.toISOString(),
         status: r.status,
+        requestedAt: r.created_at.toISOString(),
+        statusAt: (r.status === "ended"
+          ? r.ended_at ?? r.updated_at
+          : r.status === "accepted"
+            ? r.accepted_at ?? r.updated_at
+            : r.status === "pending"
+              ? r.created_at
+              : r.updated_at
+        ).toISOString(),
         lastMessage,
         photoShared: r.photo_shared,
         communicationMode: r.communication_mode,

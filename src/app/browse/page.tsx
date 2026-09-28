@@ -21,6 +21,7 @@ import { BrowseAppNav } from "@/components/browse/app-nav";
 import { CompletenessBanner, PremiumBanner } from "@/components/browse/banners";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
 import { BrowseInfiniteGrid } from "@/components/browse/browse-infinite-grid";
+import { browseTopic } from "@/lib/realtime-topics";
 import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
 import { loadCompatibilityCache } from "@/lib/compatibility-cache";
 import type { Prisma } from "@/generated/prisma/client";
@@ -276,6 +277,7 @@ export default async function BrowsePage({
           initialNextStage={initialHasMore ? null : firstExpansionStage(filters)}
           filters={filters}
           initialSavedUserIds={initialSavedUserIds}
+          browseTopic={browseTopic()}
         />
       </main>
     </div>

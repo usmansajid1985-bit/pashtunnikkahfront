@@ -20,6 +20,9 @@ const CHAT_EVENTS = [
   "match:closed",
   "request:update",
   "inbox:read",
+  "private-photo:update",
+  "account:status",
+  "browse:visibility",
 ] as const;
 
 type Listener = () => void;

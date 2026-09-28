@@ -95,6 +95,21 @@ export async function GET(req: Request) {
 
   const where = whereFor(filters, wantsDistance);
 
+  // S03/S04: a member just returned to Browse — does their card belong in THIS viewer's results?
+  // One row, no impressions recorded, so the check never affects Browse memory/rotation.
+  const peekUser = url.searchParams.get("peekUser");
+  if (peekUser && /^\d+$/.test(peekUser)) {
+    const rows = await prisma.profiles.findMany({
+      where: { AND: [where, { user_id: BigInt(peekUser) }] },
+      take: 1,
+      select: BROWSE_PROFILE_SELECT,
+    });
+    if (rows.length === 0) return NextResponse.json({ item: null });
+    let peeked = await rankBrowseProfiles(userId, rows);
+    if (isGold && me) peeked = await applyGoldCompatToBrowseItems(userId, me, peeked, rows);
+    return NextResponse.json({ item: peeked[0] ?? null });
+  }
+
   // B20: cheap "who became active since I loaded Browse?" check — ids only, no ranking.
   const freshSince = Number(url.searchParams.get("freshSince") || 0);
   if (freshSince > 0) {

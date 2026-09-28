@@ -351,6 +351,8 @@ export function ProfileDesktop({
               <div className="mt-2">
                 <DetailRow label="Islamic Background" value={profile.islamicBackground} />
                 <DetailRow label="Religious Practice" value={profile.religiousPractice} />
+                {/* B08: members can filter by Salah, so it must be visible on the profile. */}
+                <DetailRow label="Salah" value={profile.salah} />
                 <DetailRow label="Smoking" value={profile.smoking} />
                 <DetailRow label="Vaping" value={profile.vaping} />
               </div>

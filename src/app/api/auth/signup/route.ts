@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { verifyCity } from "@/lib/city-search";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { prisma } from "@/lib/prisma";
 import {
@@ -58,6 +59,15 @@ export async function POST(req: Request) {
     const age = calcAge(String(body.dob ?? ""));
     if (age == null || age < 18) {
       return NextResponse.json({ error: "You must be 18 or over." }, { status: 400 });
+    }
+
+    // R04: the city must be a real, selectable place (the form only offers real ones — this
+    // stops a hand-crafted request). If the lookup is down, don't block the signup.
+    if ((await verifyCity(body.city, body.country)) === "invalid") {
+      return NextResponse.json(
+        { error: "Please choose your city from the suggestions list." },
+        { status: 400 }
+      );
     }
 
     const existingUser = await prisma.users.findFirst({

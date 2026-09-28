@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { broadcastBrowseVisibility } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -16,5 +17,6 @@ export async function POST(req: Request) {
     where: { user_id: BigInt(session.userId) },
     data: { is_hidden: body.paused, updated_at: new Date() },
   });
+  broadcastBrowseVisibility(session.userId, !body.paused);
   return NextResponse.json({ ok: true, paused: body.paused });
 }

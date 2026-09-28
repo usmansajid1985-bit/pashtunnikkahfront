@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { siteOrigin } from "@/lib/site-url";
+import { signedPhotoUrl } from "@/lib/photos";
 import type { PushPayload } from "@/lib/push/types";
 import { getFirebaseMessaging, firebaseAdminUnavailableReason } from "@/lib/push/firebase-admin";
 import { createNotification, categoryForType, pushAllowedForCategory } from "@/lib/notifications";
@@ -52,6 +53,24 @@ function appOrigin() {
     /\/$/,
     ""
   );
+}
+
+/**
+ * N03: the sender's photo for the notification's large icon — only ever the server-made BLURRED
+ * derivative (the bucket is private, so it's signed; 24h to match the push TTL).
+ */
+async function senderIconUrl(actorUserId: bigint | null | undefined): Promise<string | null> {
+  if (!actorUserId) return null;
+  try {
+    const profile = await prisma.profiles.findUnique({
+      where: { user_id: actorUserId },
+      select: { photo_blur_url: true, photo_status: true },
+    });
+    if (!profile?.photo_blur_url || profile.photo_status !== "approved") return null;
+    return await signedPhotoUrl(profile.photo_blur_url, 60 * 60 * 24);
+  } catch {
+    return null;
+  }
 }
 
 export async function sendPushNotification(
@@ -107,12 +126,18 @@ export async function sendPushNotification(
   }
 
   const clickUrl = payload.url?.startsWith("http") ? payload.url : `${appOrigin()}${payload.url || "/"}`;
+  // K11/N03: data-only message — our service worker draws every notification (message, request,
+  // grouped…) the same way: PN logo, monochrome PN badge, and the sender's BLURRED photo as the
+  // large icon where Android supports it. A `notification` block made the FCM SDK draw some of
+  // them itself with different icons, which is why QA saw bell / stacked / solid-square icons.
   const data = {
     title: payload.title,
     body: payload.body,
     url: payload.url || "/",
     tag: payload.tag || "",
     type: payload.type,
+    icon: (await senderIconUrl(payload.actorUserId)) ?? `${appOrigin()}/icons/pn-icon-192.png`,
+    badge: `${appOrigin()}/icons/pn-badge-96.png`,
   };
 
   const results = await Promise.allSettled(
@@ -121,23 +146,10 @@ export async function sendPushNotification(
         if (!messaging) throw new Error("fcm_not_configured");
         await messaging.send({
           token: fcmTokenOf(sub),
-          notification: {
-            title: payload.title,
-            body: payload.body,
-            imageUrl: `${appOrigin()}/icons/pn-icon-192.png`,
-          },
           data,
           webpush: {
             headers: { Urgency: "high", TTL: "86400" },
             fcmOptions: { link: clickUrl },
-            notification: {
-              title: payload.title,
-              body: payload.body,
-              icon: `${appOrigin()}/icons/pn-icon-192.png`,
-              badge: `${appOrigin()}/icons/pn-icon-96.png`,
-              tag: payload.tag || "pashtun-nikah",
-              requireInteraction: true,
-            },
           },
         });
         return;

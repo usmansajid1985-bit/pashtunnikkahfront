@@ -4,7 +4,7 @@ import Link from "next/link";
 import { RematchButton } from "@/components/matches/rematch-button";
 import { useEffect, useMemo, useState } from "react";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { formatAgeLabel } from "@/lib/requests-hub-shared";
+import { statusDateLabel } from "@/lib/requests-hub-shared";
 import { RequestActions } from "@/components/matches/request-actions";
 
 type Tab = "incoming" | "sent" | "matched";
@@ -30,6 +30,16 @@ function avatarUrl(seed: number) {
 }
 
 const TAB_IDS: Tab[] = ["incoming", "sent", "matched"];
+
+/**
+ * Q06: request/match cards show when the request was sent or reached its status — never how long
+ * ago the other member was online. Rendered after mount so it uses the member's own timezone.
+ */
+function StatusDate({ card, className }: { card: HubCard; className?: string }) {
+  const [label, setLabel] = useState("");
+  useEffect(() => setLabel(statusDateLabel(card)), [card]);
+  return <span className={className}>{label}</span>;
+}
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
   const [tab, setTab] = useState<Tab>(
@@ -148,13 +158,12 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                     {tab === "matched" && card.lastMessage ? (
                       <p className="text-[12px] text-ink-700 mt-1 line-clamp-1">“{card.lastMessage}”</p>
                     ) : null}
-                    {tab === "sent" && card.status ? (
-                      <p className="text-[11px] font-semibold text-ink-700/55 mt-1 capitalize">{card.status}</p>
-                    ) : null}
+                    <p className="text-[11px] font-semibold text-ink-700/55 mt-1">
+                      <StatusDate card={card} />
+                    </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[11px] text-ink-700/45">{formatAgeLabel(card.createdAt)}</p>
-                    <p className="mt-1 text-sm font-bold text-rose-600">{card.compat}%</p>
+                    <p className="text-sm font-bold text-rose-600">{card.compat}%</p>
                     <p className="text-[10px] text-ink-700/40">compat</p>
                   </div>
                 </div>
@@ -205,7 +214,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                       <div className="min-w-0">
                         <p className="font-semibold text-ink-950 truncate">{card.code}</p>
                         <p className="text-[13px] text-ink-700/55 truncate">
-                          Ended · {formatAgeLabel(card.createdAt)}
+                          <StatusDate card={card} />
                           {card.lastMessage ? ` · ${card.lastMessage.slice(0, 48)}` : ""}
                         </p>
                       </div>
@@ -249,7 +258,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                     className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm"
                   >
                     <span className="font-semibold">{c.code}</span>
-                    <span className="text-ink-700/50">{formatAgeLabel(c.createdAt)}</span>
+                    <StatusDate card={c} className="text-ink-700/50" />
                   </Link>
                 ))}
               </div>
@@ -262,7 +271,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                 {data.expired.slice(0, 5).map((c) => (
                   <div key={c.id} className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm">
                     <span className="font-semibold">{c.code}</span>
-                    <span className="text-ink-700/50">{formatAgeLabel(c.createdAt)}</span>
+                    <StatusDate card={c} className="text-ink-700/50" />
                   </div>
                 ))}
               </div>

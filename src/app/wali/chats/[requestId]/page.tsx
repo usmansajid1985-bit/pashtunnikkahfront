@@ -4,6 +4,7 @@ import { assertAcceptedParticipant, loadPeer, peerUserId, serializeMessage } fro
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
+import { profileCodeOf } from "@/lib/notifications";
 import { WaliPrivatePhoto } from "@/components/wali/wali-private-photo";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export default async function WaliChatThreadPage({
   }
 
   const peerId = await peerUserId(req, profileUserId);
-  const peer = await loadPeer(peerId);
+  const [peer, wardCode] = await Promise.all([loadPeer(peerId), profileCodeOf(profileUserId)]);
 
   const rows = await prisma.messages.findMany({
     where: { request_id: requestId },
@@ -79,6 +80,7 @@ export default async function WaliChatThreadPage({
           profileUserId={session.profileUserId}
           peerName={peer?.name || "Member"}
           peerCode={peer?.code || ""}
+          wardCode={wardCode}
           initialMessages={messages}
         />
       </div>

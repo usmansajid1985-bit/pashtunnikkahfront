@@ -9,6 +9,8 @@ type Banner = { key: string; title: string; body: string; href: string };
 
 type InboxEvent = { requestId: string; lastMessage: string; fromUserId: string; fromCode?: string | null };
 type RequestEvent = { requestId: string; status: string; fromUserId?: string; fromCode?: string | null };
+type PhotoEvent = { requestId: string; fromUserId?: string; fromCode?: string | null; kind?: string };
+type AccountEvent = { status: string };
 
 const BANNER_MS = 5000;
 const AUTH_CHANNEL = "pn-auth";
@@ -40,6 +42,7 @@ export function LiveUpdates() {
     // else (or signs out), this tab reloads so no previous-account data stays on screen.
     const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(AUTH_CHANNEL) : null;
     let shownUserId: string | null | undefined; // undefined = not resolved yet
+    let shownStatus: string | null | undefined;
 
     const resolveAccount = async (announce: boolean) => {
       const res = await fetch("/api/realtime/me", { cache: "no-store" }).catch(() => null);
@@ -50,10 +53,18 @@ export function LiveUpdates() {
         window.location.reload();
         return;
       }
+      // N08 fallback: approval happened while this tab was in the background.
+      const status: string | null = d?.profileStatus ?? null;
+      if (shownStatus !== undefined && status !== shownStatus) {
+        window.dispatchEvent(new CustomEvent("pn:account-status", { detail: { status } }));
+      }
+      shownStatus = status;
       if (shownUserId === undefined) {
         shownUserId = userId;
         if (d?.userTopic) {
           setMe({ userId: String(d.userId), inAppBanners: d.inAppBanners !== false });
+          // PH09: lets the foreground push listener skip an OS notification the banner already covers.
+          document.documentElement.dataset.pnInAppBanners = d.inAppBanners !== false ? "1" : "0";
           void joinUser(d.userTopic);
         }
       }
@@ -133,13 +144,57 @@ export function LiveUpdates() {
       refreshPage();
     };
 
+    // PH09: a match shared private photos — tap opens that conversation's photo gallery flow.
+    const onPhoto = (e: PhotoEvent) => {
+      if (e.kind !== "shared" || !e.fromUserId || e.fromUserId === me.userId) return;
+      refreshNavCounts();
+      // Already in that conversation: its own photo banner updates in place.
+      if (window.location.pathname === `/chats/${e.requestId}`) return;
+      show({
+        key: `photo-${e.requestId}-${Date.now()}`,
+        title: `${e.fromCode || "Your match"} shared private photos`,
+        body: "Tap to view — one 60-second session.",
+        href: `/chats/${e.requestId}?photos=1`,
+      });
+    };
+
+    // N08: admin approved (or otherwise changed) this member's profile — update live, no re-login.
+    const onAccount = (e: AccountEvent) => {
+      refreshNavCounts();
+      router.refresh();
+      if (e.status === "approved") {
+        show({
+          key: `approved-${Date.now()}`,
+          title: "Your profile is approved",
+          body: "You can now browse and send Match Requests.",
+          href: "/dashboard",
+        });
+      }
+    };
+
+    let lastStatus: string | null = null;
+    const onAccountOnce = (status: string | undefined) => {
+      if (!status || status === lastStatus) return;
+      lastStatus = status;
+      onAccount({ status });
+    };
+
     const offs = [
       on("inbox:update", onInbox),
       on("inbox:read", () => refreshNavCounts()),
       on("request:update", onRequest),
       on("match:closed", onGeneric),
+      on("private-photo:update", onPhoto),
+      on("account:status", (e: AccountEvent) => onAccountOnce(e.status)),
     ];
-    return () => offs.forEach((off) => off());
+    // The focus re-check (above) reports the same change too — the realtime event and the
+    // re-check can both fire for one approval, so only the first one per status acts.
+    const onLocal = (ev: Event) => onAccountOnce((ev as CustomEvent<AccountEvent>).detail?.status);
+    window.addEventListener("pn:account-status", onLocal);
+    return () => {
+      offs.forEach((off) => off());
+      window.removeEventListener("pn:account-status", onLocal);
+    };
   }, [me, on, router]);
 
   useEffect(

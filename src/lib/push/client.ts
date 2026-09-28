@@ -232,15 +232,28 @@ export async function listenForegroundPush(): Promise<() => void> {
     const app = getApps()[0] ?? initializeApp(config);
     const messaging = getMessaging(app);
     return onMessage(messaging, (payload) => {
+      // PH09: the member is looking at PN right now — the in-app banner already told them, so a
+      // second OS notification would be duplicate spam. Only fall back to the OS notification
+      // when in-app banners are switched off or the tab isn't actually visible.
+      const bannerTypes = ["message", "match", "request_accepted", "photo", "profile_status"];
+      if (
+        document.visibilityState === "visible" &&
+        document.documentElement.dataset.pnInAppBanners === "1" &&
+        bannerTypes.includes(String(payload.data?.type || ""))
+      ) {
+        return;
+      }
       const title = payload.notification?.title || payload.data?.title || "Pashtun Nikah";
       const body = payload.notification?.body || payload.data?.body || "";
-      const icon = "/icons/pn-icon-192.png";
+      const icon = payload.data?.icon || "/icons/pn-icon-192.png";
+      const badge = payload.data?.badge || "/icons/pn-badge-96.png";
       const url = payload.data?.url || payload.fcmOptions?.link || "/";
       if (typeof navigator !== "undefined" && navigator.serviceWorker?.ready) {
         void navigator.serviceWorker.ready.then((reg) => {
           void reg.showNotification(title, {
             body,
             icon,
+            badge,
             tag: payload.data?.tag || "pashtun-nikah",
             data: { url },
           });

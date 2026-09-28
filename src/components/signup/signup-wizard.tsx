@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { CityPicker } from "@/components/location/city-picker";
 import {
   ANCESTRAL_REGIONS,
   COMM_MODES,
@@ -409,11 +410,11 @@ export function SignupWizard() {
                     </option>
                   ))}
                 </select>
-                <input
-                  className="field"
-                  placeholder="City (e.g. Birmingham)"
+                <CityPicker
                   value={data.city}
-                  onChange={(e) => patch({ city: e.target.value })}
+                  country={data.country}
+                  initiallyConfirmed={Boolean(data.cityConfirmed)}
+                  onChange={(city, confirmed) => patch({ city, cityConfirmed: confirmed })}
                 />
               </>
             )}

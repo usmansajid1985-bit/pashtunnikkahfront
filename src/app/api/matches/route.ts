@@ -76,6 +76,7 @@ export async function POST(req: Request) {
       where: { id: matchId, status: "pending" },
       data: {
         status: "accepted",
+        accepted_at: new Date(),
         communication_mode: mode,
         photo_shared: false,
         photo_shared_at: null,

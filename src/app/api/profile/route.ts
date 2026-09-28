@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { verifyCity } from "@/lib/city-search";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { broadcastBrowseVisibility } from "@/lib/chat-broadcast";
 import { mapProfileView } from "@/lib/profile";
 import { normalizeRelocation } from "@/lib/relocation";
 import { toCountryCode, countryLabel } from "@/lib/country";
@@ -55,6 +57,16 @@ export async function PATCH(req: Request) {
     const userId = BigInt(session.userId);
     const existing = await prisma.profiles.findUnique({ where: { user_id: userId } });
     if (!existing) return NextResponse.json({ error: "No profile" }, { status: 404 });
+
+    // R04: a changed city must be a real place. Unchanged legacy values are left alone.
+    const cityChanged =
+      typeof body.city === "string" && body.city.trim() !== (existing.city ?? "").trim();
+    if (cityChanged && (await verifyCity(body.city, body.country)) === "invalid") {
+      return NextResponse.json(
+        { error: "Please choose your city from the suggestions list." },
+        { status: 400 }
+      );
+    }
 
     let extras: Record<string, unknown> = {};
     try {
@@ -141,6 +153,10 @@ export async function PATCH(req: Request) {
         updated_at: new Date(),
       },
     });
+    // S03/S04: pausing/resuming from Edit Profile updates other members' Browse live too.
+    if (typeof body.isHidden === "boolean" && body.isHidden !== existing.is_hidden) {
+      broadcastBrowseVisibility(userId, !body.isHidden);
+    }
     // B07: keep home coordinates in step with the member's city.
     const nextCountry = countryLabel(nextCountryCode) ?? (body.country || null);
     if ((body.city || null) !== existing.city || nextCountry !== existing.country) {

@@ -4,8 +4,18 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
 import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
+import { useChatSocket } from "@/hooks/use-chat-socket";
 
 const FRESH_CHECK_MS = 60_000;
+
+/** `/api/browse` URL for these filters plus extra params. filtersToQuery() returns "" (no "?")
+ * for default filters, so extras can't simply be appended with "&". */
+function browseUrl(filters: BrowseFilters, extra: Record<string, string | number> = {}) {
+  const params = new URLSearchParams(filtersToQuery(filters).replace(/^\?/, ""));
+  for (const [k, v] of Object.entries(extra)) params.set(k, String(v));
+  const q = params.toString();
+  return `/api/browse${q ? `?${q}` : ""}`;
+}
 
 type Props = {
   initialItems: ProfileCardData[];
@@ -14,6 +24,8 @@ type Props = {
   initialSavedUserIds?: string[];
   /** Expansion stage to continue with once the member's own filters are exhausted (B12/B21). */
   initialNextStage?: number | null;
+  /** Shared realtime topic announcing members leaving/returning to Browse (S03/S04). */
+  browseTopic?: string;
 };
 
 export function BrowseInfiniteGrid({
@@ -22,6 +34,7 @@ export function BrowseInfiniteGrid({
   filters,
   initialSavedUserIds = [],
   initialNextStage = null,
+  browseTopic,
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(1);
@@ -192,6 +205,40 @@ export function BrowseInfiniteGrid({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
 
+  // S03/S04: a member paused / was hidden → their card disappears at once. A member resumed →
+  // ask the server whether they belong in THIS viewer's filtered results, and if so slot them in
+  // at the top (they were just active). No refresh needed either way.
+  const { joinThread, leaveThread, on } = useChatSocket(Boolean(browseTopic));
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  useEffect(() => {
+    if (!browseTopic) return;
+    void joinThread("browse", browseTopic);
+    const off = on("browse:visibility", async (e: { userId: string; visible: boolean }) => {
+      if (!e?.userId) return;
+      if (!e.visible) {
+        setItems((prev) => prev.filter((it) => it.userId !== e.userId));
+        return;
+      }
+      if (itemsRef.current.some((it) => it.userId === e.userId)) return;
+      // Spread the re-checks out so one resume doesn't hit the server from every open Browse at once.
+      await new Promise((r) => setTimeout(r, Math.random() * 1500));
+      try {
+        const res = await fetch(browseUrl({ ...filters, page: 1 }, { peekUser: e.userId }));
+        if (!res.ok) return;
+        const data: { item: ProfileCardData | null } = await res.json();
+        if (!data.item) return;
+        setItems((prev) => (prev.some((it) => it.userId === e.userId) ? prev : [data.item!, ...prev]));
+      } catch {
+        /* offline — the next Browse load picks them up */
+      }
+    });
+    return () => {
+      off();
+      leaveThread("browse");
+    };
+  }, [browseTopic, filters, joinThread, leaveThread, on]);
+
   // B20: keep the list stable, but tell the member when someone who wasn't already near the
   // top has become active since this Browse was loaded.
   useEffect(() => {
@@ -203,7 +250,7 @@ export function BrowseInfiniteGrid({
     const check = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const res = await fetch(`/api/browse${filtersToQuery({ ...filters, page: 1 })}&freshSince=${loadedAt}`);
+        const res = await fetch(browseUrl({ ...filters, page: 1 }, { freshSince: loadedAt }));
         if (!res.ok) return;
         const data: { userIds: string[] } = await res.json();
         if (data.userIds.some((id) => !alreadyActive.has(id))) setFreshActivity(true);
@@ -225,8 +272,9 @@ export function BrowseInfiniteGrid({
     const targetStage = continuing ? nextStage! : stage;
     const nextPage = continuing ? 1 : page + 1;
     try {
-      const q = filtersToQuery({ ...filters, page: nextPage });
-      const res = await fetch(`/api/browse${q}${targetStage > 0 ? `&x=${targetStage}` : ""}`);
+      const res = await fetch(
+        browseUrl({ ...filters, page: nextPage }, targetStage > 0 ? { x: targetStage } : {})
+      );
       if (!res.ok) return;
       const data = await res.json();
       const seen = new Set(items.map((p) => p.id));

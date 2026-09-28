@@ -102,6 +102,20 @@ export function PrivatePhotoShare({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestId]);
 
+  // PH09: the in-app reveal banner links to /chats/<id>?photos=1 — open the photo gallery flow
+  // (Start Viewing confirm, or the running viewer) once. Only the always-mounted "banner"
+  // instance handles it, so the prompt can never open twice.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (variant !== "banner" || autoOpened.current || !summary) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("photos") !== "1") return;
+    autoOpened.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    onTapIncoming();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summary, variant]);
+
   useEffect(() => {
     if (matchEnded) return;
     void refresh();

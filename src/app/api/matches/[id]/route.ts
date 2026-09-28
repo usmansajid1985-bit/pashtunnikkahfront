@@ -85,6 +85,7 @@ export async function POST(
       where: { id, status: "pending" },
       data: {
         status: "accepted",
+        accepted_at: new Date(),
         communication_mode: mode,
         photo_shared: false,
         photo_shared_at: null,

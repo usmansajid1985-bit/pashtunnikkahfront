@@ -1,11 +1,12 @@
 import { supabaseRealtimeAdmin } from "./supabase-realtime-admin";
 import { prisma } from "./prisma";
-import { threadTopic, userTopic, waliTopic } from "./realtime-topics";
+import { browseTopic, threadTopic, userTopic, waliTopic } from "./realtime-topics";
 
 function topicForRoom(room: string): string | null {
   if (room.startsWith("thread:")) return threadTopic(room.slice("thread:".length));
   if (room.startsWith("user:")) return userTopic(room.slice("user:".length));
   if (room.startsWith("wali:")) return waliTopic(room.slice("wali:".length));
+  if (room === "browse") return browseTopic();
   return null;
 }
 
@@ -21,6 +22,12 @@ export function broadcastChat(event: string, rooms: string[], payload: unknown) 
       .catch(() => {})
       .finally(() => void client.removeChannel(channel));
   }
+}
+
+/** S03/S04: a member left (paused/hidden/suspended) or returned to Browse — open Browse pages
+ * drop or re-check their card without a refresh. */
+export function broadcastBrowseVisibility(userId: string | bigint, visible: boolean) {
+  broadcastChat("browse:visibility", ["browse"], { userId: userId.toString(), visible });
 }
 
 /** Fan a thread event out to every *currently active* wali link of either participant. Checked

@@ -184,6 +184,10 @@ export async function createReport(opts: {
   reporterId: bigint;
   reportedId: bigint;
   reason: string;
+  category?: string | null;
+  details?: string | null;
+  requestId?: bigint | null;
+  messageId?: bigint | null;
 }) {
   return prisma.reports.create({
     data: {
@@ -191,6 +195,10 @@ export async function createReport(opts: {
       reporter_id: opts.reporterId,
       reported_id: opts.reportedId,
       reason: opts.reason.slice(0, 2000),
+      category: opts.category ?? null,
+      details: opts.details ?? null,
+      request_id: opts.requestId ?? null,
+      message_id: opts.messageId ?? null,
       status: "open",
       created_at: new Date(),
     },
