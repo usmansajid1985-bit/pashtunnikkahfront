@@ -43,6 +43,7 @@ export function ProfilePreview({
   showEditTab = false,
   closeHref = "/browse",
   matchStatus,
+  requestBlockedReason = null,
   navProfileCode,
   hideNav = false,
   backHref,
@@ -58,6 +59,8 @@ export function ProfilePreview({
   showEditTab?: boolean;
   closeHref?: string;
   matchStatus?: MatchRelationStatus;
+  /** Why this viewer can't send/accept requests right now (e.g. awaiting approval). */
+  requestBlockedReason?: string | null;
   /** Server-resolved: is the viewer allowed to see this photo unblurred? Undefined = use the
    * profile's own moderation status (own profile / edit preview). */
   photoVisible?: boolean;
@@ -103,7 +106,7 @@ export function ProfilePreview({
               <>
                 {photoAccessory}
                 {matchStatus ? (
-                  <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" />
+                  <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" blockedReason={requestBlockedReason} />
                 ) : null}
               </>
             ) : null
@@ -416,7 +419,7 @@ export function ProfilePreview({
         </div>
       ) : matchStatus ? (
         <div className="lg:hidden">
-          <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="fixed" />
+          <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="fixed" blockedReason={requestBlockedReason} />
         </div>
       ) : (
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">

@@ -20,12 +20,26 @@ const STATUS_LABEL: Record<Photo["status"], string> = {
   rejected: "Rejected",
 };
 
+function Spinner() {
+  return (
+    <span
+      className="h-7 w-7 rounded-full border-[3px] border-rose-200 border-t-rose-600 animate-spin"
+      role="status"
+      aria-label="Working"
+    />
+  );
+}
+
 export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cropSource, setCropSource] = useState<string | null>(null);
+  /** The cropped photo being uploaded — shown as a tile with a spinner until the server replies. */
+  const [uploadingPreview, setUploadingPreview] = useState<string | null>(null);
+  /** Photo currently being removed / set as main. */
+  const [workingId, setWorkingId] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => setPhotos(initialPhotos), [initialPhotos]);
@@ -33,6 +47,7 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
   async function call(method: string, body: Record<string, unknown>) {
     setBusy(true);
     setError(null);
+    setWorkingId(typeof body.photoId === "string" ? body.photoId : null);
     try {
       const res = await fetch("/api/profile/photos", {
         method,
@@ -48,6 +63,8 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
       router.refresh();
     } finally {
       setBusy(false);
+      setWorkingId(null);
+      setUploadingPreview(null);
     }
   }
 
@@ -71,14 +88,15 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
       <div className="mt-4 grid grid-cols-3 gap-3 max-w-md">
         {photos.map((p) => (
           <div key={p.id} className="relative">
-            <div className="aspect-square rounded-xl overflow-hidden border border-ink-900/10">
+            <div className="relative aspect-square rounded-xl overflow-hidden border border-ink-900/10">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={p.url}
-                alt=""
-                className="w-full h-full object-cover"
-                style={p.status === "approved" ? undefined : { filter: "blur(5px)" }}
-              />
+              {/* Your own photos are never blurred to you — the "In review" badge shows the status. */}
+              <img src={p.url} alt="" className="w-full h-full object-cover" />
+              {workingId === p.id ? (
+                <div className="absolute inset-0 rounded-xl bg-white/60 flex items-center justify-center">
+                  <Spinner />
+                </div>
+              ) : null}
             </div>
             <button
               type="button"
@@ -117,7 +135,18 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
           </div>
         ))}
 
-        {photos.length < MAX ? (
+        {uploadingPreview ? (
+          <div className="relative aspect-square rounded-xl overflow-hidden border-2 border-rose-300" aria-live="polite">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={uploadingPreview} alt="" className="w-full h-full object-cover opacity-60" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-rose-50/50">
+              <Spinner />
+              <span className="text-[11px] font-bold text-rose-700">Uploading…</span>
+            </div>
+          </div>
+        ) : null}
+
+        {photos.length + (uploadingPreview ? 1 : 0) < MAX ? (
           <button
             type="button"
             disabled={busy}
@@ -150,6 +179,7 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
           onCancel={() => setCropSource(null)}
           onSave={(cropped) => {
             setCropSource(null);
+            setUploadingPreview(cropped);
             void call("POST", { photoDataUrl: cropped });
           }}
         />

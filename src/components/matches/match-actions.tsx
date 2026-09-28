@@ -10,10 +10,13 @@ export function MatchActions({
   profileCode,
   initial,
   layout = "fixed",
+  blockedReason = null,
 }: {
   profileCode: string;
   initial: MatchRelationStatus;
   layout?: "fixed" | "inline";
+  /** Set when this member can't send/accept requests yet — buttons are disabled with this note. */
+  blockedReason?: string | null;
 }) {
   const router = useRouter();
   const [status, setStatus] = useState(initial);
@@ -93,9 +96,9 @@ export function MatchActions({
         status.state === "cancelled" ? (
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || Boolean(blockedReason)}
             onClick={() => setShowSendModal(true)}
-            className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)]`}
+            className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)] disabled:hover:bg-rose-600 disabled:shadow-none`}
           >
             {pending ? "Sending…" : "Request Match"}
           </button>
@@ -119,7 +122,7 @@ export function MatchActions({
             </button>
             <button
               type="button"
-              disabled={pending}
+              disabled={pending || Boolean(blockedReason)}
               onClick={() => respond("accept")}
               className={`${btn} bg-rose-600 text-white hover:bg-rose-700`}
             >
@@ -147,15 +150,21 @@ export function MatchActions({
             </a>
             <button
               type="button"
-              disabled={pending}
+              disabled={pending || Boolean(blockedReason)}
               onClick={() => setShowSendModal(true)}
-              className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)]`}
+              className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)] disabled:hover:bg-rose-600 disabled:shadow-none`}
             >
               {pending ? "Sending…" : "Request Rematch"}
             </button>
           </>
         ) : null}
       </div>
+      {blockedReason &&
+      ["none", "declined", "expired", "cancelled", "ended", "pending_received"].includes(status.state) ? (
+        <p className="mt-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2 text-sm text-amber-900">
+          {blockedReason}
+        </p>
+      ) : null}
       {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
 
       {showSendModal ? (

@@ -57,7 +57,7 @@ export default async function PublicProfilePage({
     await Promise.all([
       findRelation(viewerId, profile.user_id),
       getUnreadMessageCount(viewerId),
-      prisma.users.findUnique({ where: { id: viewerId }, select: { plan: true } }),
+      prisma.users.findUnique({ where: { id: viewerId }, select: { plan: true, email_verified: true } }),
       prisma.profiles.findUnique({
         where: { user_id: viewerId },
         select: {
@@ -74,6 +74,7 @@ export default async function PublicProfilePage({
           willing_to_relocate: true,
           // B26: the viewer's own preferences are checked against the other member too.
           profile_code: true,
+          status: true,
           gender: true,
           has_children: true,
           wants_children: true,
@@ -217,6 +218,14 @@ export default async function PublicProfilePage({
       profile={view}
       showEditTab={false}
       matchStatus={matchStatus}
+      requestBlockedReason={
+        // Same gates the server enforces — shown up front instead of after filling the dialog.
+        viewerProfile?.status !== "approved"
+          ? "Your profile is awaiting approval. You'll be able to send and accept Match Requests once it's approved."
+          : viewerUser?.email_verified === false
+            ? "Verify your email to send Match Requests — check your inbox or resend it from Settings."
+            : null
+      }
       navProfileCode={session.profileCode}
       closeHref={browseHref}
       backHref={browseHref}
