@@ -190,7 +190,9 @@ export async function computeCompatibilityOnce(
     heuristicScore: heuristic,
     aiScore,
     finalScore,
-    aiAttempted: true,
+    // Only lock the pair once the AI actually answered — a timeout/failure retries next open
+    // instead of leaving the pair on the heuristic forever (B29).
+    aiAttempted: aiScore != null,
     aiExplanation: reasons,
   });
 

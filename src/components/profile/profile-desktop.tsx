@@ -1,3 +1,4 @@
+import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ProfileView } from "@/lib/profile";
@@ -59,7 +60,7 @@ export function ProfileDesktop({
   /** Override the photo shown/blurred instead of the profile's own moderation-approval status — used by chat, which gates on per-match sharing (photoVisible / one-time-photo), not on photo moderation status */
   photoOverrideUrl?: string | null;
   photoOverrideVisible?: boolean;
-  viewerCompat?: { score: number; reasons: string[] } | null;
+  viewerCompat?: ViewerCompat | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
   presence?: { online: boolean; label: string; justJoined?: boolean } | null;
 }) {
@@ -194,26 +195,7 @@ export function ProfileDesktop({
               </div>
             </div>
 
-            {viewerCompat ? (
-              <div className="card p-6 border border-rose-100 bg-rose-50/30">
-                <h2 className="font-bold text-ink-950">Why you match</h2>
-                <p className="mt-1 text-2xl font-bold text-rose-700">{viewerCompat.score}% compatible</p>
-                {viewerCompat.reasons.length > 0 ? (
-                  <ul className="mt-4 space-y-2 text-sm text-ink-700 leading-relaxed">
-                    {viewerCompat.reasons.map((reason) => (
-                      <li key={reason} className="flex gap-2">
-                        <span className="text-rose-500 shrink-0">•</span>
-                        <span>{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-3 text-sm text-ink-700/55 italic">
-                    AI explanation will appear after the first compatibility analysis.
-                  </p>
-                )}
-              </div>
-            ) : null}
+            {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
 
             <div className="card p-6">
               <h2 className="font-bold text-ink-950">About Me</h2>

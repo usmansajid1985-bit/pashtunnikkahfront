@@ -1,3 +1,5 @@
+import { compatLabel } from "@/lib/compat-engine";
+
 export type ProfileCardData = {
   id: string;
   userId: string;
@@ -80,24 +82,9 @@ export function ProfileCard({
             ) : null}
           </p>
 
-          {p.matchScore != null ? (
-            p.matchScore >= 75 ? (
-              <p className="mt-1.5 text-[11px] font-bold tracking-wide text-ink-950">
-                Strong Compatibility · {p.matchScore}%
-              </p>
-            ) : (
-              <p className="mt-1.5 text-[11px] font-semibold text-ink-700/55">{p.matchScore}% compatible</p>
-            )
-          ) : null}
-
-          {p.matchReasons && p.matchReasons.length > 0 ? (
-            <ul className="mt-1.5 space-y-0.5 text-[11px] text-ink-700/70 leading-snug">
-              {p.matchReasons.slice(0, 2).map((reason) => (
-                <li key={reason} className="line-clamp-1">
-                  · {reason}
-                </li>
-              ))}
-            </ul>
+          {/* B27: a plain label only — no percentages. The full written breakdown is on the profile. */}
+          {compatLabel(p.matchScore) ? (
+            <p className="mt-1.5 text-[11px] font-bold tracking-wide text-ink-950">{compatLabel(p.matchScore)}</p>
           ) : null}
 
           <div className="mt-3 space-y-1.5">

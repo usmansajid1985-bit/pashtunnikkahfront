@@ -5,6 +5,7 @@ import { RematchButton } from "@/components/matches/rematch-button";
 import { useEffect, useMemo, useState } from "react";
 import type { HubCard } from "@/lib/requests-hub-shared";
 import { statusDateLabel } from "@/lib/requests-hub-shared";
+import { compatLabel } from "@/lib/compat-engine";
 import { RequestActions } from "@/components/matches/request-actions";
 
 type Tab = "incoming" | "sent" | "matched";
@@ -104,7 +105,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
           >
             <option value="newest">Newest</option>
             <option value="oldest">Oldest</option>
-            <option value="compat">Highest compatibility</option>
+            {data.isGold ? <option value="compat">Compatibility</option> : null}
           </select>
         </div>
       ) : null}
@@ -163,8 +164,10 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-rose-600">{card.compat}%</p>
-                    <p className="text-[10px] text-ink-700/40">compat</p>
+                    {/* B27: no percentages — Gold members see a plain label. */}
+                    {data.isGold && compatLabel(card.compat) ? (
+                      <p className="text-[11px] font-semibold text-rose-600">{compatLabel(card.compat)}</p>
+                    ) : null}
                   </div>
                 </div>
 

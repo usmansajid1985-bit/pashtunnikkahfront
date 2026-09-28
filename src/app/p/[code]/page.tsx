@@ -8,7 +8,9 @@ import { ProfilePreview } from "@/components/profile/profile-preview";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { recordBrowseOpened } from "@/lib/browse-rank";
 import { computeCompatibilityOnce, getCachedCompatDetail, toCompatProfile } from "@/lib/compatibility-cache";
-import { compatScore } from "@/lib/requests-hub-shared";
+import { buildCompatBreakdown, compatFingerprint, compatSideFromProfile } from "@/lib/compat-engine";
+import { cachedCompatSummary, generateCompatSummary } from "@/lib/compat-summary";
+import type { ViewerCompat } from "@/components/profile/compatibility-panel";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { formatLastSeen, isActiveToday, isJustJoined } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
@@ -70,6 +72,19 @@ export default async function PublicProfilePage({
           dialect: true,
           ancestral_village: true,
           willing_to_relocate: true,
+          // B26: the viewer's own preferences are checked against the other member too.
+          profile_code: true,
+          gender: true,
+          has_children: true,
+          wants_children: true,
+          age_pref_from: true,
+          age_pref_to: true,
+          accept_widow: true,
+          consider_divorcee: true,
+          open_to: true,
+          relocate: true,
+          salah_pattern: true,
+          education_pref: true,
         },
       }),
       readHideGoldBadge(profile.user_id),
@@ -78,7 +93,7 @@ export default async function PublicProfilePage({
   const matchStatus = relationStatus(relation, viewerId);
 
   const isGold = (viewerUser?.plan ?? "").toLowerCase() === "gold";
-  let viewerCompat: { score: number; reasons: string[] } | null = null;
+  let viewerCompat: ViewerCompat | null = null;
 
   if (isGold && viewerProfile) {
     const peer = {
@@ -99,23 +114,32 @@ export default async function PublicProfilePage({
       occupation: profile.occupation,
     };
     const meCompat = toCompatProfile(viewerProfile);
-    if (cachedCompat?.aiComputed) {
-      viewerCompat = { score: cachedCompat.score, reasons: cachedCompat.reasons };
-    } else {
-      // Never block the profile from opening on a live Gemini call — show the
-      // heuristic score now, compute + cache the AI score after the response.
-      viewerCompat = {
-        score: cachedCompat?.score ?? compatScore(meCompat, peer),
-        reasons: cachedCompat?.reasons ?? [],
-      };
-      after(async () => {
-        try {
-          await computeCompatibilityOnce(viewerId, meCompat, peer);
-        } catch {
-          // best-effort cache warming
+    // B10/B26/B27/B28: the written two-way breakdown is rule-based, instant and identical on every
+    // open — Gold sees it as soon as the profile opens, before any Match Request.
+    const meSide = compatSideFromProfile(viewerProfile, "you");
+    const themSide = compatSideFromProfile(profile, profile.profile_code ?? "This member");
+    const breakdown = buildCompatBreakdown(meSide, themSide);
+    const fingerprint = compatFingerprint(meSide, themSide);
+    const summary = await cachedCompatSummary(viewerId, profile.user_id, fingerprint);
+    viewerCompat = { breakdown, summary };
+    after(async () => {
+      try {
+        // The short AI note is generated once per pair + profile data, off the request path.
+        if (!summary) {
+          await generateCompatSummary({
+            viewerId,
+            candidateUserId: profile.user_id,
+            fingerprint,
+            peerCode: themSide.code,
+            breakdown,
+          });
         }
-      });
-    }
+        // Internal score only (Browse ordering); never shown as a percentage.
+        if (!cachedCompat?.aiComputed) await computeCompatibilityOnce(viewerId, meCompat, peer);
+      } catch {
+        // best-effort — the breakdown above never depends on this
+      }
+    });
   }
 
   void prisma.profile_views

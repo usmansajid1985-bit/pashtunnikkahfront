@@ -1,3 +1,4 @@
+import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import type { ProfileView } from "@/lib/profile";
 import type { ReactNode } from "react";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
@@ -67,7 +68,7 @@ export function ProfilePreview({
   backLabel?: string;
   unreadCount?: number;
   /** Gold viewer compatibility breakdown for the profile being viewed */
-  viewerCompat?: { score: number; reasons: string[] } | null;
+  viewerCompat?: ViewerCompat | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
   presence?: { online: boolean; label: string; justJoined?: boolean } | null;
   /** false when embedded inside the Preview/Edit swipe shell, which owns the top bar + bottom CTA. */
@@ -237,22 +238,9 @@ export function ProfilePreview({
         ) : null}
 
         {viewerCompat ? (
-          <section className="mt-5 rounded-2xl border border-rose-100 bg-rose-50/40 p-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-rose-600">Your compatibility</p>
-            <p className="mt-1 text-xl font-bold text-ink-950">{viewerCompat.score}% match</p>
-            {viewerCompat.reasons.length > 0 ? (
-              <ul className="mt-2.5 space-y-1.5 text-sm text-ink-700/85 leading-relaxed">
-                {viewerCompat.reasons.map((reason) => (
-                  <li key={reason} className="flex gap-2">
-                    <span className="text-rose-500 shrink-0">•</span>
-                    <span>{reason}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-xs text-ink-700/55 italic">Detailed reasons appear after AI analysis.</p>
-            )}
-          </section>
+          <div className="mt-5">
+            <CompatibilityPanel compat={viewerCompat} compact />
+          </div>
         ) : null}
 
         <Section title="About Me">
