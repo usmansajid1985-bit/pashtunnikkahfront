@@ -103,6 +103,7 @@ export function ProfileEditForm({
   const [pauseSaving, setPauseSaving] = useState(false);
   /** R04: a city edited here must be re-picked from the list before saving. */
   const [cityConfirmed, setCityConfirmed] = useState(true);
+  const [cityPlaceId, setCityPlaceId] = useState<string | null>(null);
 
   // P10: what's on screen vs. what was last saved. Pause saves instantly, so it never counts.
   const [savedSnapshot, setSavedSnapshot] = useState(() => snapshot(form));
@@ -146,7 +147,7 @@ export function ProfileEditForm({
         const res = await fetch("/api/profile", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(form),
+          body: JSON.stringify({ ...form, cityPlaceId }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -233,9 +234,10 @@ export function ProfileEditForm({
                 value={form.city}
                 country={form.country}
                 initiallyConfirmed
-                onChange={(city, confirmed) => {
+                onChange={(city, confirmed, placeId) => {
                   patch("city", city);
                   setCityConfirmed(confirmed);
+                  setCityPlaceId(placeId ?? null);
                 }}
               />
             </div>

@@ -63,9 +63,9 @@ export async function POST(req: Request) {
 
     // R04: the city must be a real, selectable place (the form only offers real ones — this
     // stops a hand-crafted request). If the lookup is down, don't block the signup.
-    if ((await verifyCity(body.city, body.country)) === "invalid") {
+    if ((await verifyCity(body.city, body.country, body.cityPlaceId)) === "invalid") {
       return NextResponse.json(
-        { error: "Please choose your city from the suggestions list." },
+        { error: "Please choose your city from the suggestions list.", code: "CITY_INVALID" },
         { status: 400 }
       );
     }

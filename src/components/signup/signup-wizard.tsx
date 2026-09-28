@@ -106,8 +106,16 @@ export function SignupWizard() {
       if (raw) {
         const parsed = JSON.parse(raw) as { data: SignupData; stepIndex: number };
         if (parsed?.data) {
-          setData({ ...emptySignupData(), ...parsed.data });
-          setStepIndex(Math.max(0, parsed.stepIndex || 0));
+          const restored = { ...emptySignupData(), ...parsed.data };
+          let resumeAt = Math.max(0, parsed.stepIndex || 0);
+          // R04: drafts saved before the city picker existed (or with a typed-in city) must go
+          // back and pick the city from the list, instead of failing at "Create account".
+          const locationIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "location");
+          if (locationIndex >= 0 && resumeAt > locationIndex && !restored.cityConfirmed) {
+            resumeAt = locationIndex;
+          }
+          setData(restored);
+          setStepIndex(resumeAt);
         }
       }
     } catch {
@@ -155,6 +163,17 @@ export function SignupWizard() {
           setError(
             "An account with this email already exists. Use a different email, or log in instead."
           );
+          return;
+        }
+        if (json.code === "CITY_INVALID") {
+          // Take them straight to the field that needs fixing, with the message shown there.
+          const locationIndex = steps.findIndex((s) => s.id === "location");
+          setData((d) => ({ ...d, cityConfirmed: false, cityPlaceId: undefined }));
+          if (locationIndex >= 0) {
+            setDir(-1);
+            setStepIndex(locationIndex);
+          }
+          setError("Please choose your city from the suggestions list.");
           return;
         }
         setError(json.error || "Signup failed.");
@@ -414,7 +433,9 @@ export function SignupWizard() {
                   value={data.city}
                   country={data.country}
                   initiallyConfirmed={Boolean(data.cityConfirmed)}
-                  onChange={(city, confirmed) => patch({ city, cityConfirmed: confirmed })}
+                  onChange={(city, confirmed, placeId) =>
+                    patch({ city, cityConfirmed: confirmed, cityPlaceId: confirmed ? placeId : undefined })
+                  }
                 />
               </>
             )}

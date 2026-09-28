@@ -10,6 +10,8 @@ export type SignupData = {
   city: string;
   /** R04: true only once the city was picked from the real-place list. */
   cityConfirmed?: boolean;
+  /** Google place id of the picked city — lets the server confirm it without re-searching. */
+  cityPlaceId?: string;
   ancestralRegion: string;
   relocation: string;
   languages: string[];

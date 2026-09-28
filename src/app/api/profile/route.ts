@@ -61,7 +61,7 @@ export async function PATCH(req: Request) {
     // R04: a changed city must be a real place. Unchanged legacy values are left alone.
     const cityChanged =
       typeof body.city === "string" && body.city.trim() !== (existing.city ?? "").trim();
-    if (cityChanged && (await verifyCity(body.city, body.country)) === "invalid") {
+    if (cityChanged && (await verifyCity(body.city, body.country, body.cityPlaceId)) === "invalid") {
       return NextResponse.json(
         { error: "Please choose your city from the suggestions list." },
         { status: 400 }

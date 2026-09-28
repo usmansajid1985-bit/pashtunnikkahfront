@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
-type Suggestion = { city: string; detail: string; label: string };
+type Suggestion = { city: string; detail: string; label: string; placeId?: string };
 
 /**
  * R04: searchable city/area field. The member types, then MUST pick a real place from the list;
@@ -20,7 +20,7 @@ export function CityPicker({
   value: string;
   /** Narrows suggestions to the chosen country (flag label, name or ISO code). */
   country?: string | null;
-  onChange: (city: string, confirmed: boolean) => void;
+  onChange: (city: string, confirmed: boolean, placeId?: string) => void;
   className?: string;
   placeholder?: string;
   /** A city loaded from an already-saved profile counts as confirmed until it's edited. */
@@ -88,7 +88,7 @@ export function CityPicker({
     setConfirmed(true);
     setOpen(false);
     setResults([]);
-    onChange(s.city, true);
+    onChange(s.city, true, s.placeId);
   }
 
   const showList = open && !confirmed && query.trim().length >= 2;
