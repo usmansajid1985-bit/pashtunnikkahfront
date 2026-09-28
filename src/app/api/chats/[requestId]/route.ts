@@ -14,7 +14,7 @@ import {
 } from "@/lib/chat";
 import { ChatBlockedError } from "@/lib/moderation";
 import { processWaliReminders } from "@/lib/wali-reminders";
-import { broadcastChat } from "@/lib/chat-broadcast";
+import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 import { threadTopic } from "@/lib/realtime-topics";
 import { signedPhotoUrl, saveBlurredVariantFromUrl } from "@/lib/photos";
 
@@ -180,11 +180,13 @@ export async function POST(
     });
     const dto = { ...message, clientId };
     broadcastChat("message:new", [`thread:${raw}`], dto);
+    void broadcastToWalis("message:new", requestId, dto).catch(() => {});
     broadcastChat("inbox:update", [`user:${receiverId.toString()}`], {
       requestId: raw,
       lastMessage: dto.body,
       lastAt: dto.createdAt,
       fromUserId: session.userId,
+      fromCode: session.profileCode,
     });
     return NextResponse.json({ message: dto });
   } catch (e) {

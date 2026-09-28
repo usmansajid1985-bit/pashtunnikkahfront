@@ -17,6 +17,8 @@ export type ProfileCardData = {
   online?: boolean;
   justJoined?: boolean;
   lastSeenLabel?: string;
+  /** Set when the card comes from expanded discovery — says which preference it falls outside. */
+  expandedLabel?: string;
 };
 
 function Detail({ children }: { children: React.ReactNode }) {
@@ -58,6 +60,11 @@ export function ProfileCard({
             <span className="inline-block px-2.5 py-1 rounded-md bg-rose-50 text-rose-600 text-xs font-bold">
               Profile: {code}
             </span>
+            {p.expandedLabel ? (
+              <span className="inline-block px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 text-[11px] font-semibold">
+                {p.expandedLabel}
+              </span>
+            ) : null}
           </div>
 
           <p

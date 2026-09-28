@@ -245,6 +245,42 @@ export async function getViewerPhotos(opts: { shareId: bigint; recipientId: bigi
   };
 }
 
+/**
+ * Image-route fast path (PH05): one share read, then the match check, photo row and watermark
+ * label in parallel — the old path made ~8 sequential round-trips to the (Tokyo) DB per image,
+ * which left the viewer black for several seconds while the 60s clock was already running.
+ */
+export async function authorizeRecipientImage(opts: {
+  shareId: bigint;
+  recipientId: bigint;
+  requestId: bigint;
+  index: number;
+}) {
+  await ensurePrivatePhotosSchema();
+  const share = await loadShareById(opts.shareId);
+  if (!share || share.recipient_id !== opts.recipientId || share.match_request_id !== opts.requestId) {
+    throw new Error("Share not found");
+  }
+  const status = deriveStatus(share);
+  if (status !== "active") {
+    if (status === "expired") void log(opts.shareId, "expired_access_attempt", opts.recipientId);
+    throw new Error(status === "shared" ? "Press Start Viewing first." : "Private photo preview ended.");
+  }
+  const photoId = share.photo_ids[opts.index];
+  if (photoId === undefined) return null;
+  const [match, photo, code] = await Promise.all([
+    assertAcceptedParticipant(share.match_request_id, opts.recipientId),
+    prisma.profile_photos.findFirst({ where: { id: photoId, user_id: share.sender_id } }),
+    profileCodeOf(opts.recipientId),
+  ]);
+  if (!match) {
+    void log(opts.shareId, "blocked_access_attempt", opts.recipientId);
+    throw new Error("This conversation is no longer available.");
+  }
+  if (!photo) return null;
+  return { photo, label: `${code} • PRIVATE • Pashtun Nikah` };
+}
+
 /** Loads the original bytes for one shared photo by position — used only by the image route. */
 export async function loadSharePhotoSource(shareId: bigint, index: number) {
   const share = await loadShareById(shareId);

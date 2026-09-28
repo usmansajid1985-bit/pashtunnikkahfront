@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState, useTransition } from "react";
 import type { MatchRelationStatus } from "@/lib/matches";
 
+const INTRO_MAX = 30;
+
 export function MatchActions({
   profileCode,
   initial,
@@ -61,6 +63,7 @@ export function MatchActions({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Could not update request");
+        if (data.code === "stale_request") router.refresh();
         return;
       }
       if (action === "accept") {
@@ -94,7 +97,7 @@ export function MatchActions({
             onClick={() => setShowSendModal(true)}
             className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)]`}
           >
-            {pending ? "Sending…" : "Send match request"}
+            {pending ? "Sending…" : "Request Match"}
           </button>
         ) : null}
 
@@ -130,7 +133,7 @@ export function MatchActions({
             href={`/chats/${status.requestId}`}
             className={`${btn} bg-rose-600 text-white hover:bg-rose-700`}
           >
-            Open chat
+            Open Chat
           </a>
         ) : null}
 
@@ -148,7 +151,7 @@ export function MatchActions({
               onClick={() => setShowSendModal(true)}
               className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)]`}
             >
-              {pending ? "Sending…" : "Request rematch"}
+              {pending ? "Sending…" : "Request Rematch"}
             </button>
           </>
         ) : null}
@@ -161,18 +164,22 @@ export function MatchActions({
             onSubmit={onSendSubmit}
             className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-3"
           >
-            <h3 className="text-lg font-bold text-ink-950">Request rematch</h3>
+            <h3 className="text-lg font-bold text-ink-950">
+              {status.state === "ended" ? "Request Rematch" : "Request Match"}
+            </h3>
             <p className="text-sm text-ink-700/70">
-              Uses 1 rematch token plus 1 introduction credit. Optional message (250 characters).
+              Uses 1 Match Token. Optional short message ({INTRO_MAX} characters).
             </p>
-            <textarea
+            <input
               value={introMessage}
-              onChange={(e) => setIntroMessage(e.target.value.slice(0, 250))}
-              rows={4}
-              placeholder="Assalamu alaikum…"
-              className="w-full rounded-xl border border-ink-900/10 px-3 py-2 text-sm resize-none focus:outline-none focus:border-rose-300"
+              onChange={(e) => setIntroMessage(e.target.value.slice(0, INTRO_MAX))}
+              maxLength={INTRO_MAX}
+              placeholder="Assalamu alaikum"
+              className="w-full rounded-xl border border-ink-900/10 px-3 py-2 text-sm focus:outline-none focus:border-rose-300"
             />
-            <p className="text-[11px] text-ink-700/45 text-right">{introMessage.length}/250</p>
+            <p className="text-[11px] text-ink-700/45 text-right">
+              {introMessage.length}/{INTRO_MAX}
+            </p>
             <div className="flex gap-2">
               <button
                 type="submit"

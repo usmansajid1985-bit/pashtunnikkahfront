@@ -7,6 +7,7 @@ import { getIntroductionStats, getRecentActivity, getNavCounts, getProfileViews 
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { PushNudge } from "@/components/notifications/push-nudge";
 import { ProfileViewsCard } from "@/components/dashboard/profile-views-card";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export default async function DashboardPage() {
   ]);
   if (!user || !profile) redirect("/signup");
 
-  const view = mapProfileView(profile, user);
+  const view = await withOwnerPhotoUrls(mapProfileView(profile, user));
   const firstName = view.fullName.split(" ")[0] || "there";
   const profileViews = await getProfileViews(userId, view.plan === "gold");
 

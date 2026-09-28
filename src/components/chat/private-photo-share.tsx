@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { PrivatePhotoViewer } from "@/components/chat/private-photo-viewer";
 
 type Summary = {
@@ -24,6 +25,29 @@ type OwnPhoto = { id: string; url: string; isMain: boolean; status: string };
 type ViewerData = { secondsRemaining: number; watermark: string; photos: { index: number; url: string }[] };
 
 const POLL_MS = 4000;
+
+/** Overlays render at <body> — the chat panes are CSS-transformed for the swipe gesture, which
+ * would otherwise trap `position: fixed` modals inside the pane (clipped under the header). */
+function Overlay({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted ? createPortal(children, document.body) : null;
+}
+
+/** Counts down locally from the server's remaining seconds so the label ticks smoothly between polls. */
+function useLiveSeconds(serverSeconds: number | null) {
+  const [expiresAt, setExpiresAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    setExpiresAt(serverSeconds == null ? null : Date.now() + serverSeconds * 1000);
+  }, [serverSeconds]);
+  useEffect(() => {
+    if (expiresAt == null) return;
+    const id = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(id);
+  }, [expiresAt]);
+  return expiresAt == null ? null : Math.max(0, Math.ceil((expiresAt - now) / 1000));
+}
 
 type Props = {
   requestId: string;
@@ -136,7 +160,8 @@ export function PrivatePhotoShare({
       const res = await fetch(`/api/chats/${requestId}/private-photos/${shareId}/start`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Could not start viewing");
-      await openViewer(shareId);
+      if (data.viewer?.photos) setViewerData(data.viewer);
+      else await openViewer(shareId);
       setStartPromptOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not start viewing");
@@ -179,6 +204,10 @@ export function PrivatePhotoShare({
     }
   }
 
+  const liveSeconds = useLiveSeconds(
+    summary && summary.incoming.status === "active" ? summary.incoming.secondsRemaining : null
+  );
+
   if (matchEnded) return null;
 
   const incoming = summary?.incoming;
@@ -195,7 +224,7 @@ export function PrivatePhotoShare({
         <span className="min-w-0">
           <span className="block text-[13px] font-bold text-rose-800">
             {incoming.status === "active"
-              ? `${incoming.secondsRemaining}s remaining — tap to view`
+              ? `${liveSeconds ?? incoming.secondsRemaining}s remaining — tap to view`
               : incoming.status === "shared"
                 ? "Private photos available"
                 : "Private photo preview ended"}
@@ -260,6 +289,7 @@ export function PrivatePhotoShare({
 
       {/* Photo picker */}
       {pickerOpen ? (
+        <Overlay>
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
             <p className="font-bold text-ink-950 text-sm">Share private photos</p>
@@ -314,10 +344,12 @@ export function PrivatePhotoShare({
             </div>
           </div>
         </div>
+        </Overlay>
       ) : null}
 
       {/* Before-viewing prompt (spec §6) */}
       {startPromptOpen && incoming && incoming.status !== "none" ? (
+        <Overlay>
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
             <p className="font-bold text-ink-950 text-sm">{peerName} has shared private photos with you</p>
@@ -345,6 +377,7 @@ export function PrivatePhotoShare({
             </div>
           </div>
         </div>
+        </Overlay>
       ) : null}
 
       {viewerData ? (
@@ -365,6 +398,7 @@ export function PrivatePhotoShare({
       ) : null}
 
       {endedOpen ? (
+        <Overlay>
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl text-center">
             <p className="font-bold text-ink-950 text-sm">Private photo preview ended</p>
@@ -378,9 +412,11 @@ export function PrivatePhotoShare({
             </button>
           </div>
         </div>
+        </Overlay>
       ) : null}
 
       {reciprocalOpen ? (
+        <Overlay>
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
           <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl text-center">
             <p className="font-bold text-ink-950 text-sm">Would you like to share your photos with {peerName}?</p>
@@ -406,6 +442,7 @@ export function PrivatePhotoShare({
             </div>
           </div>
         </div>
+        </Overlay>
       ) : null}
     </div>
   );

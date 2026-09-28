@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { WaliHeader } from "@/components/wali/wali-header";
+import { withPeerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +46,7 @@ export default async function WaliPeerProfilePage({
     );
   }
 
-  const view = mapProfileView(profile, user);
+  const view = await withPeerPhotoUrls(mapProfileView(profile, user));
 
   return (
     <div className="bg-[#faf8f7] text-ink-900">
@@ -53,6 +54,7 @@ export default async function WaliPeerProfilePage({
       <ProfilePreview
         profile={view}
         showEditTab={false}
+        photoVisible={false}
         closeHref={`/wali/chats/${raw}`}
         hideNav
         backHref={`/wali/chats/${raw}`}

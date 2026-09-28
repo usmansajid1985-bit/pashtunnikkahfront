@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
 import { assertAcceptedParticipant, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
-import { threadTopic } from "@/lib/realtime-topics";
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
@@ -81,7 +80,6 @@ export default async function WaliChatThreadPage({
           peerName={peer?.name || "Member"}
           peerCode={peer?.code || ""}
           initialMessages={messages}
-          realtimeTopic={threadTopic(raw)}
         />
       </div>
     </div>

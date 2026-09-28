@@ -7,6 +7,7 @@ export type CreditReason =
   | "monthly_gold_allowance"
   | "gold_rollover"
   | "request_sent"
+  | "request_withdrawn_refund"
   | "topup_purchased"
   | "admin_adjustment"
   | "fraud_refund"

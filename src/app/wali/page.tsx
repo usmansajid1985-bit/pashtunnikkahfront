@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { listThreadsForUser } from "@/lib/chat";
 import { WaliHeader } from "@/components/wali/wali-header";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function WaliDashboardPage() {
     );
   }
 
-  const view = mapProfileView(profile, user);
+  const view = await withOwnerPhotoUrls(mapProfileView(profile, user));
   const threads = await listThreadsForUser(profileUserId);
 
   return (

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests } from "@/lib/matches";
+import { recordCreditChange } from "@/lib/credit-ledger";
+import { broadcastChat } from "@/lib/chat-broadcast";
 import { sendPushNotification } from "@/lib/push/server";
 import { profileCodeOf } from "@/lib/notifications";
 import { maybeSendActivityEmail } from "@/lib/notification-email";
@@ -12,6 +14,33 @@ import {
 } from "@/lib/communication";
 
 export const dynamic = "force-dynamic";
+
+/** Q03/Q05: both members' Requests lists, badges and open tabs update without a refresh. */
+function notifyRequestChange(
+  match: { id: bigint; sender_id: bigint; receiver_id: bigint },
+  status: "accepted" | "declined" | "cancelled",
+  fromCode?: string
+) {
+  broadcastChat("request:update", [`user:${match.sender_id.toString()}`, `user:${match.receiver_id.toString()}`], {
+    requestId: match.id.toString(),
+    status,
+    fromCode,
+  });
+}
+
+/** The request was already actioned elsewhere (another tab/device) — report its real state. */
+async function staleResponse(id: bigint) {
+  const current = await prisma.match_requests.findUnique({ where: { id }, select: { status: true } });
+  const status = current?.status ?? "unavailable";
+  return NextResponse.json(
+    {
+      error: `This request has already been ${status === "cancelled" ? "withdrawn" : status}. Refresh to see the latest.`,
+      code: "stale_request",
+      status,
+    },
+    { status: 409 }
+  );
+}
 
 export async function POST(
   req: Request,
@@ -50,8 +79,10 @@ export async function POST(
     }
 
     const mode = await resolveModeForMatch(match.sender_id, match.receiver_id);
-    await prisma.match_requests.update({
-      where: { id },
+    // Conditional on still being pending, so a stale tab can't accept a request another tab
+    // already declined/withdrew (K05/F03).
+    const accepted = await prisma.match_requests.updateMany({
+      where: { id, status: "pending" },
       data: {
         status: "accepted",
         communication_mode: mode,
@@ -60,8 +91,10 @@ export async function POST(
         updated_at: new Date(),
       },
     });
+    if (accepted.count === 0) return staleResponse(id);
 
     const accepterCode = await profileCodeOf(match.receiver_id);
+    notifyRequestChange(match, "accepted", accepterCode);
     void maybeSendActivityEmail({
       userId: match.sender_id,
       kind: "request_accepted",
@@ -111,10 +144,13 @@ export async function POST(
     if (match.receiver_id !== me) {
       return NextResponse.json({ error: "Only the recipient can decline" }, { status: 403 });
     }
-    await prisma.match_requests.update({
-      where: { id },
+    if (match.status !== "pending") return staleResponse(id);
+    const declined = await prisma.match_requests.updateMany({
+      where: { id, status: "pending" },
       data: { status: "declined", updated_at: new Date() },
     });
+    if (declined.count === 0) return staleResponse(id);
+    notifyRequestChange(match, "declined");
     return NextResponse.json({ ok: true, status: "declined", requestId: raw });
   }
 
@@ -122,14 +158,35 @@ export async function POST(
     if (match.sender_id !== me) {
       return NextResponse.json({ error: "Only the sender can withdraw" }, { status: 403 });
     }
-    if (match.status !== "pending") {
-      return NextResponse.json({ error: "Only pending requests can be withdrawn" }, { status: 400 });
-    }
-    await prisma.match_requests.update({
-      where: { id },
-      data: { status: "cancelled", updated_at: new Date() },
+    if (match.status !== "pending") return staleResponse(id);
+    // The pending→cancelled transition and the token refund happen together, and only the
+    // request that wins the transition refunds — so a double-tap can't refund twice (F01).
+    const refund = await prisma.$transaction(async (tx) => {
+      const cancelled = await tx.match_requests.updateMany({
+        where: { id, status: "pending" },
+        data: { status: "cancelled", updated_at: new Date() },
+      });
+      if (cancelled.count === 0) return null;
+      const user = await tx.users.update({
+        where: { id: me },
+        data: { requests_remaining: { increment: 1 }, updated_at: new Date() },
+        select: { requests_remaining: true },
+      });
+      return user.requests_remaining ?? 1;
     });
-    return NextResponse.json({ ok: true, status: "cancelled", requestId: raw });
+    if (refund == null) return staleResponse(id);
+    notifyRequestChange(match, "cancelled");
+    await recordCreditChange({
+      userId: me,
+      amount: 1,
+      balanceType: "monthly",
+      reason: "request_withdrawn_refund",
+      previousBalance: refund - 1,
+      newBalance: refund,
+      relatedRequestId: id,
+      idempotencyKey: `withdraw-refund-${id}`,
+    }).catch((err) => console.error("[credits] withdraw refund ledger entry failed", err));
+    return NextResponse.json({ ok: true, status: "cancelled", requestId: raw, creditsRemaining: refund });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });

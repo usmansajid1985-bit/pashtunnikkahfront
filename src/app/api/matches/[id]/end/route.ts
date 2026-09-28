@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { endMatchRequest } from "@/lib/matches";
+import { broadcastChat } from "@/lib/chat-broadcast";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,13 @@ export async function POST(
       endedBy: me,
       reason: "user",
     });
+
+    // Q08: the other member's open chat locks immediately, no refresh.
+    broadcastChat(
+      "match:closed",
+      [`thread:${raw}`, `user:${match.sender_id.toString()}`, `user:${match.receiver_id.toString()}`],
+      { requestId: raw, byUserId: session.userId, reason: "ended" }
+    );
 
     return NextResponse.json({
       ok: true,

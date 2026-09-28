@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-type Key = "notify_requests" | "notify_messages" | "notify_profile_views" | "notify_wali" | "notify_updates";
+type Key =
+  | "notify_requests"
+  | "notify_messages"
+  | "notify_profile_views"
+  | "notify_wali"
+  | "notify_updates"
+  | "in_app_banners";
 
 const ROWS: { key: Key; label: string; hint: string }[] = [
   { key: "notify_requests", label: "Match requests", hint: "New and accepted requests" },
@@ -10,6 +16,11 @@ const ROWS: { key: Key; label: string; hint: string }[] = [
   { key: "notify_profile_views", label: "Profile views", hint: "When someone views your profile" },
   { key: "notify_wali", label: "Wali & family activity", hint: "Wali handovers and reminders" },
   { key: "notify_updates", label: "Pashtun Nikah updates", hint: "Announcements and new features" },
+  {
+    key: "in_app_banners",
+    label: "In-app notification banners",
+    hint: "Show a banner at the top while you're using Pashtun Nikah",
+  },
 ];
 
 export function NotificationCategoryToggles() {
@@ -26,6 +37,7 @@ export function NotificationCategoryToggles() {
           notify_profile_views: d.notify_profile_views ?? true,
           notify_wali: d.notify_wali ?? true,
           notify_updates: d.notify_updates ?? true,
+          in_app_banners: d.in_app_banners ?? true,
         })
       )
       .catch(() => setPrefs(null));

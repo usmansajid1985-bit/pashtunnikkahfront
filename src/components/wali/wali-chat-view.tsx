@@ -14,22 +14,18 @@ export function WaliChatView({
   peerName,
   peerCode,
   initialMessages,
-  realtimeTopic,
 }: {
   requestId: string;
   profileUserId: string;
   peerName: string;
   peerCode: string;
   initialMessages: ChatMessageDTO[];
-  realtimeTopic: string;
 }) {
   const [messages, setMessages] = useState(initialMessages);
-  const { connected, joinThread, on } = useChatSocket(true, profileUserId);
+  // Live messages arrive on this wali link's own topic, joined by WaliRevocationGuard — the
+  // server stops publishing to it the moment access is revoked.
+  const { connected, on } = useChatSocket(true, profileUserId);
   const scrollerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    void joinThread(requestId, realtimeTopic);
-  }, [requestId, realtimeTopic, joinThread]);
 
   useEffect(() => {
     const onNew = (msg: ChatMessageDTO) => {

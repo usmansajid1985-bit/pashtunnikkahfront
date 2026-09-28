@@ -19,6 +19,7 @@ import {
 import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
 import { blockedUserIds } from "@/lib/blocking";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
+import { expansionStages, firstExpansionStage } from "@/lib/browse-expansion";
 
 export async function GET(req: Request) {
   const session = await getSession();
@@ -71,7 +72,7 @@ export async function GET(req: Request) {
   const hasRadius = me?.location_radius_miles != null && me.location_radius_miles > 0;
   const needsLocation = wantsDistance && (!hasPin || !hasRadius);
 
-  const locationIds =
+  const radiusIds =
     wantsDistance && hasPin && hasRadius
       ? await locationRadiusIds({
           lat: me!.location_lat!,
@@ -81,17 +82,54 @@ export async function GET(req: Request) {
           country: me!.location_country,
           countryCode: me!.location_country_code,
         })
-      : needsLocation
-        ? []
-        : undefined;
+      : [];
 
-  const where = buildProfileWhere(filters, {
-    excludeUserId: userId,
-    excludeUserIds: blockedIds,
-    viewerGender: me?.gender,
-    isGold,
-    locationIds,
-  });
+  const whereFor = (f: typeof filters, useDistance: boolean) =>
+    buildProfileWhere(f, {
+      excludeUserId: userId,
+      excludeUserIds: blockedIds,
+      viewerGender: me?.gender,
+      isGold,
+      locationIds: useDistance ? radiusIds : undefined,
+    });
+
+  const where = whereFor(filters, wantsDistance);
+
+  // B12/B21/B22 — expanded discovery once the member's own filters are exhausted.
+  const stageParam = Number(url.searchParams.get("x") || 0);
+  if (stageParam > 0) {
+    const stages = expansionStages(filters);
+    const stage = stages[stageParam - 1];
+    if (!stage) return NextResponse.json({ items: [], page: filters.page, total: 0, hasMore: false, nextStage: null });
+    const prev = stageParam === 1 ? { filters, useDistance: wantsDistance } : stages[stageParam - 2];
+    const stageWhere = {
+      AND: [whereFor(stage.filters, stage.useDistance), { NOT: whereFor(prev.filters, prev.useDistance) }],
+    };
+    const take = filters.page * BROWSE_PAGE_SIZE + BROWSE_PAGE_SIZE;
+    const [stageTotal, rows] = await Promise.all([
+      prisma.profiles.count({ where: stageWhere }),
+      prisma.profiles.findMany({
+        where: stageWhere,
+        orderBy: { users: { last_seen_at: "desc" } },
+        take,
+        select: BROWSE_PROFILE_SELECT,
+      }),
+    ]);
+    const ranked = await rankBrowseProfiles(userId, rows);
+    const startAt = (filters.page - 1) * BROWSE_PAGE_SIZE;
+    const stageItems = ranked
+      .slice(startAt, startAt + BROWSE_PAGE_SIZE)
+      .map((item) => ({ ...item, expandedLabel: stage.label }));
+    const stageHasMore = filters.page * BROWSE_PAGE_SIZE < stageTotal;
+    return NextResponse.json({
+      items: stageItems,
+      page: filters.page,
+      total: stageTotal,
+      hasMore: stageHasMore,
+      stage: stageParam,
+      nextStage: stageHasMore ? null : stages[stageParam] ? stageParam + 1 : null,
+    });
+  }
 
   const isBestMatch = filters.sort === "best_match";
   const useActivityRank = filters.sort === "newest" || filters.sort === "recently_active";
@@ -163,5 +201,6 @@ export async function GET(req: Request) {
     total,
     hasMore,
     needsLocation,
+    nextStage: hasMore ? null : firstExpansionStage(filters),
   });
 }

@@ -7,7 +7,6 @@ import { SettingsShell } from "@/components/settings/settings-ui";
 import { MembershipActions } from "@/components/settings/membership-actions";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { resolveTopupPriceId } from "@/lib/stripe";
-import { getRematchBalance } from "@/lib/rematch-tokens";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +16,7 @@ export default async function MembershipPage() {
   if (!session) redirect("/login");
 
   const userId = BigInt(session.userId);
-  const [user, unreadCount, ledger, rematchTokens] = await Promise.all([
+  const [user, unreadCount, ledger] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId } }),
     getUnreadMessageCount(userId),
     prisma.credit_ledger.findMany({
@@ -25,7 +24,6 @@ export default async function MembershipPage() {
       orderBy: { created_at: "desc" },
       take: 15,
     }),
-    getRematchBalance(userId),
   ]);
   if (!user) redirect("/login");
 
@@ -65,7 +63,7 @@ export default async function MembershipPage() {
               {isGold ? "Gold" : "Basic"}
             </p>
             <p className="text-sm text-ink-700/60 mt-1">
-              {user.requests_remaining} Match Requests (current balance) · {rematchTokens} rematch tokens ·
+              {user.requests_remaining} Match Tokens (current balance) ·
               status {user.subscription_status || "none"}
             </p>
             {isGold && user.subscription_cancel_at ? (

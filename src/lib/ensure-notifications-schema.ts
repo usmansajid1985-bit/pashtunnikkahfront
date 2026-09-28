@@ -29,6 +29,7 @@ export async function ensureNotificationsSchema() {
         ADD COLUMN IF NOT EXISTS notify_profile_views BOOLEAN NOT NULL DEFAULT TRUE,
         ADD COLUMN IF NOT EXISTS notify_wali BOOLEAN NOT NULL DEFAULT TRUE,
         ADD COLUMN IF NOT EXISTS notify_updates BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS in_app_banners BOOLEAN NOT NULL DEFAULT TRUE,
         ADD COLUMN IF NOT EXISTS push_prompt_dismissed_at TIMESTAMPTZ
     `);
     await prisma.$executeRawUnsafe(`

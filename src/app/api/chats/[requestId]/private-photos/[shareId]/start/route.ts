@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { assertAcceptedParticipant, peerUserId } from "@/lib/chat";
-import { startViewing, VIEW_DURATION_SEC } from "@/lib/private-photos";
+import { getViewerPhotos, startViewing, VIEW_DURATION_SEC } from "@/lib/private-photos";
 import { broadcastChat } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +28,14 @@ export async function POST(
         { requestId: raw, fromUserId: session.userId }
       );
     }
+    // Hand back the viewer payload too, so the client can open the gallery without a second
+    // round-trip while the clock is already running.
+    const viewer = await getViewerPhotos({ shareId: share.id, recipientId: userId, requestId }).catch(() => null);
     return NextResponse.json({
       ok: true,
       expiresAt: share.expires_at?.toISOString() ?? null,
       durationSec: VIEW_DURATION_SEC,
+      viewer,
     });
   } catch (e) {
     return NextResponse.json(

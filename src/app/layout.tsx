@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/notifications/service-worker-registrar";
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
+import { LiveUpdates } from "@/components/notifications/live-updates";
 import "./globals.css";
 
 const inter = Inter({
@@ -48,6 +49,7 @@ export default function RootLayout({
       <body className={`${inter.variable} ${fraunces.variable} antialiased`}>
         <ServiceWorkerRegistrar />
         <PresenceHeartbeat />
+        <LiveUpdates />
         {children}
       </body>
     </html>

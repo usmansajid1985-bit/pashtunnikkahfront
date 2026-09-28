@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
@@ -15,7 +16,7 @@ export async function GET() {
   const profile = await prisma.profiles.findUnique({ where: { user_id: userId } });
   if (!user || !profile) return NextResponse.json({ error: "No profile" }, { status: 404 });
 
-  return NextResponse.json({ profile: mapProfileView(profile, user) });
+  return NextResponse.json({ profile: await withOwnerPhotoUrls(mapProfileView(profile, user)) });
 }
 
 export async function PATCH(req: Request) {

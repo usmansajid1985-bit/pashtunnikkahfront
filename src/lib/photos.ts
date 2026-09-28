@@ -232,3 +232,23 @@ export async function saveDataUrlPhoto(
     bytes: buf.length,
   };
 }
+
+type PhotoFields = { photoUrl: string | null; photoBlurUrl: string | null };
+
+/**
+ * The "photos" bucket is private, so raw stored URLs no longer load. For the profile OWNER (and
+ * their own wali): sign the original + blurred URLs so they always see their own photo (K10).
+ */
+export async function withOwnerPhotoUrls<T extends PhotoFields>(view: T): Promise<T> {
+  const [photoUrl, photoBlurUrl] = await Promise.all([
+    view.photoUrl ? signedPhotoUrl(view.photoUrl) : null,
+    view.photoBlurUrl ? signedPhotoUrl(view.photoBlurUrl) : null,
+  ]);
+  return { ...view, photoUrl, photoBlurUrl };
+}
+
+/** For anyone who is NOT the owner: only the signed blurred derivative ever leaves the server. */
+export async function withPeerPhotoUrls<T extends PhotoFields>(view: T): Promise<T> {
+  const blurred = view.photoBlurUrl ? await signedPhotoUrl(view.photoBlurUrl) : null;
+  return { ...view, photoUrl: blurred, photoBlurUrl: blurred };
+}

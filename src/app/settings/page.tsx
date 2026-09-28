@@ -11,6 +11,7 @@ import { GoldBadgeSettings } from "@/components/settings/gold-badge-settings";
 import { ReferralsSettings } from "@/components/settings/referrals-settings";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { getUnreadMessageCount } from "@/lib/dashboard";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export default async function SettingsPage() {
   ]);
   if (!user || !profile) redirect("/signup");
 
-  const view = mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge });
+  const view = await withOwnerPhotoUrls(mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge }));
   const planLabel = view.plan === "gold" ? "Gold" : "Basic";
   const approved = view.status === "approved";
 

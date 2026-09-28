@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { saveDataUrlPhoto, saveBlurredVariantFromUrl } from "@/lib/photos";
+import { saveDataUrlPhoto, saveBlurredVariantFromUrl, signedPhotoUrl } from "@/lib/photos";
 import { ensurePhotosSchema } from "@/lib/ensure-photos-schema";
 
 export const MAX_PROFILE_PHOTOS = 3;
@@ -135,7 +135,15 @@ export async function listProfilePhotos(userId: bigint): Promise<ProfilePhoto[]>
   await ensurePhotosSchema();
   await backfillFromLegacy(userId);
   await syncMainPhoto(userId);
-  return (await rows(userId)).map(toPhoto);
+  // Owner-only listing (My Profile / Edit) — sign so photos load from the private bucket.
+  const photos = (await rows(userId)).map(toPhoto);
+  return Promise.all(
+    photos.map(async (p) => ({
+      ...p,
+      url: (await signedPhotoUrl(p.url)) ?? p.url,
+      blurUrl: p.blurUrl ? await signedPhotoUrl(p.blurUrl) : null,
+    }))
+  );
 }
 
 /** Save a data-URL image as a new profile photo. Returns the created photo (or an error). */

@@ -78,6 +78,8 @@ export const DEFAULT_FILTERS: BrowseFilters = {
  * that looks applied but isn't (PN-BROWSE-002).
  */
 export const GOLD_ONLY_FILTER_KEYS = [
+  "practice",
+  "relocate",
   "city",
   "sect",
   "tribe",
@@ -104,6 +106,8 @@ export function stripGoldFilters(f: BrowseFilters): BrowseFilters {
     // Best Match ranks by AI/heuristic compatibility, a Gold-only signal — fall back silently
     // like every other Gold-only filter rather than letting a Basic viewer submit it.
     sort: f.sort === "best_match" ? "newest" : f.sort,
+    practice: "",
+    relocate: "",
     city: "",
     sect: "",
     tribe: "",

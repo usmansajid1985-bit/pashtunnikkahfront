@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { WaliHeader } from "@/components/wali/wali-header";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function WaliOwnProfilePage() {
     );
   }
 
-  const view = mapProfileView(profile, user);
+  const view = await withOwnerPhotoUrls(mapProfileView(profile, user));
 
   return (
     <div className="bg-[#faf8f7] text-ink-900">

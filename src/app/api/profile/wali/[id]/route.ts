@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { broadcastChat } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -22,5 +23,7 @@ export async function DELETE(
     where: { id: link.id },
     data: { revoked_at: new Date() },
   });
+  // Any open wali page wipes itself immediately (W07).
+  broadcastChat("wali:revoked", [`wali:${link.id.toString()}`], { linkId: link.id.toString() });
   return NextResponse.json({ ok: true });
 }

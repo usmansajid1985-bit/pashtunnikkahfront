@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
 
@@ -9,6 +9,8 @@ type Props = {
   initialHasMore: boolean;
   filters: BrowseFilters;
   initialSavedUserIds?: string[];
+  /** Expansion stage to continue with once the member's own filters are exhausted (B12/B21). */
+  initialNextStage?: number | null;
 };
 
 export function BrowseInfiniteGrid({
@@ -16,11 +18,19 @@ export function BrowseInfiniteGrid({
   initialHasMore,
   filters,
   initialSavedUserIds = [],
+  initialNextStage = null,
 }: Props) {
   const [items, setItems] = useState(initialItems);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
+  // 0 = the member's own filters; >0 = expanded discovery stage currently being paged.
+  const [stage, setStage] = useState(0);
+  const [nextStage, setNextStage] = useState<number | null>(initialNextStage);
+  /** Number of cards that matched the member's own preferences — the divider goes after them. */
+  const [strictCount, setStrictCount] = useState<number | null>(
+    initialHasMore ? null : initialItems.length
+  );
   const [savedIds, setSavedIds] = useState(() => new Set(initialSavedUserIds));
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
@@ -77,9 +87,12 @@ export function BrowseInfiniteGrid({
     pageRef.current = 1;
     itemCountRef.current = initialItems.length;
     setHasMore(initialHasMore);
+    setStage(0);
+    setNextStage(initialNextStage);
+    setStrictCount(initialHasMore ? null : initialItems.length);
     setLoading(false);
     loadingRef.current = false;
-  }, [initialItems, initialHasMore, filters]);
+  }, [initialItems, initialHasMore, initialNextStage, filters]);
 
   useEffect(() => {
     pageRef.current = page;
@@ -166,27 +179,34 @@ export function BrowseInfiniteGrid({
   }, [filtersKey]);
 
   const loadMore = useCallback(async () => {
-    if (loadingRef.current || !hasMore) return;
+    if (loadingRef.current) return;
+    // Current result set exhausted → continue into the next expansion stage, if any.
+    const continuing = !hasMore && nextStage != null;
+    if (!hasMore && !continuing) return;
     loadingRef.current = true;
     setLoading(true);
-    const nextPage = page + 1;
+    const targetStage = continuing ? nextStage! : stage;
+    const nextPage = continuing ? 1 : page + 1;
     try {
       const q = filtersToQuery({ ...filters, page: nextPage });
-      const res = await fetch(`/api/browse${q}`);
+      const res = await fetch(`/api/browse${q}${targetStage > 0 ? `&x=${targetStage}` : ""}`);
       if (!res.ok) return;
       const data = await res.json();
-      setItems((prev) => {
-        const seen = new Set(prev.map((p) => p.id));
-        const next = data.items.filter((p: ProfileCardData) => !seen.has(p.id));
-        return [...prev, ...next];
-      });
+      const seen = new Set(items.map((p) => p.id));
+      const fresh: ProfileCardData[] = data.items.filter((p: ProfileCardData) => !seen.has(p.id));
+      // Divider position = how many cards matched the member's own preferences.
+      if (continuing && stage === 0) setStrictCount((c) => c ?? items.length);
+      if (targetStage === 0 && !data.hasMore) setStrictCount((c) => c ?? items.length + fresh.length);
+      setItems([...items, ...fresh]);
+      setStage(targetStage);
       setPage(nextPage);
       setHasMore(Boolean(data.hasMore));
+      setNextStage(data.nextStage ?? null);
     } finally {
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [filters, hasMore, page]);
+  }, [filters, hasMore, items, nextStage, page, stage]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -202,14 +222,27 @@ export function BrowseInfiniteGrid({
     return () => io.disconnect();
   }, [loadMore]);
 
-  if (items.length === 0) {
+  if (items.length === 0 && nextStage == null) {
     return <p className="mt-16 text-center text-ink-700">No profiles match these filters.</p>;
   }
+
+  const expandedDivider = (
+    <div className="col-span-full my-2 rounded-2xl border border-sky-100 bg-sky-50/70 px-5 py-4 text-center">
+      <p className="font-semibold text-ink-950">You&apos;ve seen everyone matching your preferences</p>
+      <p className="mt-1 text-sm text-ink-700/70">
+        Here are more members close to what you&apos;re looking for. Each one shows which preference it
+        falls outside.
+      </p>
+    </div>
+  );
 
   return (
     <>
       <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-        {items.map((p) => (
+        {strictCount === 0 ? expandedDivider : null}
+        {items.map((p, i) => (
+          <Fragment key={p.id}>
+            {strictCount != null && strictCount > 0 && i === strictCount ? expandedDivider : null}
           <ProfileCard
             key={p.id}
             p={p}
@@ -218,6 +251,7 @@ export function BrowseInfiniteGrid({
             onToggleSave={() => void toggleSave(p.userId)}
             returnQuery={filtersKey}
           />
+          </Fragment>
         ))}
       </div>
 
@@ -235,8 +269,10 @@ export function BrowseInfiniteGrid({
             <span className="w-4 h-4 rounded-full border-2 border-rose-600 border-t-transparent animate-spin" />
             Loading more…
           </span>
-        ) : hasMore ? (
+        ) : hasMore || nextStage != null ? (
           <span>Scroll for more</span>
+        ) : strictCount != null && stage === 0 && items.length > 0 ? (
+          <span>You&apos;ve seen everyone matching your preferences</span>
         ) : (
           <span>You&apos;ve reached the end</span>
         )}

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { NavItem, NavKey } from "@/components/browse/nav-items";
 import { LogoutButton } from "@/components/logout-button";
-import { NavCountBadge } from "@/components/browse/nav-notifications";
+import { NavCountBadge, NavUnreadDot } from "@/components/browse/nav-notifications";
 
 export function MobileNavMenu({
   items,
@@ -30,9 +30,11 @@ export function MobileNavMenu({
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
-        {unread > 0 || requests > 0 ? (
-          <span className="absolute top-1 right-1 min-w-[9px] h-[9px] rounded-full bg-rose-600" />
-        ) : null}
+        <NavUnreadDot
+          initialUnread={unread}
+          initialRequests={requests}
+          className="absolute top-1 right-1 min-w-[9px] h-[9px] rounded-full bg-rose-600"
+        />
       </button>
 
       {open ? (

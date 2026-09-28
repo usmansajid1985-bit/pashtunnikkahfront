@@ -51,6 +51,7 @@ export function ProfilePreview({
   presence,
   photoVisible,
   showMobileChrome = true,
+  photoAccessory,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -71,12 +72,13 @@ export function ProfilePreview({
   presence?: { online: boolean; label: string } | null;
   /** false when embedded inside the Preview/Edit swipe shell, which owns the top bar + bottom CTA. */
   showMobileChrome?: boolean;
+  /** Rendered under the photo (e.g. the matched member's Private Photo Reveal entry, PH06). */
+  photoAccessory?: ReactNode;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
-  // Server decides for other people's profiles; fall back to moderation status for own/preview.
-  const showPhoto =
-    photoVisible !== undefined ? photoVisible : profile.photoStatus === "approved";
+  // Server decides for other people's profiles; the owner always sees their own photo (K10).
+  const showPhoto = photoVisible !== undefined ? photoVisible : true;
   const photoHidden = photoVisible === false && !profile.photoUrl;
 
   return (
@@ -96,8 +98,13 @@ export function ProfilePreview({
           photoOverrideVisible={photoVisible}
           photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
           footer={
-            matchStatus ? (
-              <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" />
+            matchStatus || photoAccessory ? (
+              <>
+                {photoAccessory}
+                {matchStatus ? (
+                  <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" />
+                ) : null}
+              </>
             ) : null
           }
         />
@@ -215,6 +222,8 @@ export function ProfilePreview({
           showMobileChrome ? "pb-[calc(7rem+var(--pn-bottom-nav-h))]" : "pb-[calc(1.5rem+var(--pn-bottom-nav-h))]"
         }`}
       >
+        {photoAccessory ? <div className="pt-4 -mx-4">{photoAccessory}</div> : null}
+
         {profile.maritalStatus || profile.pashto || (profile.plan === "gold" && !profile.hideGoldBadge) ? (
           <div className="pt-4 flex flex-wrap gap-1.5">
             {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}

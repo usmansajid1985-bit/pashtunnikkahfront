@@ -16,6 +16,13 @@ export function threadTopic(requestId: string) {
   return `${raw}:${signTopic(raw)}`;
 }
 
+/** Per-wali-link topic. The server only broadcasts to links that are still active, so revoking
+ * a link cuts off live messages even though the old topic name is still known to that browser. */
+export function waliTopic(linkId: string) {
+  const raw = `wali:${linkId}`;
+  return `${raw}:${signTopic(raw)}`;
+}
+
 export function userTopic(userId: string) {
   const raw = `user:${userId}`;
   return `${raw}:${signTopic(raw)}`;

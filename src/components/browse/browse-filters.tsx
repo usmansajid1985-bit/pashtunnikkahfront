@@ -14,7 +14,6 @@ import { FilterPresets } from "@/components/browse/filter-presets";
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
-import { MEN_APPEARANCE, WOMEN_APPEARANCE } from "@/lib/signup";
 
 export type FilterOptions = {
   countries: string[];
@@ -121,15 +120,8 @@ export function BrowseFiltersBar({
   filters,
   options,
   isGold = false,
-  targetGender = null,
   savedLocation,
 }: Props) {
-  const appearanceOptions =
-    targetGender === "male"
-      ? MEN_APPEARANCE
-      : targetGender === "female"
-        ? WOMEN_APPEARANCE
-        : [...MEN_APPEARANCE, ...WOMEN_APPEARANCE];
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
@@ -328,8 +320,8 @@ export function BrowseFiltersBar({
                   className="block rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900"
                 >
                   <span className="font-bold">Upgrade to Gold</span> to use city, distance, tribe,
-                  keyword and activity filters. Age, country, marital status, religious practice and
-                  relocation are always available.
+                  religious practice, relocation, keyword and activity filters. Age, country and
+                  marital status are always available.
                 </a>
               ) : null}
               <section className="space-y-3">
@@ -502,7 +494,7 @@ export function BrowseFiltersBar({
                     ))}
                   </select>
                 </Field>
-                <Field label="Open to relocation">
+                <Field label="Open to relocation" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.relocate}
@@ -520,7 +512,7 @@ export function BrowseFiltersBar({
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">Faith &amp; appearance</h3>
-                <Field label="Religious practice">
+                <Field label="Religious practice" gold locked={locked}>
                   <select
                     className={selectClass}
                     value={draft.practice}
@@ -560,20 +552,6 @@ export function BrowseFiltersBar({
                     {SALAH_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Appearance / Islamic dress" gold locked={locked}>
-                  <select
-                    className={selectClass}
-                    value={draft.appearance}
-                    onChange={(e) => setDraft({ ...draft, appearance: e.target.value })}
-                  >
-                    <option value="">Any</option>
-                    {appearanceOptions.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
                       </option>
                     ))}
                   </select>

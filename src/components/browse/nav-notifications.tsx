@@ -11,6 +11,12 @@ export type NavCounts = {
 
 const EVENT = "pn:nav-counts";
 let polling = false;
+let tickNow: (() => Promise<void>) | null = null;
+
+/** Re-fetch badge counts immediately — called by LiveUpdates on realtime events (Q02/N07). */
+export function refreshNavCounts() {
+  if (tickNow) void tickNow();
+}
 
 /**
  * Single poller shared by the bell and the nav badges. Fetches the summary endpoint on an
@@ -32,6 +38,7 @@ function startPolling() {
     }
   };
 
+  tickNow = tick;
   void tick();
   const id = window.setInterval(tick, 45_000);
   window.addEventListener("focus", tick);
@@ -105,4 +112,19 @@ export function NavCountBadge({
       {n > 99 ? "99+" : n}
     </span>
   );
+}
+
+/** Red dot on the closed ☰ menu icon while there are unread messages or requests (Q02). */
+export function NavUnreadDot({
+  initialUnread = 0,
+  initialRequests = 0,
+  className = "",
+}: {
+  initialUnread?: number;
+  initialRequests?: number;
+  className?: string;
+}) {
+  const counts = useNavCounts({ unreadMessages: initialUnread, incomingRequests: initialRequests });
+  if (counts.unreadMessages <= 0 && counts.incomingRequests <= 0) return null;
+  return <span className={className} />;
 }

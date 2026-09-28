@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { broadcastChat } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,17 @@ export async function POST(req: Request) {
     },
   });
 
+  const pair = {
+    OR: [
+      { sender_id: me, receiver_id: peerUserId },
+      { sender_id: peerUserId, receiver_id: me },
+    ],
+  };
+  const [liveChats, pendingRequests] = await Promise.all([
+    prisma.match_requests.findMany({ where: { status: "accepted", ...pair }, select: { id: true } }),
+    prisma.match_requests.findMany({ where: { status: "pending", ...pair }, select: { id: true } }),
+  ]);
+
   // Mutual disappearance: tear down the live relationship both ways. Pending requests are
   // cancelled; saved entries removed. Accepted matches are left in place but chat access is
   // gated at the chat layer (see chat route / loadThread block check).
@@ -58,6 +70,19 @@ export async function POST(req: Request) {
       },
     }),
   ]);
+
+  // K06 / Q12: both sides' open chats and request lists update immediately.
+  const userRooms = [`user:${me.toString()}`, `user:${peerUserId.toString()}`];
+  for (const chat of liveChats) {
+    broadcastChat("match:closed", [`thread:${chat.id.toString()}`, ...userRooms], {
+      requestId: chat.id.toString(),
+      byUserId: session.userId,
+      reason: "blocked",
+    });
+  }
+  for (const request of pendingRequests) {
+    broadcastChat("request:update", userRooms, { requestId: request.id.toString(), status: "cancelled" });
+  }
 
   return NextResponse.json({ ok: true });
 }

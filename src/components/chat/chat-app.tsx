@@ -681,7 +681,20 @@ export function ChatApp({
       if (payload.status === "viewed") setCanRevealPhotoOnce(false);
     };
 
+    const onMatchClosed = (payload: { requestId: string; byUserId: string }) => {
+      if (payload.byUserId === userId) return;
+      if (payload.requestId === activeId) {
+        setMatchEnded(true);
+        setEndReason(null);
+        setPeerTyping(false);
+        setReplyTo(null);
+        return;
+      }
+      setThreads((prev) => prev.filter((t) => t.requestId !== payload.requestId));
+    };
+
     const offs = [
+      on("match:closed", onMatchClosed),
       on("message:new", onNew),
       on("messages:read", onRead),
       on("typing", onTyping),
@@ -825,6 +838,14 @@ export function ChatApp({
         prev.map((m) => (m.clientId === clientId ? { ...sent.message, clientId } : m))
       );
       setChatWarning(null);
+      return;
+    }
+
+    if ("closed" in sent && sent.closed) {
+      setMessages((prev) => prev.filter((m) => m.clientId !== clientId));
+      setText(body);
+      setMatchEnded(true);
+      setEndReason(null);
       return;
     }
 

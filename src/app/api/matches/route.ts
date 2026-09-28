@@ -8,10 +8,10 @@ import { maybeSendActivityEmail } from "@/lib/notification-email";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { recordCreditChange } from "@/lib/credit-ledger";
 import { maybeRenewMonthlyCredits } from "@/lib/credit-renewal";
-import { features } from "@/lib/feature-flags";
 import { rateLimit } from "@/lib/rate-limit";
-import { consumeRematchToken, findPriorEndedMatch, maybeRenewRematchTokens } from "@/lib/rematch-tokens";
+import { findPriorEndedMatch } from "@/lib/rematch-tokens";
 import { sendPushNotification } from "@/lib/push/server";
+import { broadcastChat } from "@/lib/chat-broadcast";
 import {
   allowsPrivateChat,
   effectiveCommMode,
@@ -20,6 +20,8 @@ import {
 } from "@/lib/communication";
 
 export const dynamic = "force-dynamic";
+
+const INTRO_MAX = 30;
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -35,8 +37,13 @@ export async function POST(req: Request) {
   const profileCode = String(body.profileCode ?? "").trim();
   const peerUserIdRaw = body.userId != null ? String(body.userId) : "";
   const introMessageRaw = body.introMessage != null ? String(body.introMessage).trim() : "";
-  const introMessage = introMessageRaw ? introMessageRaw.slice(0, 250) : null;
-  const isRematchRequest = body.rematch === true;
+  if (introMessageRaw.length > INTRO_MAX) {
+    return NextResponse.json(
+      { error: `Your introduction message can be at most ${INTRO_MAX} characters.` },
+      { status: 400 }
+    );
+  }
+  const introMessage = introMessageRaw || null;
 
   const me = BigInt(session.userId);
   let peerUserId: bigint | null = null;
@@ -65,8 +72,8 @@ export async function POST(req: Request) {
 
   async function acceptMatch(matchId: bigint, senderId: bigint, receiverId: bigint) {
     const mode = await resolveModeForMatch(senderId, receiverId);
-    await prisma.match_requests.update({
-      where: { id: matchId },
+    const accepted = await prisma.match_requests.updateMany({
+      where: { id: matchId, status: "pending" },
       data: {
         status: "accepted",
         communication_mode: mode,
@@ -75,6 +82,7 @@ export async function POST(req: Request) {
         updated_at: new Date(),
       },
     });
+    if (accepted.count === 0) return null;
     const privateChat = allowsPrivateChat(mode);
     let wali = null;
     if (!privateChat) {
@@ -87,6 +95,12 @@ export async function POST(req: Request) {
     }
 
     const accepterCode = await profileCodeOf(receiverId);
+    broadcastChat("request:update", [`user:${senderId.toString()}`, `user:${receiverId.toString()}`], {
+      requestId: matchId.toString(),
+      status: "accepted",
+      fromUserId: receiverId.toString(),
+      fromCode: accepterCode,
+    });
     void maybeSendActivityEmail({
       userId: senderId,
       kind: "request_accepted",
@@ -135,6 +149,12 @@ export async function POST(req: Request) {
     if (status === "pending") {
       if (existing.receiver_id === me) {
         const result = await acceptMatch(existing.id, existing.sender_id, existing.receiver_id);
+        if (!result) {
+          return NextResponse.json(
+            { error: "This request has changed. Refresh to see the latest.", code: "stale_request" },
+            { status: 409 }
+          );
+        }
         return NextResponse.json(result);
       }
       return NextResponse.json({
@@ -175,30 +195,15 @@ export async function POST(req: Request) {
   }
 
   await maybeRenewMonthlyCredits(me);
-  await maybeRenewRematchTokens(me);
 
+  // Q09: a rematch is just a new pending request that costs one normal Match Token — no
+  // separate rematch token, and no withdraw cooldown after a match has ended.
   const priorEnded = await findPriorEndedMatch(me, peerUserId);
-  const needsRematchToken = Boolean(priorEnded) && features.rematch();
-  if (needsRematchToken) {
-    if (!isRematchRequest) {
-      return NextResponse.json(
-        {
-          error: "This request requires a rematch token after a previous match ended.",
-          code: "rematch_required",
-          priorRequestId: priorEnded!.id.toString(),
-        },
-        { status: 409 }
-      );
+  if (!priorEnded) {
+    const cooldown = await withdrawCooldownBlocked(me, peerUserId);
+    if (cooldown.blocked) {
+      return NextResponse.json({ error: cooldown.message }, { status: 429 });
     }
-    const rematch = await consumeRematchToken(me, priorEnded!.id);
-    if (!rematch.ok) {
-      return NextResponse.json({ error: rematch.error, code: "no_rematch_tokens" }, { status: 402 });
-    }
-  }
-
-  const cooldown = await withdrawCooldownBlocked(me, peerUserId);
-  if (cooldown.blocked) {
-    return NextResponse.json({ error: cooldown.message }, { status: 429 });
   }
 
   if (introMessage) {
@@ -261,7 +266,7 @@ export async function POST(req: Request) {
     if (introMessage) {
       await tx.$executeRaw`UPDATE match_requests SET intro_message = ${introMessage} WHERE id = ${id}`;
     }
-    if (priorEnded && features.rematch()) {
+    if (priorEnded) {
       await tx.$executeRaw`UPDATE match_requests SET prior_match_id = ${priorEnded.id} WHERE id = ${id}`;
     }
     await tx.users.update({
@@ -291,6 +296,12 @@ export async function POST(req: Request) {
     lines: ["Open Pashtun Nikah to view their profile and respond."],
     ctaLabel: "View request",
     ctaUrl: "/requests?tab=incoming",
+  });
+  broadcastChat("request:update", [`user:${peerUserId.toString()}`], {
+    requestId: created.id.toString(),
+    status: "pending",
+    fromUserId: session.userId,
+    fromCode: senderCode,
   });
   void sendPushNotification(peerUserId, {
     title: `${senderCode} sent you a match request`,

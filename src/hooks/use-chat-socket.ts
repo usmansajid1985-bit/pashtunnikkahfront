@@ -15,6 +15,10 @@ const CHAT_EVENTS = [
   "photo:update",
   "reaction:update",
   "photo-once:update",
+  "wali:revoked",
+  "match:closed",
+  "request:update",
+  "inbox:read",
 ] as const;
 
 type Listener = () => void;
@@ -140,7 +144,7 @@ async function postJson(url: string, body?: unknown) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => null);
-  return { ok: res.ok, data };
+  return { ok: res.ok, status: res.status, data };
 }
 
 export function useChatSocket(enabled = true, userId?: string) {
@@ -175,13 +179,17 @@ export function useChatSocket(enabled = true, userId?: string) {
       clientId: string;
     }) => {
       try {
-        const { ok, data } = await postJson(`/api/chats/${payload.requestId}`, {
+        const { ok, status, data } = await postJson(`/api/chats/${payload.requestId}`, {
           body: payload.body,
           replyToId: payload.replyToId ?? null,
           clientId: payload.clientId,
         });
         if (ok && data?.message) {
           return { ok: true as const, message: data.message as ChatMessageDTO };
+        }
+        // Match ended / blocked since this chat was opened — not a network failure.
+        if (status === 403 || status === 404) {
+          return { ok: false as const, closed: true as const };
         }
         if (data?.warning) {
           return { ok: false as const, warning: true as const, error: data.error || "That message wasn't sent." };

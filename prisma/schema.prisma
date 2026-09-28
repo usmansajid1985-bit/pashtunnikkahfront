@@ -455,6 +455,8 @@ model notification_preferences {
   notify_profile_views Boolean @default(true)
   notify_wali         Boolean  @default(true)
   notify_updates      Boolean  @default(true)
+  /** N10: WhatsApp-style in-app banners while the app is open. */
+  in_app_banners      Boolean  @default(true)
   /** §16: null = never shown the contextual push prompt; set when the user picks "Not now". */
   push_prompt_dismissed_at DateTime? @db.Timestamptz(6)
   updated_at          DateTime @default(now()) @db.Timestamptz(6)

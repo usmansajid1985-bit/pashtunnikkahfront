@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { assertAcceptedParticipant, createContactCardMessage, peerUserId } from "@/lib/chat";
-import { broadcastChat } from "@/lib/chat-broadcast";
+import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -23,11 +23,13 @@ export async function POST(
   try {
     const message = await createContactCardMessage({ requestId, senderId: userId, receiverId });
     broadcastChat("message:new", [`thread:${raw}`], message);
+    void broadcastToWalis("message:new", requestId, message).catch(() => {});
     broadcastChat("inbox:update", [`user:${receiverId.toString()}`], {
       requestId: raw,
       lastMessage: message.body,
       lastAt: message.createdAt,
       fromUserId: session.userId,
+      fromCode: session.profileCode,
     });
     return NextResponse.json({ message });
   } catch (e) {

@@ -29,6 +29,7 @@ export function RequestActions({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Failed");
+        if (data.code === "stale_request") router.refresh();
         return;
       }
       if (action === "accept") {

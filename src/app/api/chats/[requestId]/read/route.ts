@@ -21,6 +21,7 @@ export async function POST(
   const count = await markThreadRead(requestId, userId);
   if (count > 0) {
     broadcastChat("messages:read", [`thread:${raw}`], { requestId: raw, readerId: session.userId });
+    broadcastChat("inbox:read", [`user:${session.userId}`], { requestId: raw });
   }
   return NextResponse.json({ ok: true, count });
 }

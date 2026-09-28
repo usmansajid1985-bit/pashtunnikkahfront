@@ -69,7 +69,7 @@ export function ProfileDesktop({
     photoOverrideUrl !== undefined ? photoOverrideUrl : profile.photoUrl;
   const avatar = avatarSrc || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const photoVisible =
-    photoOverrideVisible !== undefined ? photoOverrideVisible : profile.photoStatus === "approved";
+    photoOverrideVisible !== undefined ? photoOverrideVisible : true;
   const photoHidden = photoOverrideVisible === false && !avatarSrc;
 
   return (

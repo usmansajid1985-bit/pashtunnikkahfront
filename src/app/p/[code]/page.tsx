@@ -14,6 +14,7 @@ import { isOnline, formatLastSeen } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
 import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
 import { signedPhotoUrl } from "@/lib/photos";
+import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 
 export const dynamic = "force-dynamic";
@@ -174,9 +175,11 @@ export default async function PublicProfilePage({
   // sees it per the per-match photo-share rules (PN privacy defect — confirmed).
   const photoVis = await fullProfilePhotoVisibility(viewerId, profile.user_id);
   const photo = applyPhotoVisibility(view.photoUrl, photoVis);
-  // When the photo is shown to a matched viewer, hand out a short-lived signed URL rather than
-  // the permanent public one.
-  view.photoUrl = photo.photoUrl ? await signedPhotoUrl(photo.photoUrl) : null;
+  // Visible → short-lived signed original. Otherwise (PH01) show the server-side BLURRED
+  // derivative, so the member sees a blurred photo and the real image never reaches the browser.
+  const blurredUrl = view.photoBlurUrl ? await signedPhotoUrl(view.photoBlurUrl) : null;
+  view.photoUrl = photo.photoUrl ? await signedPhotoUrl(photo.photoUrl) : blurredUrl;
+  view.photoBlurUrl = blurredUrl;
 
   const lastSeenAt = profile.users.last_seen_at;
   const presence = {
@@ -197,6 +200,16 @@ export default async function PublicProfilePage({
       viewerCompat={viewerCompat}
       presence={presence}
       photoVisible={photo.photoVisible}
+      photoAccessory={
+        matchStatus.state === "accepted" ? (
+          <PrivatePhotoShare
+            requestId={matchStatus.requestId}
+            matchEnded={false}
+            peerName={profile.profile_code || "this member"}
+            variant="banner"
+          />
+        ) : null
+      }
     />
   );
 }

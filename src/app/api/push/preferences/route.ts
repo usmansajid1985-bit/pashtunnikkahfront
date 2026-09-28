@@ -12,6 +12,7 @@ const CATEGORY_KEYS = [
   "notify_profile_views",
   "notify_wali",
   "notify_updates",
+  "in_app_banners",
 ] as const;
 
 export async function GET() {
@@ -21,7 +22,7 @@ export async function GET() {
 
   const rows = await prisma.$queryRaw<Record<string, boolean>[]>`
     SELECT push_enabled, notify_requests, notify_messages, notify_profile_views,
-           notify_wali, notify_updates
+           notify_wali, notify_updates, in_app_banners
     FROM notification_preferences WHERE user_id = ${BigInt(session.userId)} LIMIT 1
   `.catch(() => []);
   const p = rows[0];
@@ -32,6 +33,7 @@ export async function GET() {
     notify_profile_views: p?.notify_profile_views ?? true,
     notify_wali: p?.notify_wali ?? true,
     notify_updates: p?.notify_updates ?? true,
+    in_app_banners: p?.in_app_banners ?? true,
   });
 }
 

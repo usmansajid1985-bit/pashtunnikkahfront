@@ -16,6 +16,7 @@ import { EmailVerificationBanner } from "@/components/settings/email-verificatio
 import { PaymentGraceBanner } from "@/components/settings/payment-grace-banner";
 import { ensureP1Schema } from "@/lib/ensure-p1-schema";
 import { getNavCounts } from "@/lib/dashboard";
+import { firstExpansionStage } from "@/lib/browse-expansion";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { CompletenessBanner, PremiumBanner } from "@/components/browse/banners";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
@@ -220,6 +221,9 @@ export default async function BrowsePage({
   );
 
   const completeness = profileCompleteness(me);
+  const initialHasMore = isBestMatch
+    ? BROWSE_PAGE_SIZE < Math.min(total, BEST_MATCH_POOL)
+    : BROWSE_PAGE_SIZE < total;
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
@@ -268,7 +272,8 @@ export default async function BrowsePage({
         <BrowseInfiniteGrid
           key={JSON.stringify({ ...filters, page: 1 })}
           initialItems={initialItems}
-          initialHasMore={isBestMatch ? BROWSE_PAGE_SIZE < Math.min(total, BEST_MATCH_POOL) : BROWSE_PAGE_SIZE < total}
+          initialHasMore={initialHasMore}
+          initialNextStage={initialHasMore ? null : firstExpansionStage(filters)}
           filters={filters}
           initialSavedUserIds={initialSavedUserIds}
         />

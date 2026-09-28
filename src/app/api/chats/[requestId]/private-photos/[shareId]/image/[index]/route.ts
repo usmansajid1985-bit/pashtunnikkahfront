@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getViewerPhotos, loadSharePhotoSource, watermarkLabelForViewer } from "@/lib/private-photos";
+import { authorizeRecipientImage } from "@/lib/private-photos";
 import { fetchPhotoBytes } from "@/lib/photos";
 import { watermarkImageBuffer } from "@/lib/photo-watermark";
 
@@ -21,16 +21,13 @@ export async function GET(
   try {
     // Re-runs the full session/match/block authorisation check on every image fetch (spec §24) —
     // a signed URL that outlives the session is exactly the leak this route exists to avoid.
-    await getViewerPhotos({ shareId, recipientId: userId, requestId: BigInt(raw) });
-
-    const source = await loadSharePhotoSource(shareId, index);
+    const source = await authorizeRecipientImage({ shareId, recipientId: userId, requestId: BigInt(raw), index });
     if (!source) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const bytes = await fetchPhotoBytes(source.photo.url);
     if (!bytes) return NextResponse.json({ error: "Photo unavailable" }, { status: 404 });
 
-    const label = await watermarkLabelForViewer(source.share, userId);
-    const watermarked = await watermarkImageBuffer(bytes, label);
+    const watermarked = await watermarkImageBuffer(bytes, source.label);
 
     return new NextResponse(new Uint8Array(watermarked), {
       headers: {

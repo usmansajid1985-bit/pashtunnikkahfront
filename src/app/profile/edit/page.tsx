@@ -6,6 +6,7 @@ import { ProfileHome } from "@/components/profile/profile-home";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { listProfilePhotos } from "@/lib/profile-photos";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
+import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,6 @@ export default async function ProfileEditPage() {
   ]);
   if (!user || !profile) redirect("/signup");
 
-  const view = mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge });
+  const view = await withOwnerPhotoUrls(mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge }));
   return <ProfileHome profile={view} unreadCount={unreadCount} photos={photos} initialTab="edit" />;
 }

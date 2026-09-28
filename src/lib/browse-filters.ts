@@ -20,9 +20,8 @@ export {
 } from "@/lib/browse-filters-shared";
 
 /**
- * Fields the spec (§6.4) lists as basic/Free-tier: gender, age, country, city, marital status,
- * basic religious practice, basic relocation preference. Everything else below (§15) is
- * Gold-only. Gating happens here, not at call sites, so it can't be bypassed by a caller
+ * Basic/Free-tier fields: gender, age, country, marital status. Everything else below —
+ * including religious practice and relocation (B09, V2 QA 19 Sep) — is Gold-only. Gating happens here, not at call sites, so it can't be bypassed by a caller
  * forgetting to check — `isGold` must come from a fresh DB read of the querying user, never
  * from the query string or a cached session claim.
  *
@@ -47,6 +46,10 @@ export function buildProfileWhere(
     { age: { gte: f.ageMin, lte: f.ageMax } },
   ];
 
+  // Hard eligibility (B22): suspended accounts never appear, whatever filters are relaxed.
+  and.push({
+    users: { account_status: { not: "suspended" } },
+  });
   if (opts.excludeUserId) and.push({ user_id: { not: opts.excludeUserId } });
   if (opts.excludeUserIds && opts.excludeUserIds.length > 0) {
     and.push({ user_id: { notIn: opts.excludeUserIds } });
@@ -100,6 +103,10 @@ export function buildProfileWhere(
   }
 
   eq("marital_status", f.marital);
+
+  if (!opts.isGold) return { AND: and };
+
+  // B09: religious practice + relocation are Gold-only (client decision, V2 QA 19 Sep).
   eq("religious_practice", f.practice);
 
   // One canonical relocation field. Match any legacy spelling of the selected preference in
@@ -119,8 +126,6 @@ export function buildProfileWhere(
       ]),
     });
   }
-
-  if (!opts.isGold) return { AND: and };
 
   eq("city", f.city);
 
