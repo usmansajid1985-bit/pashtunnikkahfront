@@ -535,6 +535,13 @@ export async function createMessage(opts: {
     data: { updated_at: new Date() },
   });
 
+  // N09: walis in "Oversight + notifications" mode get a (throttled, content-free) email.
+  void import("@/lib/wali-activity")
+    .then(({ notifyWalisOfActivity }) =>
+      notifyWalisOfActivity({ requestId: opts.requestId, participantIds: [opts.senderId, opts.receiverId], kind: "message" })
+    )
+    .catch(() => {});
+
   // Privacy-safe: no message content in the payload (spec §8). Repeat messages from the same
   // sender fold into one bell row: "PNF142 sent you 5 messages" (spec §7). The push runs before
   // the email so the grouped notification row exists for the email's once-per-conversation guard.

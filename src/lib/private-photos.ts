@@ -44,7 +44,8 @@ function secondsRemaining(share: PrivatePhotoShareRow | null): number {
 
 function waliStatus(share: PrivatePhotoShareRow | null): PrivatePhotoSessionStatus {
   if (!share || !share.wali_allowed_at) return "none";
-  if (!share.wali_viewing_started_at) return "shared";
+  // PH10: the wali can't start once the sister's own reveal has ended.
+  if (!share.wali_viewing_started_at) return deriveStatus(share) === "expired" ? "expired" : "shared";
   if (share.wali_expires_at && share.wali_expires_at.getTime() > Date.now()) return "active";
   return "expired";
 }
@@ -166,6 +167,11 @@ export async function createShare(opts: {
   await log(created.id, "shared", opts.senderId);
 
   const senderCode = await profileCodeOf(opts.senderId);
+  void import("@/lib/wali-activity")
+    .then(({ notifyWalisOfActivity }) =>
+      notifyWalisOfActivity({ requestId: opts.requestId, participantIds: [opts.senderId, recipientId], kind: "photo_shared" })
+    )
+    .catch(() => {});
   void sendPushNotification(recipientId, {
     title: `${senderCode} shared private photos with you`,
     body: "You have one 60-second session to view them.",
@@ -316,6 +322,24 @@ export async function allowWaliView(opts: { shareId: bigint; recipientId: bigint
     data: { wali_allowed_at: new Date() },
   });
   await log(opts.shareId, "wali_allowed", opts.recipientId);
+  return share;
+}
+
+/** PH10: the sister withdraws her wali's access to a share — any running wali view ends now. */
+export async function withdrawWaliView(opts: { shareId: bigint; recipientId: bigint }) {
+  await ensurePrivatePhotosSchema();
+  const share = await loadShareById(opts.shareId);
+  if (!share || share.recipient_id !== opts.recipientId) throw new Error("Share not found");
+  const now = new Date();
+  await prisma.private_photo_shares.update({
+    where: { id: opts.shareId },
+    data: {
+      wali_allowed_at: null,
+      ...(share.wali_expires_at && share.wali_expires_at > now ? { wali_expires_at: now } : {}),
+    },
+  });
+  await log(opts.shareId, "wali_withdrawn", opts.recipientId);
+  return share;
 }
 
 /** Finds the share (if any) a wali is currently allowed to see for this match (spec §29/§30). */
@@ -361,8 +385,12 @@ export async function waliStartViewing(shareId: bigint, waliProfileUserId: bigin
     return share;
   }
 
+  // PH10: no separate or open-ended session — once the sister's own reveal has ended, the wali
+  // can't start one, and a wali view never outlasts hers.
+  if (deriveStatus(share) === "expired") throw new Error("This photo reveal has ended.");
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + VIEW_DURATION_SEC * 1000);
+  const ownEnd = new Date(now.getTime() + VIEW_DURATION_SEC * 1000);
+  const expiresAt = share.expires_at && share.expires_at < ownEnd ? share.expires_at : ownEnd;
   const result = await prisma.private_photo_shares.updateMany({
     where: { id: shareId, wali_viewing_started_at: null },
     data: { wali_viewing_started_at: now, wali_expires_at: expiresAt },

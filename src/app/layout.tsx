@@ -3,6 +3,7 @@ import { Fraunces, Inter } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/notifications/service-worker-registrar";
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { LiveUpdates } from "@/components/notifications/live-updates";
+import { MemberWarningGate } from "@/components/notifications/member-warning-gate";
 import "./globals.css";
 
 const inter = Inter({
@@ -52,6 +53,7 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <PresenceHeartbeat />
         <LiveUpdates />
+        <MemberWarningGate />
         {children}
       </body>
     </html>

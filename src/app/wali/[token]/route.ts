@@ -19,8 +19,18 @@ export async function GET(
 
   await prisma.wali_links.update({
     where: { id: link.id },
-    data: { last_accessed_at: new Date() },
+    data: { last_accessed_at: new Date(), ...(link.accepted_at ? {} : { accepted_at: new Date() }) },
   });
+  // W09: first time the wali opens their link = invitation accepted.
+  if (!link.accepted_at) {
+    const { logWaliActivity } = await import("@/lib/wali-activity");
+    await logWaliActivity({
+      userId: link.user_id,
+      linkId: link.id,
+      event: "accepted",
+      detail: `${link.name} accepted the invitation and opened the wali portal`,
+    });
+  }
 
   const sessionToken = await createWaliSessionToken({
     linkId: link.id.toString(),

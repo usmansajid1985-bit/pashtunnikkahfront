@@ -110,6 +110,11 @@ export async function POST(req: Request) {
       ctaLabel: "Open conversation",
       ctaUrl: `/chats/${matchId}`,
     });
+    void import("@/lib/wali-activity")
+      .then(({ notifyWalisOfActivity }) =>
+        notifyWalisOfActivity({ requestId: matchId, participantIds: [senderId, receiverId], kind: "match_accepted" })
+      )
+      .catch(() => {});
     void sendPushNotification(senderId, {
       title: `${accepterCode} accepted your match request`,
       body: "You can now begin your conversation.",

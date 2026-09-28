@@ -41,8 +41,8 @@ export default async function PrivacySettingsPage() {
       <h2 className="text-2xl font-bold text-ink-950">Privacy &amp; safety</h2>
       <p className="mt-1 text-sm text-ink-700/65">Blocked members and safety tools.</p>
 
-      <div className="mt-6 card p-4">
-        <h3 className="font-semibold text-ink-950">Blocked profiles</h3>
+      <div id="blocked" className="mt-6 card p-4 scroll-mt-20">
+        <h3 className="font-semibold text-ink-950">Blocked members</h3>
         <BlockedProfiles initial={blockedRows} />
         <p className="mt-3 text-xs text-ink-700/50">
           Block someone when declining an incoming request, or from a chat&apos;s menu.

@@ -205,12 +205,12 @@ export function PrivatePhotoShare({
     }
   }
 
-  async function allowWali() {
+  async function allowWali(allow = true) {
     if (!summary || summary.incoming.status === "none") return;
     setBusy(true);
     try {
       await fetch(`/api/chats/${requestId}/private-photos/${summary.incoming.shareId}/allow-wali`, {
-        method: "POST",
+        method: allow ? "POST" : "DELETE",
       });
       await refresh();
     } finally {
@@ -286,7 +286,17 @@ export function PrivatePhotoShare({
               </button>
             ) : null}
             {incoming && incoming.status !== "none" && incoming.waliAllowed ? (
-              <p className="text-[11px] text-indigo-700/70 px-1">Your wali may view these photos too.</p>
+              <p className="text-[11px] text-indigo-700/70 px-1">
+                Your wali may view these photos too (never longer than your own session).{" "}
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void allowWali(false)}
+                  className="font-semibold underline hover:text-indigo-900 disabled:opacity-50"
+                >
+                  Withdraw
+                </button>
+              </p>
             ) : null}
 
             {error ? <p className="text-[11px] text-rose-600 px-1">{error}</p> : null}

@@ -12,6 +12,7 @@ import {
   useTransition,
 } from "react";
 import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
+import { FamilyStageBar } from "@/components/chat/family-stage-bar";
 import { outboxAdd, outboxAll, outboxFor, outboxRemove, readDrafts, saveDraft } from "@/lib/chat-outbox";
 import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } from "@/lib/chat";
 import type { ProfileView } from "@/lib/profile";
@@ -1831,6 +1832,18 @@ export function ChatApp({
                     </div>
                   ) : null}
                 </div>
+
+                {/* W10: family readiness stage — visible to both members, live. */}
+                {!matchEnded && activeId ? (
+                  <FamilyStageBar
+                    key={activeId}
+                    requestId={activeId}
+                    peerCode={displayName}
+                    isFemaleViewer={isFemaleViewer}
+                    onOpenWaliPanel={() => setHeaderMenu("wali")}
+                    onEndMatch={() => setShowEndConfirm(true)}
+                  />
+                ) : null}
 
                 {/* C11/C12: both panes stay mounted on a finger-tracking track — switching never
                     reloads the chat, loses the draft or resets the scroll position. */}

@@ -36,6 +36,9 @@ export async function ensureBrowseAndWaliSchema() {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE match_requests
         ADD COLUMN IF NOT EXISTS wali_handover_status VARCHAR(32),
+        ADD COLUMN IF NOT EXISTS family_ready_sender VARCHAR(16),
+        ADD COLUMN IF NOT EXISTS family_ready_receiver VARCHAR(16),
+        ADD COLUMN IF NOT EXISTS family_ready_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS wali_details_requested_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS wali_details_shared_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS wali_contact_attempted_at TIMESTAMPTZ,

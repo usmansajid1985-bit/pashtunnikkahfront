@@ -117,7 +117,7 @@ export function ProfileDesktop({
           <div className="space-y-6">
             <div className="card p-6" style={{ background: "linear-gradient(180deg,#fdf6f3,#ffffff)" }}>
               <div className="flex items-start gap-5">
-                <div className="relative shrink-0">
+                <div className="shrink-0 w-24">
                   {photoHidden ? (
                     <div className="w-24 h-24 rounded-2xl bg-ink-900/5 flex items-center justify-center text-center text-[10px] font-semibold text-ink-700/50 px-2">
                       Photo hidden until you match
@@ -132,19 +132,25 @@ export function ProfileDesktop({
                     />
                   )}
                   {!isOwn && presence ? (
-                    <span
-                      className={`absolute -bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-ink-900/8 text-[11px] font-semibold shadow-sm ${
-                        presence.online ? "text-green-600" : "text-ink-700/60"
-                      }`}
-                    >
+                    <div className="mt-2 flex flex-col gap-0.5">
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          presence.online ? "bg-green-500" : "bg-ink-700/40"
+                        className={`inline-flex items-center gap-1 text-[10px] font-medium leading-tight ${
+                          presence.online ? "text-green-600" : "text-ink-700/55"
                         }`}
-                      />
-                      {presence.label}
-                      {presence.justJoined ? <span className="text-amber-700">· ✨ Just Joined</span> : null}
-                    </span>
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 shrink-0 rounded-full ${
+                            presence.online ? "bg-green-500" : "bg-ink-700/35"
+                          }`}
+                        />
+                        {presence.label}
+                      </span>
+                      {presence.justJoined ? (
+                        <span className="text-[10px] font-medium leading-tight text-amber-700">
+                          ✨ Just Joined
+                        </span>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
                 <div className="pt-1 min-w-0">

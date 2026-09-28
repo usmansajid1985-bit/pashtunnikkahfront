@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PrivatePhotoViewer } from "@/components/chat/private-photo-viewer";
+import { useChatSocket } from "@/hooks/use-chat-socket";
 
 type ShareState = {
   shareId: string;
@@ -16,7 +17,8 @@ const POLL_MS = 5000;
 
 /**
  * Wali-side private photo affordance (spec §29/§30) — shown only once the sister has explicitly
- * allowed wali access to a specific share. Uses its own 60s session, entirely separate from hers.
+ * allowed wali access to a specific share. The wali's view is capped by the sister's own reveal (PH10) — it can't start after hers has
+ * ended or run past it, and ends immediately if she withdraws access.
  */
 export function WaliPrivatePhoto({ requestId, peerCode }: { requestId: string; peerCode: string }) {
   const [share, setShare] = useState<ShareState>(null);
@@ -38,6 +40,23 @@ export function WaliPrivatePhoto({ requestId, peerCode }: { requestId: string; p
     const t = setInterval(() => void refresh(), POLL_MS);
     return () => clearInterval(t);
   }, [refresh]);
+
+  // PH10: the sister granted / withdrew access — update now, and close the viewer if withdrawn.
+  const { on } = useChatSocket(true);
+  useEffect(
+    () =>
+      on("private-photo:update", (e: { requestId?: string }) => {
+        if (e?.requestId && e.requestId !== requestId) return;
+        void (async () => {
+          const res = await fetch(`/api/wali/chats/${requestId}/private-photos`).catch(() => null);
+          if (!res?.ok) return;
+          const data = await res.json();
+          setShare(data.share);
+          if (!data.share || data.share.status === "expired") setViewerData(null);
+        })();
+      }),
+    [on, requestId]
+  );
 
   async function startViewing() {
     if (!share || busy) return;

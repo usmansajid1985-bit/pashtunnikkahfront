@@ -12,6 +12,8 @@ type Handover = {
   wali_handover_note: string | null;
 };
 
+type Family = { mine: string | null; theirs: string | null; mutualAt: string | null };
+
 type Props = {
   requestId: string;
   isFemaleViewer: boolean;
@@ -34,6 +36,7 @@ export function WaliHandoverPanel({
   onShareContactCard,
 }: Props) {
   const [handover, setHandover] = useState<Handover | null>(null);
+  const [family, setFamily] = useState<Family | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmShare, setConfirmShare] = useState(false);
   const [note, setNote] = useState("");
@@ -44,6 +47,7 @@ export function WaliHandoverPanel({
     if (!res.ok) return;
     const data = await res.json();
     setHandover(data.handover ?? null);
+    setFamily(data.family ?? null);
   }, [requestId]);
 
   useEffect(() => {
@@ -75,6 +79,8 @@ export function WaliHandoverPanel({
   }
 
   const status = handover?.wali_handover_status || null;
+  // W10: wali contact can only be shared once both have said they're ready to involve family.
+  const mutual = Boolean(family?.mutualAt);
   const label = status ? STATUS_LABEL[status] || status : "Getting to know one another";
 
   return (
@@ -87,18 +93,14 @@ export function WaliHandoverPanel({
       {error ? <p className="mt-1 text-xs font-semibold text-red-600">{error}</p> : null}
 
       <div className="mt-3 flex flex-col gap-2">
-        {!isFemaleViewer && (!status || status === "ended") ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void act("request")}
-            className="w-full py-2.5 rounded-full bg-ink-950 text-white text-sm font-semibold disabled:opacity-50"
-          >
-            Request Wali Details
-          </button>
+        {!mutual && (!status || status === "requested" || status === "ended") ? (
+          <p className="rounded-xl bg-white border border-ink-900/8 px-3 py-2.5 text-[13px] text-ink-700/80 leading-relaxed">
+            First, you both answer &ldquo;Ready to involve family?&rdquo; at the top of the chat. Once you&apos;ve both
+            said yes, {isFemaleViewer ? "you can share your wali's contact here" : "she can share her wali's contact here"}.
+          </p>
         ) : null}
 
-        {isFemaleViewer && (status === "requested" || !status) && !wali?.contact ? (
+        {isFemaleViewer && mutual && (status === "requested" || !status) && !wali?.contact ? (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
             <p className="text-[13px] font-semibold text-amber-900">
               Add your wali&apos;s contact first
@@ -116,7 +118,7 @@ export function WaliHandoverPanel({
           </div>
         ) : null}
 
-        {isFemaleViewer && (status === "requested" || !status) && wali?.contact ? (
+        {isFemaleViewer && mutual && (status === "requested" || !status) && wali?.contact ? (
           confirmShare ? (
             <div className="rounded-xl border border-indigo-100 bg-white p-3">
               <p className="text-[13px] text-ink-800 leading-relaxed">

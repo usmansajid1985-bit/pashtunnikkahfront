@@ -65,7 +65,7 @@ export function CompletenessBanner({ percent }: { percent: number }) {
   const offset = circ - (percent / 100) * circ;
 
   return (
-    <div className="card p-5 mt-4 flex flex-col sm:flex-row items-center gap-5">
+    <div className="card p-5 flex flex-col sm:flex-row items-center gap-5">
       <div className="relative w-16 h-16 shrink-0">
         <svg width="64" height="64" viewBox="0 0 64 64">
           <circle cx="32" cy="32" r="27" fill="none" stroke="#f1eeef" strokeWidth="6" />

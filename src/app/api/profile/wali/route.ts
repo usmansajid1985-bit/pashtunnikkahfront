@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { requestOrigin } from "@/lib/site-url";
 import { activeWaliLinkCount, generateWaliToken, isFemaleProfile, listWaliLinks, MAX_ACTIVE_LINKS } from "@/lib/wali";
+import { logWaliActivity, normalizeWaliMode, sendWaliInviteEmail, WALI_MODES } from "@/lib/wali-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,9 @@ function serialize(
     revoked_at: Date | null;
     last_accessed_at: Date | null;
     created_at: Date;
+    mode?: string | null;
+    email?: string | null;
+    accepted_at?: Date | null;
   },
   origin: string
 ) {
@@ -26,6 +30,9 @@ function serialize(
     revoked: Boolean(link.revoked_at),
     lastAccessedAt: link.last_accessed_at?.toISOString() ?? null,
     createdAt: link.created_at.toISOString(),
+    mode: normalizeWaliMode(link.mode),
+    email: link.email ?? null,
+    acceptedAt: link.accepted_at?.toISOString() ?? null,
   };
 }
 
@@ -56,6 +63,18 @@ export async function POST(req: Request) {
   const name = String(body.name ?? "").trim().slice(0, 255);
   const relation = String(body.relation ?? "").trim().slice(0, 64) || null;
   if (!name) return NextResponse.json({ error: "Enter a name for this wali." }, { status: 400 });
+  // W05/N09: access mode chosen at invite; email is the notification + invitation channel.
+  const mode = normalizeWaliMode(body.mode);
+  const email = String(body.email ?? "").trim().toLowerCase().slice(0, 255) || null;
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: "Enter a valid email for your wali, or leave it blank." }, { status: 400 });
+  }
+  if (mode === "oversight_notify" && !email) {
+    return NextResponse.json(
+      { error: "Add your wali's email so they can receive notifications." },
+      { status: 400 }
+    );
+  }
 
   if ((await activeWaliLinkCount(userId)) >= MAX_ACTIVE_LINKS) {
     return NextResponse.json(
@@ -72,8 +91,29 @@ export async function POST(req: Request) {
       relation,
       token: generateWaliToken(),
       created_at: new Date(),
+      mode,
+      email,
     },
   });
 
-  return NextResponse.json({ waliLink: serialize(created, await requestOrigin()) });
+  const origin = await requestOrigin();
+  const modeLabel = WALI_MODES.find((m) => m.value === mode)?.label ?? mode;
+  await logWaliActivity({
+    userId,
+    linkId: created.id,
+    event: "invited",
+    detail: `Invited ${name}${relation ? ` (${relation})` : ""} — ${modeLabel}${email ? `, invitation emailed to ${email}` : ""}`,
+  });
+  let emailed = false;
+  if (email) {
+    const sent = await sendWaliInviteEmail({
+      to: email,
+      waliName: name,
+      sisterCode: profile.profile_code ?? "A member",
+      link: `${origin}/wali/${created.token}`,
+    }).catch(() => ({ ok: false }));
+    emailed = sent.ok;
+  }
+
+  return NextResponse.json({ waliLink: serialize(created, origin), emailed });
 }

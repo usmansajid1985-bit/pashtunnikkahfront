@@ -26,6 +26,17 @@ export default async function NotificationSettingsPage() {
         Choose what you&apos;re alerted about. Requests, messages and account or security
         notices always show in the app.
       </p>
+      {/* S01: preferences and the inbox live together; the bell stays the quick shortcut. */}
+      <a
+        href="/notifications"
+        className="mt-4 flex items-center justify-between rounded-2xl bg-white border border-ink-900/6 px-4 py-3.5 hover:bg-ink-900/[0.02]"
+      >
+        <span>
+          <span className="block text-[15px] font-semibold text-ink-950">Notifications inbox</span>
+          <span className="block text-[12.5px] text-ink-700/65">Recent alerts and activity — also on the bell icon</span>
+        </span>
+        <span aria-hidden className="text-[#c9a227] font-bold">›</span>
+      </a>
 
       <NotificationSettings />
       <NotificationCategoryToggles />

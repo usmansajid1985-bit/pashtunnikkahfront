@@ -231,18 +231,16 @@ export default async function BrowsePage({
       <BrowseAppNav profileCode={session.profileCode} active="browse" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]">
-        <PremiumBanner isGold={isGold} />
-        <CompletenessBanner percent={completeness} />
-        {!meUser?.email_verified ? (
-          <div className="mb-4">
+        <div className="flex flex-col gap-4 empty:hidden">
+          <PremiumBanner isGold={isGold} />
+          <CompletenessBanner percent={completeness} />
+          {!meUser?.email_verified ? (
             <EmailVerificationBanner emailVerified={false} compact />
-          </div>
-        ) : null}
-        {paymentGraceUntil ? (
-          <div className="mb-4">
+          ) : null}
+          {paymentGraceUntil ? (
             <PaymentGraceBanner graceUntil={paymentGraceUntil} compact />
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         <BrowseFiltersBar
           filters={filters}

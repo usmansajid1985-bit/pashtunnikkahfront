@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
 import { profileCodeOf } from "@/lib/notifications";
+import { logWaliConversationView } from "@/lib/wali-activity";
 import { WaliPrivatePhoto } from "@/components/wali/wali-private-photo";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,13 @@ export default async function WaliChatThreadPage({
 
   const peerId = await peerUserId(req, profileUserId);
   const [peer, wardCode] = await Promise.all([loadPeer(peerId), profileCodeOf(profileUserId)]);
+  // W09: the sister can see when her wali read which conversation.
+  await logWaliConversationView(
+    profileUserId,
+    BigInt(session.linkId),
+    requestId,
+    `${session.name} viewed ${wardCode}'s conversation with ${peer?.code ?? "a match"}`
+  );
 
   const rows = await prisma.messages.findMany({
     where: { request_id: requestId },

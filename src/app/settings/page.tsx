@@ -15,16 +15,32 @@ import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
 
+function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-6">
+      <h3 className="px-1 mb-2 text-[12px] font-bold uppercase tracking-widest text-ink-700/50">{title}</h3>
+      <div className="bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] overflow-hidden divide-y divide-ink-900/6">
+        {children}
+      </div>
+    </section>
+  );
+}
+
 export default async function SettingsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const userId = BigInt(session.userId);
-  const [user, profile, unreadCount, hideGoldBadge] = await Promise.all([
+  const [user, profile, unreadCount, hideGoldBadge, blockedCount, warnings] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId } }),
     prisma.profiles.findUnique({ where: { user_id: userId } }),
     getUnreadMessageCount(userId),
     readHideGoldBadge(userId),
+    prisma.blocks.count({ where: { blocker_id: userId } }).catch(() => 0),
+    prisma.$queryRaw<{ id: bigint; message: string; created_at: Date }[]>`
+      SELECT id, message, created_at FROM member_warnings WHERE user_id = ${userId}
+      ORDER BY created_at DESC LIMIT 10
+    `.catch(() => [] as { id: bigint; message: string; created_at: Date }[]),
   ]);
   if (!user || !profile) redirect("/signup");
 
@@ -106,174 +122,136 @@ export default async function SettingsPage() {
         </div>
       ) : null}
 
-      <div id="wali-settings">
-        <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
-      </div>
+      {/* S01: grouped, not one long list. View Profile / Profile Status live in My Profile. */}
 
-      <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />
-
-      <MobileNavStyleSettings />
-
-      <ReferralsSettings />
-
-      {/* Menu */}
-      <div className="mt-5 bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] overflow-hidden divide-y divide-ink-900/6">
-        <SettingsRow
-          href="/profile"
-          title="View Profile"
-          description="See your public profile preview"
-          iconBg="#eef2ff"
-          iconColor="#4338ca"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="8" r="3.5" />
-              <path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" />
-            </svg>
-          }
-        />
+      <SettingsGroup title="Account &amp; Membership">
         <SettingsRow
           href="/profile/edit"
-          title="Account Details"
-          description="View and update your account information"
+          title="Account details"
+          description="Your name, details and profile information"
           iconBg="#eef2ff"
           iconColor="#4338ca"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="8" r="3.5" />
-              <path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" />
-            </svg>
-          }
-        />
-        <SettingsRow
-          href="/profile"
-          title="Profile Status"
-          description="View your profile approval status"
-          iconBg="#ecfdf5"
-          iconColor="#059669"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 3 14.5 8.5 20.5 9.2 16 13.4 17.2 19.5 12 16.6 6.8 19.5 8 13.4 3.5 9.2 9.5 8.5 12 3Z" />
-            </svg>
-          }
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" /></svg>}
         />
         <SettingsRow
           href="/settings/membership"
-          title="Membership & Credits"
+          title="Membership & credits"
           description={
             view.plan === "gold"
-              ? `Gold · ${view.credits} credits`
-              : "Upgrade to Gold · Stripe test checkout"
+              ? `Gold · ${view.credits} Match Tokens · ${approved ? "Approved" : statusLabel(view.status)}`
+              : `Basic · ${view.credits} Match Tokens · Upgrade to Gold`
           }
           iconBg="#fef3c7"
           iconColor="#b45309"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l2.2 4.5L19 7.3l-3.5 3.4.8 4.8L12 13.8 7.7 15.5l.8-4.8L5 7.3l4.8-.8L12 2Z" />
-            </svg>
-          }
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 4.5L19 7.3l-3.5 3.4.8 4.8L12 13.8 7.7 15.5l.8-4.8L5 7.3l4.8-.8L12 2Z" /></svg>}
         />
-        <SettingsRow
-          href="/notifications"
-          title="Notifications inbox"
-          description="View recent alerts and activity"
-          iconBg="#fef3c7"
-          iconColor="#b45309"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-            </svg>
-          }
-        />
+      </SettingsGroup>
+      <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />
+      <ReferralsSettings />
+
+      <SettingsGroup title="Notifications">
         <SettingsRow
           href="/settings/notifications"
-          title="Notification settings"
-          description="Push permissions and what you're alerted about"
+          title="Notifications"
+          description="What you're alerted about, push, and your inbox"
           iconBg="#e0f2fe"
           iconColor="#0369a1"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7 7 0 0 0-1.7-1L14 2h-4l-.8 2.6a7 7 0 0 0-1.7 1l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 1.7 1L10 22h4l.8-2.6a7 7 0 0 0 1.7-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1Z" />
-            </svg>
-          }
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>}
         />
+      </SettingsGroup>
+
+      <SettingsGroup title="Privacy &amp; Safety">
+        <SettingsRow
+          href="/settings/visibility"
+          title="Profile visibility"
+          description={profile.is_hidden ? "Paused — hidden from Browse" : "Active — visible in Browse"}
+          iconBg={profile.is_hidden ? "#fef3c7" : "#ecfdf5"}
+          iconColor={profile.is_hidden ? "#b45309" : "#059669"}
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>}
+        />
+        <SettingsRow
+          href="/settings/privacy#blocked"
+          title="Blocked members"
+          description={blockedCount === 0 ? "You haven't blocked anyone" : `${blockedCount} blocked · manage or unblock`}
+          iconBg="#fef2f2"
+          iconColor="#dc2626"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>}
+        />
+        <SettingsRow
+          href="/settings/privacy"
+          title="Privacy &amp; data"
+          description="Privacy controls and data export"
+          iconBg="#eff6ff"
+          iconColor="#2563eb"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>}
+        />
+      </SettingsGroup>
+      {warnings.length ? (
+        <div id="warnings" className="mt-3 bg-white rounded-2xl border border-amber-100 p-4">
+          <p className="text-[13px] font-bold text-amber-800">Messages from the Pashtun Nikah team</p>
+          <ul className="mt-2 space-y-2">
+            {warnings.map((w) => (
+              <li key={w.id.toString()} className="text-[13px] text-ink-800">
+                <span className="text-ink-700/55">
+                  {w.created_at.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })} —{" "}
+                </span>
+                {w.message}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <SettingsGroup title="Wali">
+        <div id="wali-settings" className="px-1 pb-1">
+          <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
+        </div>
+        {view.gender?.toLowerCase() === "female" ? (
+          <SettingsRow
+            href="/profile/edit#wali"
+            title="Wali access &amp; activity log"
+            description="Invite your wali, choose notifications, see their activity"
+            iconBg="#eef2ff"
+            iconColor="#4338ca"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.5c2.8-.4 5.5 1.2 5.5 4.5" /></svg>}
+          />
+        ) : null}
+      </SettingsGroup>
+
+      <SettingsGroup title="Security">
         <SettingsRow
           href="/settings/security"
           title="Security"
           description="Password and recent sign-ins"
           iconBg="#ecfdf5"
           iconColor="#059669"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 3 14.5 8.5 20.5 9.2 16 13.4 17.2 19.5 12 16.6 6.8 19.5 8 13.4 3.5 9.2 9.5 8.5 12 3Z" />
-            </svg>
-          }
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
         />
-        <SettingsRow
-          href="/settings/privacy"
-          title="Privacy &amp; data"
-          description="Blocked list and data export"
-          iconBg="#eff6ff"
-          iconColor="#2563eb"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-            </svg>
-          }
-        />
-        <SettingsRow
-          href="/settings/delete-account"
-          title="Delete account"
-          description="Schedule account removal"
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M3 6h18M8 6V4h8v2M19 6v14H5V6" />
-            </svg>
-          }
-        />
+      </SettingsGroup>
+
+      <SettingsGroup title="Help &amp; Support">
         <SettingsRow
           href="mailto:support@pashtunnikah.com"
           title="Help &amp; support"
           description="Contact our team"
           iconBg="#f3f4f6"
           iconColor="#374151"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M9.5 9a3 3 0 1 1 5 2c0 2-3 2-3 4M12 17h.01" />
-            </svg>
-          }
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a3 3 0 1 1 5 2c0 2-3 2-3 4M12 17h.01" /></svg>}
         />
+      </SettingsGroup>
+
+      <MobileNavStyleSettings />
+
+      <SettingsGroup title="Danger zone">
         <SettingsRow
-          href="/profile/edit#visibility"
-          title="Profile Visibility"
-          description="Control who can view your profile"
-          iconBg="#eff6ff"
-          iconColor="#2563eb"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" />
-              <circle cx="12" cy="12" r="2.5" />
-            </svg>
-          }
+          href="/settings/delete-account"
+          title="Delete account"
+          description="Schedule account removal"
+          iconBg="#fef2f2"
+          iconColor="#dc2626"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6v14H5V6" /></svg>}
         />
-        <SettingsRow
-          href="/profile/edit#pause"
-          title="Pause Profile"
-          description="Temporarily hide your profile"
-          iconBg="#fef3c7"
-          iconColor="#b45309"
-          icon={
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <rect x="7" y="6" width="3.5" height="12" rx="1" />
-              <rect x="13.5" y="6" width="3.5" height="12" rx="1" />
-            </svg>
-          }
-        />
-      </div>
+      </SettingsGroup>
 
       <div className="mt-8 flex items-start gap-2.5 px-1">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="1.8" className="shrink-0 mt-0.5">
