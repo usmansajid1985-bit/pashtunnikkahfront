@@ -95,6 +95,8 @@ export function LiveUpdates() {
     const onInbox = (e: InboxEvent) => {
       refreshNavCounts();
       if (e.fromUserId === me.userId) return;
+      // C02: this device has received the message → sender sees grey ✓✓.
+      void fetch(`/api/chats/${e.requestId}/delivered`, { method: "POST" }).catch(() => {});
       // Already looking at that conversation — no banner.
       if (window.location.pathname === `/chats/${e.requestId}`) return;
       show({

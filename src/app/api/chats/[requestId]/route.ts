@@ -47,15 +47,22 @@ async function loadMessagePage(requestId: bigint, before: bigint | null, limit: 
       : [];
   const quoteMap = new Map(quoted.map((q) => [q.id.toString(), q]));
   const reactionsMap = await getReactionsForMessages(rows.map((m) => m.id));
+  // C02: a message counts as delivered once its recipient has been active in the app since.
+  const receiverIds = [...new Set(rows.map((m) => m.receiver_id))];
+  const seenRows = receiverIds.length
+    ? await prisma.users.findMany({ where: { id: { in: receiverIds } }, select: { id: true, last_seen_at: true } })
+    : [];
+  const lastSeen = new Map(seenRows.map((u) => [u.id.toString(), u.last_seen_at?.getTime() ?? 0]));
 
-  const messages = rows.map((m) =>
-    serializeMessage(
+  const messages = rows.map((m) => ({
+    ...serializeMessage(
       m,
       m.reply_to_id ? quoteMap.get(m.reply_to_id.toString()) ?? null : null,
       undefined,
       reactionsMap.get(m.id.toString()) ?? []
-    )
-  );
+    ),
+    delivered: m.is_read || (lastSeen.get(m.receiver_id.toString()) ?? 0) > m.created_at.getTime(),
+  }));
   return { messages, hasMore };
 }
 
@@ -177,8 +184,12 @@ export async function POST(
       receiverId,
       body: text,
       replyToId,
+      clientId,
     });
-    const dto = { ...message, clientId };
+    const { duplicate, ...rest } = message;
+    const dto = { ...rest, clientId };
+    // A retried send of a message the server already has: just confirm it, don't re-notify.
+    if (duplicate) return NextResponse.json({ message: dto });
     broadcastChat("message:new", [`thread:${raw}`], dto);
     void broadcastToWalis("message:new", requestId, dto).catch(() => {});
     broadcastChat("inbox:update", [`user:${receiverId.toString()}`], {

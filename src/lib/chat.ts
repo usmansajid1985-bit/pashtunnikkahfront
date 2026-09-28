@@ -38,6 +38,10 @@ export type ChatMessageDTO = {
   replyTo: { id: string; body: string; senderId: string } | null;
   createdAt: string;
   clientId?: string;
+  /** Recipient's app has received it (C02). Read implies delivered. */
+  delivered?: boolean;
+  /** Client-only: the server rejected/couldn't take this send — show "Tap to retry" (C14). */
+  failed?: boolean;
   reactions?: ReactionSummary;
   type: MessageType;
   card?: ContactCardData | null;
@@ -113,7 +117,11 @@ export function serializeMessage(
         }
       : null,
     createdAt: m.created_at.toISOString(),
-    clientId,
+    clientId:
+      clientId ??
+      (m.metadata && typeof m.metadata === "object" && "clientId" in (m.metadata as object)
+        ? String((m.metadata as { clientId: unknown }).clientId)
+        : undefined),
     reactions: reactions ?? [],
     type,
     card,
@@ -451,9 +459,25 @@ export async function createMessage(opts: {
   receiverId: bigint;
   body: string;
   replyToId?: bigint | null;
-}) {
+  /** Client-generated id — a retried send (offline queue, C14) returns the original message. */
+  clientId?: string | null;
+}): Promise<ChatMessageDTO & { duplicate?: boolean }> {
   const match = await prisma.match_requests.findUnique({ where: { id: opts.requestId } });
   if (!match || match.status !== "accepted") throw new Error("Chat not found");
+
+  const clientId = opts.clientId ? String(opts.clientId).slice(0, 64) : null;
+  if (clientId) {
+    const existing = await prisma.$queryRaw<{ id: bigint }[]>`
+      SELECT id FROM messages
+      WHERE request_id = ${opts.requestId} AND sender_id = ${opts.senderId}
+        AND metadata->>'clientId' = ${clientId}
+      LIMIT 1
+    `.catch(() => []);
+    if (existing[0]) {
+      const row = await prisma.messages.findUnique({ where: { id: existing[0].id } });
+      if (row) return { ...serializeMessage(row, null, clientId), duplicate: true };
+    }
+  }
 
   // Mutual blocking disables conversation access in both directions.
   const { isBlockedBetween } = await import("@/lib/blocking");
@@ -502,6 +526,7 @@ export async function createMessage(opts: {
       flagged_by: null,
       reply_to_id: replyTo?.id ?? null,
       created_at: new Date(),
+      ...(clientId ? { metadata: { clientId } } : {}),
     },
   });
 
@@ -541,7 +566,7 @@ export async function createMessage(opts: {
       });
     });
 
-  return serializeMessage(created, replyTo);
+  return serializeMessage(created, replyTo, clientId ?? undefined);
 }
 
 export async function createContactCardMessage(opts: {

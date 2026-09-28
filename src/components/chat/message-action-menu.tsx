@@ -31,6 +31,7 @@ function ReplyIcon() {
 }
 
 export function MessageActionMenu({
+  placement = "above",
   mine,
   open,
   canReport,
@@ -40,6 +41,8 @@ export function MessageActionMenu({
   onCopy,
   onReport,
 }: {
+  /** C04: open below the bubble when there isn't room above (e.g. near the chat header). */
+  placement?: "above" | "below";
   mine: boolean;
   open: boolean;
   canReport: boolean;
@@ -69,7 +72,7 @@ export function MessageActionMenu({
   return (
     <div
       ref={wrapRef}
-      className={`absolute z-40 bottom-full mb-2 ${mine ? "right-0" : "left-0"} w-max max-w-[min(20rem,calc(100vw-2.5rem))] animate-[chatIn_140ms_ease-out]`}
+      className={`absolute z-40 ${placement === "below" ? "top-full mt-2" : "bottom-full mb-2"} ${mine ? "right-0" : "left-0"} w-max max-w-[min(20rem,calc(100vw-2.5rem))] animate-[chatIn_140ms_ease-out]`}
     >
       <div className="flex items-center gap-0.5 bg-white rounded-full border border-ink-900/10 shadow-[0_14px_36px_-14px_rgba(15,13,14,0.4)] px-1.5 py-1 mb-2 overflow-x-auto">
         {QUICK_REACTIONS.map((emoji) => (

@@ -37,6 +37,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: "#aa1945",
   viewportFit: "cover",
+  // K09: Android Chrome shrinks the layout when the keyboard opens, so the chat header stays put.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({

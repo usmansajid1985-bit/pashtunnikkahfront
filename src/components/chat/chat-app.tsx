@@ -11,6 +11,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { outboxAdd, outboxAll, outboxFor, outboxRemove, readDrafts, saveDraft } from "@/lib/chat-outbox";
 import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } from "@/lib/chat";
 import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
@@ -52,18 +53,77 @@ function formatTime(iso: string | null) {
 function dayLabel(iso: string) {
   const d = new Date(iso);
   const now = new Date();
-  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
-  if (d.toDateString() === now.toDateString()) return `Today ${time}`;
+  if (d.toDateString() === now.toDateString()) return "Today";
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
-  return d.toLocaleString("en-GB", {
-    month: "short",
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString("en-GB", {
+    weekday: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    month: "short",
+    ...(d.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
   });
+}
+
+/** Local HH:MM inside a bubble; rendered client-side so server/browser timezones can't clash. */
+function MessageTime({ iso }: { iso: string }) {
+  const [label, setLabel] = useState("");
+  useEffect(() => {
+    setLabel(new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }));
+  }, [iso]);
+  return <span suppressHydrationWarning>{label}</span>;
+}
+
+const REPLY_THRESHOLD_PX = 56;
+/** Room the action menu (reactions row + actions) needs above a bubble before it flips below. */
+const MENU_SPACE_PX = 260;
+const REPLY_MAX_PX = 84;
+
+const PANE_TRANSITION = "transform 260ms cubic-bezier(0.22, 0.8, 0.3, 1)";
+
+type SendStatus = "pending" | "failed" | "sent" | "delivered" | "read";
+
+function sendStatus(msg: ChatMessageDTO): SendStatus {
+  if (msg.failed) return "failed";
+  if (msg.id.startsWith("c_")) return "pending";
+  if (msg.isRead) return "read";
+  if (msg.delivered) return "delivered";
+  return "sent";
+}
+
+/** C02: clock → ✓ sent → grey ✓✓ delivered → crimson ✓✓ read. Never ✓ before the server confirms. */
+function StatusIcon({ status, onDark }: { status: SendStatus; onDark: boolean }) {
+  const grey = onDark ? "rgba(255,255,255,0.6)" : "#9ca3af";
+  if (status === "pending") {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={grey} strokeWidth="2.2" aria-label="Sending">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+    );
+  }
+  if (status === "failed") {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f43f5e" strokeWidth="2.4" aria-label="Not sent">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v6M12 16.5v.5" />
+      </svg>
+    );
+  }
+  if (status === "sent") {
+    return (
+      <svg width="12" height="10" viewBox="0 0 16 10" aria-label="Sent">
+        <path d="M3 5.2 5.6 7.8 12 1.6" fill="none" stroke={grey} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  const color = status === "read" ? (onDark ? "#fb7ea4" : "#aa1945") : grey;
+  return (
+    <svg width="16" height="10" viewBox="0 0 16 10" aria-label={status === "read" ? "Read" : "Delivered"}>
+      <path d="M1.2 5.2 3.6 7.6 8.2 2.2" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5.4 5.2 7.8 7.6 14 1.4" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function LocalStamp({ iso, variant }: { iso: string | null; variant: "list" | "day" }) {
@@ -110,7 +170,9 @@ function MessageBubble({
   onReact,
   onCopy,
   onReport,
+  onRetry,
 }: {
+  onRetry?: (m: ChatMessageDTO) => void;
   msg: ChatMessageDTO;
   mine: boolean;
   peerName: string;
@@ -120,8 +182,54 @@ function MessageBubble({
   onCopy: (m: ChatMessageDTO) => void;
   onReport: (m: ChatMessageDTO) => void;
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpenRaw] = useState(false);
+  const [menuPlacement, setMenuPlacement] = useState<"above" | "below">("above");
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  function setMenuOpen(open: boolean) {
+    if (open && bubbleRef.current) {
+      const scroller = bubbleRef.current.closest(".overflow-y-auto");
+      const top = bubbleRef.current.getBoundingClientRect().top;
+      const limit = scroller ? scroller.getBoundingClientRect().top : 0;
+      setMenuPlacement(top - limit < MENU_SPACE_PX ? "below" : "above");
+    }
+    setMenuOpenRaw(open);
+  }
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // C04: WhatsApp-style drag-right-to-reply that follows the finger.
+  const [dragX, setDragX] = useState(0);
+  const drag = useRef<{ x: number; y: number; lock: "h" | "v" | null; buzzed: boolean } | null>(null);
+
+  function onDragStart(e: React.TouchEvent) {
+    const t = e.touches[0];
+    drag.current = { x: t.clientX, y: t.clientY, lock: null, buzzed: false };
+    startLongPress();
+  }
+  function onDragMove(e: React.TouchEvent) {
+    const d = drag.current;
+    if (!d) return;
+    const t = e.touches[0];
+    const dx = t.clientX - d.x;
+    const dy = t.clientY - d.y;
+    if (!d.lock) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      d.lock = dx > 0 && Math.abs(dx) > Math.abs(dy) * 1.3 ? "h" : "v";
+      cancelLongPress();
+    }
+    if (d.lock !== "h") return;
+    const x = Math.max(0, Math.min(REPLY_MAX_PX, dx * 0.8));
+    setDragX(x);
+    if (x >= REPLY_THRESHOLD_PX && !d.buzzed) {
+      d.buzzed = true;
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) navigator.vibrate?.(12);
+    }
+  }
+  function onDragEnd() {
+    cancelLongPress();
+    const d = drag.current;
+    drag.current = null;
+    if (d?.lock === "h" && dragX >= REPLY_THRESHOLD_PX) onReply(msg);
+    setDragX(0);
+  }
 
   function startLongPress() {
     longPressTimer.current = setTimeout(() => setMenuOpen(true), 450);
@@ -157,11 +265,31 @@ function MessageBubble({
         e.preventDefault();
         setMenuOpen(true);
       }}
-      onTouchStart={startLongPress}
-      onTouchEnd={cancelLongPress}
-      onTouchMove={cancelLongPress}
+      onTouchStart={onDragStart}
+      onTouchEnd={onDragEnd}
+      onTouchCancel={onDragEnd}
+      onTouchMove={onDragMove}
     >
-      <div className={`relative max-w-[82%] sm:max-w-[70%] ${mine ? "items-end" : "items-start"}`}>
+      {dragX > 0 ? (
+        <span
+          className="self-center mr-1 text-rose-600"
+          style={{ opacity: Math.min(1, dragX / REPLY_THRESHOLD_PX), transform: `scale(${0.6 + Math.min(0.4, dragX / 150)})` }}
+          aria-hidden
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+            <path d="M9 14 4 9l5-5" />
+            <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+          </svg>
+        </span>
+      ) : null}
+      <div
+        ref={bubbleRef}
+        className={`relative max-w-[82%] sm:max-w-[70%] ${mine ? "items-end" : "items-start"}`}
+        style={{
+          transform: dragX ? `translateX(${dragX}px)` : undefined,
+          transition: dragX ? "none" : "transform 180ms ease-out",
+        }}
+      >
         {msg.type === "contact_card" && msg.card ? (
           <div className="rounded-[18px] rounded-br-md sm:min-w-[220px] bg-white border border-indigo-100 shadow-sm px-4 py-3.5">
             <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600">
@@ -210,17 +338,39 @@ function MessageBubble({
                 <p className="line-clamp-2 opacity-90">{msg.replyTo.body}</p>
               </div>
             ) : null}
-            <p className="whitespace-pre-wrap break-words">{msg.body}</p>
-            {mine ? (
-              <span className="float-right mt-1 ml-2 translate-y-0.5">
-                <DoubleCheck read={msg.isRead} />
-              </span>
-            ) : null}
+            <p className="whitespace-pre-wrap break-words">
+              {msg.body}
+              {/* Spacer so the time/ticks never overlap the last line of text. */}
+              <span className="inline-block w-[4.25rem]" aria-hidden />
+            </p>
+            <span
+              className={`float-right -mt-3.5 ml-2 flex items-center gap-1 text-[10.5px] leading-none ${
+                mine ? "text-white/60" : "text-ink-700/45"
+              }`}
+            >
+              <MessageTime iso={msg.createdAt} />
+              {mine ? <StatusIcon status={sendStatus(msg)} onDark /> : null}
+            </span>
           </div>
         )}
+        {mine && msg.failed ? (
+          <button
+            type="button"
+            onClick={() => onRetry?.(msg)}
+            className="mt-1 block ml-auto text-[11px] font-semibold text-rose-600 hover:underline"
+          >
+            Not sent — tap to retry
+          </button>
+        ) : null}
 
         {msg.reactions && msg.reactions.length > 0 ? (
-          <div className={`flex flex-wrap gap-1 mt-1 ${mine ? "justify-end" : "justify-start"}`}>
+          // C05: reactions tuck under the bubble's bottom edge — outgoing under the time/ticks
+          // (right), incoming overlapping the bottom-left corner.
+          <div
+            className={`relative z-[1] flex flex-wrap gap-1 -mt-2 ${
+              mine ? "justify-end pr-2" : "justify-start pl-2"
+            }`}
+          >
             {msg.reactions.map((r) => {
               const reactedByMe = r.userIds.includes(currentUserId);
               return (
@@ -244,7 +394,7 @@ function MessageBubble({
 
         <button
           type="button"
-          onClick={() => setMenuOpen((v) => !v)}
+          onClick={() => setMenuOpen(!menuOpen)}
           className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition ${
             mine ? "-left-9" : "-right-9"
           } w-7 h-7 rounded-full bg-white border border-ink-900/10 shadow-sm flex items-center justify-center text-ink-700/70 hover:text-rose-600`}
@@ -258,6 +408,7 @@ function MessageBubble({
         </button>
 
         <MessageActionMenu
+          placement={menuPlacement}
           mine={mine}
           open={menuOpen}
           canReport={!mine}
@@ -293,6 +444,17 @@ export function ChatApp({
   const [peer, setPeer] = useState<Peer | null>(null);
   const [tab, setTab] = useState<"chat" | "profile">("chat");
   const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [unreadMarker, setUnreadMarker] = useState<{ id: string; count: number } | null>(null);
+  const activeIdRef = useRef<string | null>(initialRequestId);
+  const inFlightRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    activeIdRef.current = activeId;
+  }, [activeId]);
+  useEffect(() => setDrafts(readDrafts()), []);
+  function clearDraft(requestId: string) {
+    setDrafts(saveDraft(requestId, ""));
+  }
   const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null);
   const [peerTyping, setPeerTyping] = useState(false);
   const [typingByThread, setTypingByThread] = useState<Record<string, boolean>>({});
@@ -344,7 +506,66 @@ export function ChatApp({
   const prependAdjustRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
   const bootScrollDoneRef = useRef(false);
   const canPageOlderRef = useRef(false);
-  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const swipeStart = useRef<{ x: number; y: number; t: number; lock: "h" | "v" | null } | null>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
+  /**
+   * Chat ↔ Profile pane drag (C11 / M04 / M05). The track follows the finger once the gesture is
+   * clearly horizontal; vertical movement locks to scrolling and never switches panes. Releasing
+   * past a third of the width (or with a quick flick) switches, otherwise it springs back.
+   */
+  function onPaneTouchStart(e: React.TouchEvent) {
+    if (!activeId || window.innerWidth >= 1024) return;
+    const target = e.target as HTMLElement;
+    if (target.closest("input, textarea, [data-no-pane-swipe]")) return;
+    const t = e.touches[0];
+    swipeStart.current = { x: t.clientX, y: t.clientY, t: performance.now(), lock: null };
+  }
+
+  function paneWidth() {
+    return (trackRef.current?.parentElement?.clientWidth ?? window.innerWidth) || 1;
+  }
+
+  function onPaneTouchMove(e: React.TouchEvent) {
+    const start = swipeStart.current;
+    const track = trackRef.current;
+    if (!start || !track) return;
+    const t = e.touches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (!start.lock) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      start.lock = Math.abs(dx) > Math.abs(dy) * 1.3 ? "h" : "v";
+    }
+    if (start.lock !== "h") return;
+    const w = paneWidth();
+    const base = tabRef.current === "profile" ? -w : 0;
+    // Only drag towards the other pane. A rightward drag in Chat belongs to swipe-to-reply.
+    const offset = Math.min(0, Math.max(-w, base + dx));
+    if (offset === base) return;
+    track.style.transition = "none";
+    track.style.transform = `translateX(${offset}px)`;
+  }
+
+  function onPaneTouchEnd(e: React.TouchEvent) {
+    const start = swipeStart.current;
+    swipeStart.current = null;
+    const track = trackRef.current;
+    if (!start || !track || start.lock !== "h") return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const velocity = Math.abs(dx) / Math.max(1, performance.now() - start.t);
+    const passed = Math.abs(dx) > paneWidth() / 3 || (velocity > 0.5 && Math.abs(dx) > 40);
+    let next = tabRef.current;
+    if (passed && dx < 0 && next === "chat") next = "profile";
+    else if (passed && dx > 0 && next === "profile") next = "chat";
+    // Animate to the resting position (switch or spring back), then hand control back to React.
+    track.style.transition = PANE_TRANSITION;
+    track.style.transform = next === "profile" ? "translateX(-50%)" : "translateX(0)";
+    if (next !== tabRef.current) setTab(next);
+  }
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const peerTypingClear = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -458,6 +679,8 @@ export function ChatApp({
   const openThread = useCallback(
     async (requestId: string, opts?: { soft?: boolean }) => {
       if (!opts?.soft) setLoadingThread(true);
+      // K08/C12: restore this conversation's unsent draft when switching to it.
+      if (requestId !== activeIdRef.current) setText(readDrafts()[requestId] ?? "");
       setTab("chat");
       setReplyTo(null);
       setPeerTyping(false);
@@ -480,8 +703,21 @@ export function ChatApp({
           return;
         }
         setPeer(data.peer);
-        setMessages(data.messages || []);
-        messagesRef.current = data.messages || [];
+        // C14: show any still-queued (unconfirmed) messages for this conversation after history.
+        const history: ChatMessageDTO[] = data.messages || [];
+        const confirmed = new Set(history.map((m) => m.clientId).filter(Boolean));
+        const queued = outboxFor(requestId).filter((m) => !confirmed.has(m.clientId));
+        for (const q of outboxFor(requestId)) if (confirmed.has(q.clientId)) outboxRemove(q.clientId);
+        const loaded = [...history, ...queued];
+        setMessages(loaded);
+        messagesRef.current = loaded;
+        // C08: remember where unread starts so we can show an "N unread messages" divider.
+        const firstUnread = history.findIndex((m) => m.senderId !== userId && !m.isRead);
+        setUnreadMarker(
+          firstUnread >= 0
+            ? { id: history[firstUnread].id, count: history.length - firstUnread }
+            : null
+        );
         setHasMoreOlder(Boolean(data.hasMore));
         hasMoreOlderRef.current = Boolean(data.hasMore);
         setActiveId(requestId);
@@ -514,7 +750,7 @@ export function ChatApp({
         setLoadingThread(false);
       }
     },
-    [joinThread, markRead, scrollToBottom]
+    [joinThread, markRead, scrollToBottom, userId]
   );
 
   // Re-join active thread after reconnect
@@ -599,6 +835,13 @@ export function ChatApp({
       }
     };
 
+    const onDelivered = (payload: { requestId: string; receiverId: string }) => {
+      if (payload.requestId !== activeId || payload.receiverId === userId) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.senderId === userId && !m.id.startsWith("c_") ? { ...m, delivered: true } : m))
+      );
+    };
+
     const onRead = (payload: { requestId: string; readerId: string }) => {
       if (payload.requestId !== activeId || payload.readerId === userId) return;
       setMessages((prev) =>
@@ -616,7 +859,7 @@ export function ChatApp({
         peerTypingClear.current = setTimeout(() => {
           setPeerTyping(false);
           setTypingByThread((prev) => ({ ...prev, [payload.requestId]: false }));
-        }, 4000);
+        }, 3000);
       }
     };
 
@@ -694,6 +937,7 @@ export function ChatApp({
     };
 
     const offs = [
+      on("messages:delivered", onDelivered),
       on("match:closed", onMatchClosed),
       on("message:new", onNew),
       on("messages:read", onRead),
@@ -716,29 +960,21 @@ export function ChatApp({
   }, [activeId, leaveThread]);
 
   const grouped = useMemo(() => {
-    const items: { type: "day" | "msg"; key: string; iso?: string; msg?: ChatMessageDTO }[] = [];
+    const items: { type: "day" | "msg" | "unread"; key: string; iso?: string; msg?: ChatMessageDTO }[] = [];
     let lastDay = "";
     for (const msg of messages) {
-      const day = new Date(msg.createdAt).toISOString().slice(0, 10);
+      // Group by the member's LOCAL calendar day (C07), not the UTC date.
+      const day = new Date(msg.createdAt).toDateString();
       if (day !== lastDay) {
         items.push({ type: "day", key: `d-${day}-${msg.id}`, iso: msg.createdAt });
         lastDay = day;
       }
+      if (unreadMarker && msg.id === unreadMarker.id) items.push({ type: "unread", key: `u-${msg.id}` });
       items.push({ type: "msg", key: msg.id, msg });
     }
     return items;
-  }, [messages]);
+  }, [messages, unreadMarker]);
 
-  // Leaving the Profile tab unmounts and remounts the message scroller (scrollTop 0),
-  // so ask the effect below to re-pin to the newest message when we come back.
-  const prevTabRef = useRef(tab);
-  useLayoutEffect(() => {
-    if (prevTabRef.current === "profile" && tab === "chat") {
-      bootScrollDoneRef.current = false;
-      canPageOlderRef.current = false;
-    }
-    prevTabRef.current = tab;
-  }, [tab]);
 
   // Message-list scroll management, run before paint on every messages change:
   //  1. first render of a thread  -> pin to the newest message
@@ -798,13 +1034,73 @@ export function ChatApp({
     }
   }
 
+  /** Try to deliver one message; updates its bubble in place. Returns true once confirmed. */
+  async function deliverMessage(item: ChatMessageDTO & { clientId: string }): Promise<boolean> {
+    const clientId = item.clientId;
+    // A flush on reconnect can overlap a manual retry — never have two sends of one message in flight.
+    if (inFlightRef.current.has(clientId)) return false;
+    inFlightRef.current.add(clientId);
+    try {
+      return await deliverOnce(item);
+    } finally {
+      inFlightRef.current.delete(clientId);
+    }
+  }
+
+  async function deliverOnce(item: ChatMessageDTO & { clientId: string }): Promise<boolean> {
+    const clientId = item.clientId;
+    const setFor = (fn: (m: ChatMessageDTO) => ChatMessageDTO | null) =>
+      setMessages((prev) =>
+        prev.flatMap((m) => {
+          if (m.clientId !== clientId) return [m];
+          const next = fn(m);
+          return next ? [next] : [];
+        })
+      );
+
+    const sent = await sendMessage({
+      requestId: item.requestId,
+      body: item.body,
+      replyToId: item.replyToId ?? null,
+      clientId,
+    });
+
+    if (sent.ok) {
+      outboxRemove(clientId);
+      setFor(() => ({ ...sent.message, clientId }));
+      setChatWarning(null);
+      return true;
+    }
+    if ("closed" in sent && sent.closed) {
+      outboxRemove(clientId);
+      setFor(() => null);
+      if (item.requestId === activeIdRef.current) {
+        setText(item.body);
+        setMatchEnded(true);
+        setEndReason(null);
+      }
+      return false;
+    }
+    if ("warning" in sent && sent.warning) {
+      outboxRemove(clientId);
+      setFor(() => null);
+      setChatWarning(sent.error);
+      return false;
+    }
+    // Network/server hiccup: keep it queued on the device with a clock — never show ticks
+    // until the server has confirmed it (C14).
+    outboxAdd(item);
+    setFor((m) => ({ ...m, failed: typeof navigator !== "undefined" && navigator.onLine }));
+    return false;
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (matchEnded || !chatConsent) return;
     const body = text.trim();
     if (!body || !activeId || !peer) return;
     const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const optimistic: ChatMessageDTO = {
+    const optimistic: ChatMessageDTO & { clientId: string } = {
       id: clientId,
       requestId: activeId,
       senderId: userId,
@@ -819,62 +1115,38 @@ export function ChatApp({
       clientId,
       type: "text",
     };
+    outboxAdd(optimistic);
     setMessages((prev) => [...prev, optimistic]);
     setText("");
+    clearDraft(activeId);
     setReplyTo(null);
     emitTyping(activeId, false);
     scrollToBottom(true);
     inputRef.current?.focus();
 
-    const sent = await sendMessage({
-      requestId: activeId,
-      body,
-      replyToId: replyTo?.id ?? null,
-      clientId,
-    });
+    if (typeof navigator !== "undefined" && !navigator.onLine) return; // flushed on reconnect
+    await deliverMessage(optimistic);
+  }
 
-    if (sent.ok) {
-      setMessages((prev) =>
-        prev.map((m) => (m.clientId === clientId ? { ...sent.message, clientId } : m))
-      );
-      setChatWarning(null);
-      return;
-    }
-
-    if ("closed" in sent && sent.closed) {
-      setMessages((prev) => prev.filter((m) => m.clientId !== clientId));
-      setText(body);
-      setMatchEnded(true);
-      setEndReason(null);
-      return;
-    }
-
-    if ("warning" in sent && sent.warning) {
-      setMessages((prev) => prev.filter((m) => m.clientId !== clientId));
-      setChatWarning(sent.error);
-      return;
-    }
-
-    // REST fallback
-    const res = await fetch(`/api/chats/${activeId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body, replyToId: replyTo?.id ?? null, clientId }),
-    });
-    const data = await res.json();
-    if (res.ok && data.message) {
-      setMessages((prev) =>
-        prev.map((m) => (m.clientId === clientId ? { ...data.message, clientId } : m))
-      );
-      setChatWarning(null);
-    } else {
-      setMessages((prev) => prev.filter((m) => m.clientId !== clientId));
-      if (data.warning) {
-        setChatWarning(data.error || "That message wasn't sent.");
-      } else {
-        showToast(data.error || "Could not send");
+  // C14: when the connection returns, send everything still queued on this device.
+  useEffect(() => {
+    const flush = () => {
+      for (const item of outboxAll()) {
+        if (item.senderId !== userId) continue;
+        void deliverMessage(item);
       }
-    }
+    };
+    window.addEventListener("online", flush);
+    flush();
+    return () => window.removeEventListener("online", flush);
+    // deliverMessage only reads refs/state setters
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  async function retryMessage(m: ChatMessageDTO) {
+    if (!m.clientId) return;
+    setMessages((prev) => prev.map((x) => (x.clientId === m.clientId ? { ...x, failed: false } : x)));
+    await deliverMessage({ ...m, clientId: m.clientId });
   }
 
   async function togglePhotoShare(shared: boolean) {
@@ -943,9 +1215,10 @@ export function ChatApp({
   function onTextChange(value: string) {
     setText(value);
     if (!activeId) return;
+    setDrafts(saveDraft(activeId, value));
     emitTyping(activeId, true);
     if (typingTimer.current) clearTimeout(typingTimer.current);
-    typingTimer.current = setTimeout(() => emitTyping(activeId, false), 1200);
+    typingTimer.current = setTimeout(() => emitTyping(activeId, false), 1000);
   }
 
   function insertEmoji(emoji: string) {
@@ -1133,8 +1406,31 @@ export function ChatApp({
     if (peerTyping && atBottomRef.current) scrollToBottom(true);
   }, [peerTyping, scrollToBottom]);
 
+  // K09 / M02 / M03: on mobile the open thread is pinned to the *visual* viewport, so when the
+  // keyboard opens (portrait or landscape) the header and composer both stay on screen instead
+  // of iOS scrolling the page up underneath them.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement.style;
+    const apply = () => {
+      root.setProperty("--chat-vh", `${vv.height}px`);
+      root.setProperty("--chat-vtop", `${vv.offsetTop}px`);
+    };
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+      root.removeProperty("--chat-vh");
+      root.removeProperty("--chat-vtop");
+    };
+  }, []);
+
   const activeThread = threads.find((t) => t.requestId === activeId) || null;
-  const displayName = peer?.name?.split(" ")[0] || activeThread?.peerName.split(" ")[0] || "Chat";
+  // C01/C03: the chat identifies members by profile ID, never by name.
+  const displayName = peer?.code || activeThread?.peerCode || "Chat";
   const seed = peer?.avatarSeed ?? activeThread?.peerAvatarSeed ?? 1;
   const verified = peer?.verified ?? activeThread?.peerVerified ?? false;
 
@@ -1234,9 +1530,16 @@ export function ChatApp({
                                 : "text-ink-700/65"
                             }`}
                           >
-                            {typingByThread[t.requestId]
-                              ? "typing…"
-                              : t.lastMessage || "Say salam…"}
+                            {typingByThread[t.requestId] ? (
+                              "typing…"
+                            ) : drafts[t.requestId] && t.requestId !== activeId ? (
+                              <>
+                                <span className="font-semibold text-rose-600 not-italic">Draft: </span>
+                                {drafts[t.requestId]}
+                              </>
+                            ) : (
+                              t.lastMessage || "Say salam…"
+                            )}
                           </span>
                           {t.unread > 0 ? (
                             <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center">
@@ -1254,26 +1557,13 @@ export function ChatApp({
 
           {/* Thread */}
           <section
-            onTouchStart={(e) => {
-              if (!activeId || typeof window === "undefined" || window.innerWidth >= 1024) return;
-              const t = e.touches[0];
-              swipeStart.current = { x: t.clientX, y: t.clientY };
-            }}
-            onTouchEnd={(e) => {
-              const start = swipeStart.current;
-              swipeStart.current = null;
-              if (!start) return;
-              const t = e.changedTouches[0];
-              const dx = t.clientX - start.x;
-              const dy = t.clientY - start.y;
-              // Only a deliberate, mostly-horizontal drag switches panes.
-              if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.6) return;
-              if (dx < 0) setTab("profile"); // swipe left → Profile
-              else setTab("chat"); // swipe right → back to Chat
-            }}
+            onTouchStart={onPaneTouchStart}
+            onTouchMove={onPaneTouchMove}
+            onTouchEnd={onPaneTouchEnd}
+            onTouchCancel={onPaneTouchEnd}
             className={`${
               activeId ? "flex" : "hidden lg:flex"
-            } flex-col h-dvh lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
+            } flex-col max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:top-[var(--chat-vtop,0px)] max-lg:h-[var(--chat-vh,100dvh)] lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
             {!activeId ? (
               <div className="flex-1 flex items-center justify-center text-center px-6">
@@ -1339,7 +1629,7 @@ export function ChatApp({
                                 ? "Photo shared"
                                 : commMode === "wali_oversight"
                                   ? "Wali oversight · photo private"
-                                  : peer?.code || activeThread?.peerCode}
+                                  : "Matched"}
                       </p>
                     </div>
                     {!matchEnded ? (
@@ -1488,7 +1778,7 @@ export function ChatApp({
                             {blockArmed ? (
                               <div className="px-3 py-2.5">
                                 <p className="text-[12px] text-ink-700/70 leading-snug">
-                                  Block {peer?.name?.split(" ")[0] || "this member"}? They won&apos;t be able to
+                                  Block {displayName || "this member"}? They won&apos;t be able to
                                   reach you and this chat will close.
                                 </p>
                                 <div className="mt-2 flex gap-2">
@@ -1551,33 +1841,18 @@ export function ChatApp({
                   ) : null}
                 </div>
 
-                {tab === "profile" ? (
-                  <div className="flex-1 overflow-y-auto">
-                    {!peerProfile ? (
-                      <p className="text-center text-sm text-ink-700/50 py-16">Loading profile…</p>
-                    ) : (
-                      <>
-                        {activeId ? (
-                          <PrivatePhotoShare
-                            requestId={activeId}
-                            matchEnded={matchEnded}
-                            peerName={displayName}
-                            variant="banner"
-                            onIncomingStatusChange={setIncomingPrivatePhotoStatus}
-                          />
-                        ) : null}
-                        <ProfileDesktop
-                          profile={peerProfile}
-                          embedded
-                          hideNav
-                          photoOverrideUrl={peerProfile.photoUrl}
-                          photoOverrideVisible={photoVisible}
-                        />
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  <>
+                {/* C11/C12: both panes stay mounted on a finger-tracking track — switching never
+                    reloads the chat, loses the draft or resets the scroll position. */}
+                <div className="relative flex-1 min-h-0 overflow-hidden">
+                  <div
+                    ref={trackRef}
+                    className="flex h-full w-[200%] touch-pan-y"
+                    style={{
+                      transform: tab === "profile" ? "translateX(-50%)" : "translateX(0)",
+                      transition: PANE_TRANSITION,
+                    }}
+                  >
+                    <div className="w-1/2 h-full min-h-0 flex flex-col" inert={tab !== "chat" || undefined}>
                     <div className="relative flex-1 min-h-0 flex flex-col">
                       <div
                         ref={scrollerRef}
@@ -1623,9 +1898,19 @@ export function ChatApp({
                         ) : null}
                         {grouped.map((item) =>
                           item.type === "day" ? (
-                            <p key={item.key} className="text-center text-[12px] text-ink-700/45 py-2">
-                              <LocalStamp iso={item.iso ?? null} variant="day" />
+                            <p key={item.key} className="text-center py-2">
+                              <span className="inline-block rounded-full bg-white/90 border border-ink-900/6 px-3 py-1 text-[11.5px] font-medium text-ink-700/60 shadow-sm">
+                                <LocalStamp iso={item.iso ?? null} variant="day" />
+                              </span>
                             </p>
+                          ) : item.type === "unread" ? (
+                            <div key={item.key} className="flex items-center gap-3 py-1.5" role="separator">
+                              <span className="h-px flex-1 bg-rose-200" />
+                              <span className="rounded-full bg-rose-50 px-3 py-1 text-[11.5px] font-semibold text-rose-700">
+                                {unreadMarker?.count} unread message{unreadMarker?.count === 1 ? "" : "s"}
+                              </span>
+                              <span className="h-px flex-1 bg-rose-200" />
+                            </div>
                           ) : item.msg ? (
                             <MessageBubble
                               key={item.key}
@@ -1640,26 +1925,13 @@ export function ChatApp({
                               onReact={(m, emoji) => void reactToMessage(m.id, emoji)}
                               onCopy={(m) => void copyMessage(m)}
                               onReport={(m) => void reportMessage(m)}
+                              onRetry={(m) => void retryMessage(m)}
                             />
                           ) : null
                         )}
                         </>
                       )}
 
-                      {peerTyping ? (
-                        <div className="flex justify-start animate-[chatIn_180ms_ease-out]">
-                          <div className="bg-[#f1eeef] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[72px]">
-                            <p className="text-[11px] text-emerald-700/80 font-medium mb-1.5">
-                              {displayName} is typing
-                            </p>
-                            <div className="flex gap-1.5 px-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/35 animate-bounce [animation-delay:0ms]" />
-                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/35 animate-bounce [animation-delay:120ms]" />
-                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/35 animate-bounce [animation-delay:240ms]" />
-                            </div>
-                          </div>
-                        </div>
-                      ) : null}
                       </div>
 
                       {/* Jump to latest — WhatsApp-style */}
@@ -1685,6 +1957,20 @@ export function ChatApp({
                             </span>
                           ) : null}
                         </button>
+                      ) : null}
+
+                      {/* C03: typing indicator pinned to the bottom, just above the message box. */}
+                      {peerTyping ? (
+                        <div className="absolute bottom-2 left-3 sm:left-5 z-10 pointer-events-none animate-[chatIn_160ms_ease-out]">
+                          <div className="flex items-center gap-2 bg-[#f1eeef] rounded-2xl rounded-bl-md px-3 py-2 shadow-sm">
+                            <span className="text-[11.5px] text-ink-700/70 font-medium">{displayName} is typing</span>
+                            <span className="flex gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/40 animate-bounce [animation-delay:0ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/40 animate-bounce [animation-delay:120ms]" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-ink-700/40 animate-bounce [animation-delay:240ms]" />
+                            </span>
+                          </div>
+                        </div>
                       ) : null}
 
                       {toast ? (
@@ -1835,8 +2121,35 @@ export function ChatApp({
                         </div>
                       </div>
                     ) : null}
-                  </>
-                )}
+                    </div>
+                    <div className="w-1/2 h-full min-h-0 flex flex-col" inert={tab !== "profile" || undefined}>
+                  <div className="flex-1 overflow-y-auto">
+                    {!peerProfile ? (
+                      <p className="text-center text-sm text-ink-700/50 py-16">Loading profile…</p>
+                    ) : (
+                      <>
+                        {activeId ? (
+                          <PrivatePhotoShare
+                            requestId={activeId}
+                            matchEnded={matchEnded}
+                            peerName={displayName}
+                            variant="banner"
+                            onIncomingStatusChange={setIncomingPrivatePhotoStatus}
+                          />
+                        ) : null}
+                        <ProfileDesktop
+                          profile={peerProfile}
+                          embedded
+                          hideNav
+                          photoOverrideUrl={peerProfile.photoUrl}
+                          photoOverrideVisible={photoVisible}
+                        />
+                      </>
+                    )}
+                  </div>
+                    </div>
+                  </div>
+                </div>
               </>
             )}
           </section>

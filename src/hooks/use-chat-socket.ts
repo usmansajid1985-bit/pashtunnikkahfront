@@ -10,6 +10,7 @@ import type { ChatMessageDTO, ReactionSummary } from "@/lib/chat";
 const CHAT_EVENTS = [
   "message:new",
   "messages:read",
+  "messages:delivered",
   "typing",
   "inbox:update",
   "photo:update",
