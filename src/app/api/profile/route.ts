@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCity } from "@/lib/city-search";
+import { textQualityIssue } from "@/lib/signup";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
@@ -58,6 +59,19 @@ export async function PATCH(req: Request) {
     const existing = await prisma.profiles.findUnique({ where: { user_id: userId } });
     if (!existing) return NextResponse.json({ error: "No profile" }, { status: 404 });
 
+    // About Me / Looking For: a changed text must be real sentences of 30+ words. Untouched
+    // older profiles aren't blocked from saving other fields.
+    for (const [key, col, label] of [
+      ["aboutMe", "about_me", "About Me"],
+      ["lookingFor", "partner_preferences", "What you're looking for"],
+    ] as const) {
+      const next = typeof body[key] === "string" ? body[key].trim() : null;
+      if (next !== null && next !== (existing[col] ?? "").trim()) {
+        const issue = textQualityIssue(next);
+        if (issue) return NextResponse.json({ error: `${label}: ${issue}`, field: key }, { status: 400 });
+      }
+    }
+
     // R04: a changed city must be a real place. Unchanged legacy values are left alone.
     const cityChanged =
       typeof body.city === "string" && body.city.trim() !== (existing.city ?? "").trim();
@@ -97,25 +111,29 @@ export async function PATCH(req: Request) {
     // else, so re-review must be keyed on whether a moderation-relevant field actually changed —
     // not "was this endpoint called while approved". Toggling Pause on its own must not send an
     // approved profile back through review (PN-SETTINGS-007).
+    // Only fields the caller actually sent are written — a partial update (e.g. just Salah) must
+    // never blank the rest of the profile.
+    const sent = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+    const ifSent = <T,>(key: string, value: T) => (sent(key) ? value : undefined);
     const contentChanged =
-      (String(body.fullName ?? "").trim() || existing.full_name) !== existing.full_name ||
-      (body.height || null) !== existing.height ||
-      (body.city || null) !== existing.city ||
-      nextCountryCode !== existing.country_code ||
-      (body.maritalStatus || null) !== existing.marital_status ||
-      (body.tribe || null) !== existing.tribe ||
-      (body.ancestralRegion || null) !== existing.ancestral_village ||
-      nextRelocation !== existing.willing_to_relocate ||
-      (body.religiousPractice || null) !== existing.religious_practice ||
-      (body.islamicBackground || null) !== existing.religious_methodology ||
-      appearance !== existing.appearance ||
-      (body.hasChildren || null) !== existing.has_children ||
-      (body.willingChildren || null) !== existing.wants_children ||
-      (body.education || null) !== existing.education ||
-      nextOccupation !== existing.occupation ||
+      (sent("fullName") && (String(body.fullName ?? "").trim() || existing.full_name) !== existing.full_name) ||
+      (sent("height") && (body.height || null) !== existing.height) ||
+      (sent("city") && (body.city || null) !== existing.city) ||
+      (sent("country") && nextCountryCode !== existing.country_code) ||
+      (sent("maritalStatus") && (body.maritalStatus || null) !== existing.marital_status) ||
+      (sent("tribe") && (body.tribe || null) !== existing.tribe) ||
+      (sent("ancestralRegion") && (body.ancestralRegion || null) !== existing.ancestral_village) ||
+      (sent("relocation") && nextRelocation !== existing.willing_to_relocate) ||
+      (sent("religiousPractice") && (body.religiousPractice || null) !== existing.religious_practice) ||
+      (sent("islamicBackground") && (body.islamicBackground || null) !== existing.religious_methodology) ||
+      (sent("appearance") && appearance !== existing.appearance) ||
+      (sent("hasChildren") && (body.hasChildren || null) !== existing.has_children) ||
+      (sent("willingChildren") && (body.willingChildren || null) !== existing.wants_children) ||
+      (sent("education") && (body.education || null) !== existing.education) ||
+      ((sent("occupation") || sent("employment")) && nextOccupation !== existing.occupation) ||
       nextHomeLanguage !== existing.home_language ||
-      (body.aboutMe || null) !== existing.about_me ||
-      (body.lookingFor || null) !== existing.partner_preferences;
+      (sent("aboutMe") && (body.aboutMe || null) !== existing.about_me) ||
+      (sent("lookingFor") && (body.lookingFor || null) !== existing.partner_preferences);
 
     // F01: an approved member keeps their Approved status when they edit. Content changes are
     // time-stamped for admin re-review instead of pulling the member back into Awaiting Approval.
@@ -125,28 +143,29 @@ export async function PATCH(req: Request) {
       where: { user_id: userId },
       data: {
         full_name: String(body.fullName ?? existing.full_name ?? "").trim() || existing.full_name,
-        height: body.height || null,
-        height_cm: parseHeightCm(body.height),
-        city: body.city || null,
+        height: ifSent("height", body.height || null),
+        height_cm: ifSent("height", parseHeightCm(body.height)),
+        city: ifSent("city", body.city || null),
         // Canonical country — store the ISO code and derive a clean display name from it.
-        country_code: nextCountryCode,
-        country: countryLabel(nextCountryCode) ?? (body.country || null),
-        marital_status: body.maritalStatus || null,
-        tribe: body.tribe || null,
-        ancestral_village: body.ancestralRegion || null,
+        country_code: ifSent("country", nextCountryCode),
+        country: ifSent("country", countryLabel(nextCountryCode) ?? (body.country || null)),
+        marital_status: ifSent("maritalStatus", body.maritalStatus || null),
+        tribe: ifSent("tribe", body.tribe || null),
+        ancestral_village: ifSent("ancestralRegion", body.ancestralRegion || null),
         // One canonical relocation value; legacy `relocate` column no longer written.
-        willing_to_relocate: nextRelocation,
-        relocate: null,
-        religious_practice: body.religiousPractice || null,
-        religious_methodology: body.islamicBackground || null,
-        appearance,
-        has_children: body.hasChildren || null,
-        wants_children: body.willingChildren || null,
-        education: body.education || null,
-        occupation: nextOccupation,
-        home_language: nextHomeLanguage,
-        about_me: body.aboutMe || null,
-        partner_preferences: body.lookingFor || null,
+        willing_to_relocate: ifSent("relocation", nextRelocation),
+        relocate: ifSent("relocation", null),
+        religious_practice: ifSent("religiousPractice", body.religiousPractice || null),
+        salah_pattern: ifSent("salah", body.salah || null),
+        religious_methodology: ifSent("islamicBackground", body.islamicBackground || null),
+        appearance: ifSent("appearance", appearance),
+        has_children: ifSent("hasChildren", body.hasChildren || null),
+        wants_children: ifSent("willingChildren", body.willingChildren || null),
+        education: ifSent("education", body.education || null),
+        occupation: sent("occupation") || sent("employment") ? nextOccupation : undefined,
+        home_language: ifSent("languages", nextHomeLanguage),
+        about_me: ifSent("aboutMe", body.aboutMe || null),
+        partner_preferences: ifSent("lookingFor", body.lookingFor || null),
         // Only touch Pause when the caller actually sent it — never un-pause as a side effect.
         ...(typeof body.isHidden === "boolean" ? { is_hidden: body.isHidden } : {}),
         traits: JSON.stringify(extras),
@@ -159,7 +178,7 @@ export async function PATCH(req: Request) {
     }
     // B07: keep home coordinates in step with the member's city.
     const nextCountry = countryLabel(nextCountryCode) ?? (body.country || null);
-    if ((body.city || null) !== existing.city || nextCountry !== existing.country) {
+    if ((sent("city") || sent("country")) && ((body.city || null) !== existing.city || nextCountry !== existing.country)) {
       await refreshHomeCoords(userId, body.city || null, nextCountry);
     }
     if (flagForReview) {

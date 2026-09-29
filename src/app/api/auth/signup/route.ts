@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyCity } from "@/lib/city-search";
+import { textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { prisma } from "@/lib/prisma";
 import {
@@ -59,6 +60,15 @@ export async function POST(req: Request) {
     const age = calcAge(String(body.dob ?? ""));
     if (age == null || age < 18) {
       return NextResponse.json({ error: "You must be 18 or over." }, { status: 400 });
+    }
+
+    // About Me / Looking For must be real sentences (same check as the form).
+    for (const [value, label] of [
+      [body.about, "About you"],
+      [body.lookingFor, "What you're looking for"],
+    ] as const) {
+      const issue = textQualityIssue(String(value ?? ""));
+      if (issue) return NextResponse.json({ error: `${label}: ${issue}` }, { status: 400 });
     }
 
     // R04: the city must be a real, selectable place (the form only offers real ones — this
@@ -177,6 +187,7 @@ export async function POST(req: Request) {
       relocate: null,
       home_language: (body.languages ?? []).join(", ") || null,
       religious_practice: body.religiousPractice || null,
+      salah_pattern: body.salah || null,
       appearance:
         genderLabel === "Female"
           ? (body.appearance ?? []).join(", ")

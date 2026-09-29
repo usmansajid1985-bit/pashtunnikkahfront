@@ -8,12 +8,59 @@ export type MatchEndReason = "user" | "admin" | "wali_handover" | "mutual";
  * path that touches match_requests, this flips any stale pending row to "expired" before the
  * caller proceeds. Safe to call repeatedly — it's just a conditional UPDATE.
  */
+/**
+ * Move ONE pending request to expired/cancelled and give the sender their Match Token back —
+ * in one transaction, and only if this call wins the pending→closed transition, so a token can
+ * never be refunded twice. Returns true when this call closed (and refunded) it.
+ */
+export async function closePendingWithRefund(
+  requestId: bigint,
+  to: "expired" | "cancelled",
+  reason: "request_expired_refund" | "request_blocked_refund"
+): Promise<boolean> {
+  const result = await prisma.$transaction(async (tx) => {
+    const row = await tx.match_requests.findUnique({ where: { id: requestId }, select: { sender_id: true } });
+    if (!row) return null;
+    const closed = await tx.match_requests.updateMany({
+      where: { id: requestId, status: "pending" },
+      data: { status: to, updated_at: new Date() },
+    });
+    if (closed.count === 0) return null;
+    const user = await tx.users.update({
+      where: { id: row.sender_id },
+      data: { requests_remaining: { increment: 1 }, updated_at: new Date() },
+      select: { requests_remaining: true },
+    });
+    return { senderId: row.sender_id, balance: user.requests_remaining ?? 1 };
+  });
+  if (!result) return false;
+  const { recordCreditChange } = await import("@/lib/credit-ledger");
+  await recordCreditChange({
+    userId: result.senderId,
+    amount: 1,
+    balanceType: "monthly",
+    reason,
+    previousBalance: result.balance - 1,
+    newBalance: result.balance,
+    relatedRequestId: requestId,
+    idempotencyKey: `${reason}-${requestId}`,
+  }).catch((err) => console.error("[credits] refund ledger entry failed", err));
+  return true;
+}
+
+/** Expire overdue pending requests — each one returns the sender's Match Token. */
 export async function expireStaleRequests() {
   await ensureMatchRequestsSchema();
-  await prisma.match_requests.updateMany({
+  const stale = await prisma.match_requests.findMany({
     where: { status: "pending", expires_at: { lt: new Date() } },
-    data: { status: "expired", updated_at: new Date() },
+    select: { id: true },
+    take: 200,
   });
+  for (const r of stale) {
+    await closePendingWithRefund(r.id, "expired", "request_expired_refund").catch((err) =>
+      console.error("[matches] expire refund failed", err)
+    );
+  }
 }
 
 export async function nextMatchRequestId() {

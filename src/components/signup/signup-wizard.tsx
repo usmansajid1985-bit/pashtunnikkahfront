@@ -17,6 +17,9 @@ import {
   getSignupSteps,
   isStepValid,
   wordCount,
+  textQualityIssue,
+  SALAH_OPTIONS,
+  salahShortLabel,
   type SignupData,
 } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
@@ -73,6 +76,18 @@ function ProgressRing({ value, size = 52 }: { value: number; size?: number }) {
         {Math.round(value)}%
       </text>
     </svg>
+  );
+}
+
+/** Word count, plus the quality message once they've written enough words to judge. */
+function WordHint({ text }: { text: string }) {
+  const n = wordCount(text);
+  const issue = n >= 30 ? textQualityIssue(text) : null;
+  return (
+    <>
+      <p className="text-xs text-ink-700/50 text-right">{n} / 30 words minimum</p>
+      {issue ? <p className="text-xs text-rose-700">{issue}</p> : null}
+    </>
   );
 }
 
@@ -577,6 +592,7 @@ export function SignupWizard() {
             )}
 
             {step.id === "faith" && (
+              <>
               <ChoiceGrid count={4}>
                 {(
                   [
@@ -596,6 +612,23 @@ export function SignupWizard() {
                   />
                 ))}
               </ChoiceGrid>
+              <p className="pt-4 text-xs font-semibold text-ink-900">How regularly do you pray?</p>
+              <div className="space-y-2">
+                {SALAH_OPTIONS.map((o) => (
+                  <button
+                    key={o}
+                    type="button"
+                    onClick={() => patch({ salah: o })}
+                    className={`w-full text-left rounded-xl border px-3.5 py-2.5 text-sm transition ${
+                      data.salah === o ? "border-rose-400 bg-rose-50 text-ink-950" : "border-ink-900/10 hover:border-rose-200"
+                    }`}
+                  >
+                    <span className="font-semibold">{salahShortLabel(o)}</span>
+                    <span className="block text-[12px] text-ink-700/65">{o.split("–").slice(1).join("–").trim()}</span>
+                  </button>
+                ))}
+              </div>
+              </>
             )}
 
             {step.id === "appearance" && data.gender === "Brother" && (
@@ -752,9 +785,7 @@ export function SignupWizard() {
                   value={data.about}
                   onChange={(e) => patch({ about: e.target.value })}
                 />
-                <p className="text-xs text-ink-700/50 text-right">
-                  {wordCount(data.about)} / 30 words minimum
-                </p>
+                <WordHint text={data.about} />
               </>
             )}
 
@@ -767,9 +798,7 @@ export function SignupWizard() {
                   value={data.lookingFor}
                   onChange={(e) => patch({ lookingFor: e.target.value })}
                 />
-                <p className="text-xs text-ink-700/50 text-right">
-                  {wordCount(data.lookingFor)} / 30 words minimum
-                </p>
+                <WordHint text={data.lookingFor} />
               </>
             )}
 

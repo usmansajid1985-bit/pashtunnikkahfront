@@ -19,6 +19,8 @@ export type SignupData = {
   hasChildren: string;
   willingChildren: string;
   religiousPractice: string;
+  /** How regularly they pray (B08 filter + profile). */
+  salah?: string;
   appearance: string[]; // men: 1, women: multi
   education: string;
   employment: string;
@@ -304,6 +306,63 @@ export function wordCount(text: string) {
   return t ? t.split(/\s+/).length : 0;
 }
 
+/** Salah answers — the same wording existing profiles already use, so the Salah filter keeps working. */
+export const SALAH_OPTIONS = [
+  "Consistently – I pray my 5 daily prayers without fail (unless missed due to legitimate Shar'i excuses e.g., menstrual cycle, missed alarm by accident)",
+  "Almost always – I stay on top of my 5 daily prayers but have the occasional slip-up",
+  "Regularly – I catch most of my prayers, though I might sometimes miss Fajr if I'm exhausted",
+  "Sometimes – I pray on and off, usually when I find the time or when my iman is high",
+  "Rarely – Mostly just Jumu'ah, Eid Salah, or during the holy month of Ramadan",
+  "Never / One-offs – I do not pray consistently, or only on very isolated occasions",
+] as const;
+
+/** Short label for a Salah answer (text before the dash). */
+export function salahShortLabel(v: string) {
+  return v.split("–")[0].trim();
+}
+
+/** Everyday English words — genuine writing always contains plenty of these; keyboard-mash doesn't. */
+const COMMON_WORDS = new Set(
+  (
+    "i me my myself we our us you your he him his she her they them their it its a an the and or but if so " +
+    "because as of at by for with about to from in on into up out over after before than then there here " +
+    "this that these those am is are was were be been being have has had do does did can could will would " +
+    "should may might must not no yes very just also too more most much many some any all each every both " +
+    "few other such only own same who whom which what when where why how family families life love like " +
+    "looking look someone person people partner wife husband marriage married nikah deen islam islamic " +
+    "muslim allah god faith pray prayer religious practising practicing value values kind caring honest " +
+    "respect respectful good great well work working job study studying student time home live living " +
+    "enjoy enjoys enjoying friends friend children kids parents mother father brother sister brothers " +
+    "sisters want wants hope hoping believe important someone who share sharing love loves together " +
+    "future inshallah insha alhamdulillah mashallah pashtun culture traditions tradition simple humble " +
+    "calm down-to-earth easy going outgoing family-oriented also really lot things thing new day days year " +
+    "years travel travelling reading cooking sports gym walks nature"
+  ).split(/\s+/)
+);
+
+/**
+ * About Me / Looking For quality check (signup + Edit Profile, client + server). Returns a
+ * member-facing message, or null when the text is fine. Rejects too-short text, keyboard-mash
+ * (almost no everyday words) and the same few words repeated.
+ */
+export function textQualityIssue(text: string, minWords = 30): string | null {
+  const n = wordCount(text);
+  if (n < minWords) return `Please write at least ${minWords} words (${n} so far).`;
+  const words = text
+    .toLowerCase()
+    .split(/\s+/)
+    .map((w) => w.replace(/^[^\p{L}]+|[^\p{L}'-]+$/gu, ""))
+    .filter(Boolean);
+  if (words.length === 0) return "Please write a few real sentences.";
+  const common = words.filter((w) => COMMON_WORDS.has(w)).length;
+  if (common / words.length < 0.25) {
+    return "This doesn't look like real sentences yet — please describe yourself in your own words.";
+  }
+  const distinct = new Set(words).size;
+  if (distinct / words.length < 0.35) return "Please avoid repeating the same words — tell members a little more.";
+  return null;
+}
+
 export function calcAge(dob: string): number | null {
   if (!dob) return null;
   const d = new Date(dob);
@@ -336,7 +395,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "family":
       return Boolean(data.hasChildren && data.willingChildren);
     case "faith":
-      return Boolean(data.religiousPractice);
+      return Boolean(data.religiousPractice && data.salah);
     case "appearance":
       return data.appearance.length > 0;
     case "career":
@@ -344,9 +403,9 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "lifestyle":
       return Boolean(data.smoking && data.vaping);
     case "about":
-      return wordCount(data.about) >= 30;
+      return textQualityIssue(data.about) === null;
     case "lookingFor":
-      return wordCount(data.lookingFor) >= 30;
+      return textQualityIssue(data.lookingFor) === null;
     case "photo":
       return data.photos.length > 0;
     case "commMode":

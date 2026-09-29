@@ -8,6 +8,8 @@ export type CreditReason =
   | "gold_rollover"
   | "request_sent"
   | "request_withdrawn_refund"
+  | "request_expired_refund"
+  | "request_blocked_refund"
   | "topup_purchased"
   | "admin_adjustment"
   | "fraud_refund"

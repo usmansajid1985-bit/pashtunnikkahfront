@@ -11,6 +11,9 @@ import {
   MEN_APPEARANCE,
   WOMEN_APPEARANCE,
   LANGUAGES_ORDERED,
+  SALAH_OPTIONS,
+  textQualityIssue,
+  wordCount,
 } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
@@ -23,6 +26,17 @@ import { CityPicker } from "@/components/location/city-picker";
 
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
+
+/** Word count + quality note for About / Looking for — only once it's been edited. */
+function TextHint({ text, initial }: { text: string; initial: string }) {
+  if (text.trim() === initial.trim()) return null;
+  const issue = textQualityIssue(text);
+  return (
+    <p className={`text-xs ${issue ? "text-rose-700" : "text-ink-700/50"}`}>
+      {issue ?? `${wordCount(text)} words`}
+    </p>
+  );
+}
 
 /** P10: comparable form state — Pause saves instantly on its own, so it never counts as unsaved. */
 function snapshot(f: object) {
@@ -85,6 +99,7 @@ export function ProfileEditForm({
     ancestralRegion: initial.ancestralRegion || "",
     relocation: initial.relocation || "",
     religiousPractice: initial.religiousPractice || "",
+    salah: initial.salah || "",
     islamicBackground: initial.islamicBackground || "",
     appearance: initial.appearance,
     hasChildren: initial.hasChildren || "",
@@ -141,6 +156,16 @@ export function ProfileEditForm({
     if (!cityConfirmed) {
       setError("Please choose your city from the suggestions list.");
       return;
+    }
+    for (const [value, before, label] of [
+      [form.aboutMe, initial.aboutMe || "", "About Me"],
+      [form.lookingFor, initial.lookingFor || "", "What you're looking for"],
+    ] as const) {
+      const issue = value.trim() !== before.trim() ? textQualityIssue(value) : null;
+      if (issue) {
+        setError(`${label}: ${issue}`);
+        return;
+      }
     }
     startTransition(async () => {
       try {
@@ -332,6 +357,15 @@ export function ProfileEditForm({
               />
             ))}
           </ChoiceGrid>
+          <label className="block text-xs font-semibold">How regularly do you pray?</label>
+          <select className={field} value={form.salah} onChange={(e) => patch("salah", e.target.value)}>
+            <option value="">Select…</option>
+            {optionsWithCurrent([...SALAH_OPTIONS], form.salah).map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
           <label className="block text-xs font-semibold">Islamic background</label>
           <input
             className={field}
@@ -515,12 +549,14 @@ export function ProfileEditForm({
             onChange={(e) => patch("aboutMe", e.target.value)}
             placeholder="About you"
           />
+          <TextHint text={form.aboutMe} initial={initial.aboutMe || ""} />
           <textarea
             className={`${field} min-h-[120px]`}
             value={form.lookingFor}
             onChange={(e) => patch("lookingFor", e.target.value)}
             placeholder="What you're looking for"
           />
+          <TextHint text={form.lookingFor} initial={initial.lookingFor || ""} />
         </section>
 
         <section id="visibility" className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">

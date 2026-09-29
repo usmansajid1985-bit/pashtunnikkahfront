@@ -1,3 +1,4 @@
+import { closePendingWithRefund } from "@/lib/matches";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -50,17 +51,13 @@ export async function POST(req: Request) {
   // Mutual disappearance: tear down the live relationship both ways. Pending requests are
   // cancelled; saved entries removed. Accepted matches are left in place but chat access is
   // gated at the chat layer (see chat route / loadThread block check).
+  // Pending requests are cancelled one by one so each sender gets their Match Token back.
+  for (const r of pendingRequests) {
+    await closePendingWithRefund(r.id, "cancelled", "request_blocked_refund").catch((err) =>
+      console.error("[blocks] cancel refund failed", err)
+    );
+  }
   await Promise.all([
-    prisma.match_requests.updateMany({
-      where: {
-        status: "pending",
-        OR: [
-          { sender_id: me, receiver_id: peerUserId },
-          { sender_id: peerUserId, receiver_id: me },
-        ],
-      },
-      data: { status: "cancelled", updated_at: now },
-    }),
     prisma.favourites.deleteMany({
       where: {
         OR: [
