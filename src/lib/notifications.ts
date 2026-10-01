@@ -33,6 +33,10 @@ const TYPE_TO_CATEGORY: Record<string, NotificationCategory> = {
   match: "request",
   request: "request",
   request_accepted: "request",
+  request_reminder: "request",
+  request_expired: "request",
+  // A token refund is an account/balance event — never muted with the Requests category.
+  request_refund: "account",
   message: "message",
   profile_view: "profile_view",
   wali: "wali",

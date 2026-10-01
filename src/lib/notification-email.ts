@@ -163,3 +163,33 @@ export async function processUnreadMessageReminders(): Promise<{ sent: number }>
   }
   return { sent };
 }
+
+/**
+ * 7-day expiry flow: backup email telling the sender their Match Token came back. This is a
+ * balance/account email, so it is not behind the activity-email opt-in — set
+ * FEATURE_REFUND_EMAILS=0 to switch it off.
+ */
+export async function sendTokenRefundEmail(userId: bigint, peerCode: string): Promise<boolean> {
+  try {
+    const { featureEnabled } = await import("@/lib/feature-flags");
+    if (!featureEnabled("REFUND_EMAILS")) return false;
+    const email = await recipientEmail(userId);
+    if (!email) return false;
+    const { text, html } = shell(
+      "Your Match Token is ready again",
+      [
+        "Assalamu Alaikum,",
+        `Your match request to ${peerCode} has expired after 7 days without a response.`,
+        "We've automatically returned 1 Match Token to your balance, so you can use it whenever you're ready to connect with someone else.",
+        "There's nothing you need to do. Your token is already available in your account.",
+      ],
+      "Browse Members",
+      "/browse"
+    );
+    const res = await sendMail({ to: email, subject: "Your Match Token has been refunded", text, html });
+    return res.ok;
+  } catch (err) {
+    console.error("[notification-email] refund email failed", err);
+    return false;
+  }
+}

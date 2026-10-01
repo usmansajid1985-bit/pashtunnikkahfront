@@ -5,6 +5,17 @@ import { blockedUserIds } from "@/lib/blocking";
 import { loadCompatibilityCache, type CachedCompat } from "@/lib/compatibility-cache";
 
 export type { HubCard } from "@/lib/requests-hub-shared";
+
+export type RequestsHubData = {
+  isGold: boolean;
+  counts: { incoming: number; sent: number; matched: number; ended: number };
+  incoming: HubCard[];
+  sent: HubCard[];
+  matched: HubCard[];
+  ended: HubCard[];
+  declined: HubCard[];
+  expired: HubCard[];
+};
 export { formatAgeLabel, compatScore } from "@/lib/requests-hub-shared";
 
 const HUB_PROFILE_SELECT = {
@@ -91,6 +102,11 @@ function toCard(
     avatarSeed: Number(peer.id % BigInt(70)),
     createdAt: extra.createdAt,
     status: extra.status,
+    requestedAt: extra.requestedAt,
+    statusAt: extra.statusAt,
+    expiresAt: extra.expiresAt ?? null,
+    tokenRefunded: extra.tokenRefunded ?? false,
+    introMessage: extra.introMessage ?? null,
     compat,
     lastMessage: extra.lastMessage,
     photoShared: extra.photoShared,
@@ -99,7 +115,7 @@ function toCard(
   };
 }
 
-export async function loadRequestsHub(userId: bigint) {
+export async function loadRequestsHub(userId: bigint, afterExpiry = false): Promise<RequestsHubData> {
   await ensureMatchRequestsSchema();
 
   // Fresh DB read of plan — a JWT session claim can be stale until next login/refresh.
@@ -155,7 +171,34 @@ export async function loadRequestsHub(userId: bigint) {
       }),
     ]);
 
+  // A request that ran past its 7 days but hasn't been swept yet: expire it (refund + notices)
+  // now, then load again — so an overdue request never shows Accept / Decline / Withdraw.
+  const nowMs = Date.now();
+  if (
+    !afterExpiry &&
+    [...incoming, ...sentAll].some((r) => r.status === "pending" && r.expires_at.getTime() <= nowMs)
+  ) {
+    const { expireStaleRequests } = await import("@/lib/matches");
+    await expireStaleRequests().catch((err) => console.error("[requests] lazy expiry failed", err));
+    return loadRequestsHub(userId, true);
+  }
+
   const isGold = (meUser?.plan || "").toLowerCase() === "gold";
+
+  // Which of my closed requests returned their Match Token (withdrawn / expired / blocked).
+  const closedSentIds = sentAll
+    .filter((r) => r.status === "expired" || r.status === "cancelled")
+    .map((r) => r.id);
+  const refundRows =
+    closedSentIds.length === 0
+      ? []
+      : await prisma.credit_ledger
+          .findMany({
+            where: { user_id: userId, related_request_id: { in: closedSentIds }, amount: { gt: 0 } },
+            select: { related_request_id: true },
+          })
+          .catch(() => []);
+  const refundedIds = new Set(refundRows.map((r) => r.related_request_id?.toString()));
 
   // Mutual blocking: a blocked peer disappears from every Requests hub list.
   const blockedSet = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
@@ -195,6 +238,7 @@ export async function loadRequestsHub(userId: bigint) {
       status: string;
       created_at: Date;
       updated_at: Date;
+      expires_at: Date;
       ended_at?: Date | null;
       accepted_at?: Date | null;
       communication_mode: string | null;
@@ -234,6 +278,8 @@ export async function loadRequestsHub(userId: bigint) {
         photoShared: r.photo_shared,
         communicationMode: r.communication_mode,
         introMessage: r.intro_message ?? null,
+        expiresAt: r.status === "pending" ? r.expires_at.toISOString() : null,
+        tokenRefunded: r.sender_id === userId && refundedIds.has(r.id.toString()),
       },
       compatCache
     );

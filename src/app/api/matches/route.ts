@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { expireStaleRequests, findRelation, nextMatchRequestId, withdrawCooldownBlocked } from "@/lib/matches";
+import { expireStaleRequests, findRelation, nextMatchRequestId } from "@/lib/matches";
 import { isBlockedBetween } from "@/lib/blocking";
 import { profileCodeOf } from "@/lib/notifications";
 import { maybeSendActivityEmail } from "@/lib/notification-email";
@@ -203,14 +203,8 @@ export async function POST(req: Request) {
   await maybeRenewMonthlyCredits(me);
 
   // Q09: a rematch is just a new pending request that costs one normal Match Token — no
-  // separate rematch token, and no withdraw cooldown after a match has ended.
+  // separate rematch token. A withdrawn or expired request can be sent again straight away.
   const priorEnded = await findPriorEndedMatch(me, peerUserId);
-  if (!priorEnded) {
-    const cooldown = await withdrawCooldownBlocked(me, peerUserId);
-    if (cooldown.blocked) {
-      return NextResponse.json({ error: cooldown.message }, { status: 429 });
-    }
-  }
 
   if (introMessage) {
     const { filterMessageBody } = await import("@/lib/moderation");

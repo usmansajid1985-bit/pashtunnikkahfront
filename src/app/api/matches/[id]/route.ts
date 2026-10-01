@@ -34,7 +34,10 @@ async function staleResponse(id: bigint) {
   const status = current?.status ?? "unavailable";
   return NextResponse.json(
     {
-      error: `This request has already been ${status === "cancelled" ? "withdrawn" : status}. Refresh to see the latest.`,
+      error:
+        status === "expired"
+          ? "This request has expired and can no longer be accepted or declined."
+          : `This request has already been ${status === "cancelled" ? "withdrawn" : status}. Refresh to see the latest.`,
       code: "stale_request",
       status,
     },
@@ -64,9 +67,7 @@ export async function POST(
     if (match.receiver_id !== me) {
       return NextResponse.json({ error: "Only the recipient can accept" }, { status: 403 });
     }
-    if (match.status !== "pending") {
-      return NextResponse.json({ error: `Cannot accept a ${match.status} request` }, { status: 400 });
-    }
+    if (match.status !== "pending") return staleResponse(id);
 
     // PN-BACKEND-002: accepting is a relationship-continuing action — the same gate as sending.
     // Declining/withdrawing are left ungated; those are self-protective, not relationship-forming.

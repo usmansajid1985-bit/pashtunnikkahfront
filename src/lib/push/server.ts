@@ -81,8 +81,8 @@ export async function sendPushNotification(
   await createNotification({
     recipientUserId: userId,
     type: payload.type,
-    title: payload.title,
-    body: payload.body,
+    title: payload.inApp?.title ?? payload.title,
+    body: payload.inApp?.body ?? payload.body,
     url: payload.url ?? null,
     tag: payload.tag ?? null,
     actorUserId: payload.actorUserId ?? null,

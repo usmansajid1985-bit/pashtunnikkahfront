@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { RematchButton } from "@/components/matches/rematch-button";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { statusDateLabel } from "@/lib/requests-hub-shared";
+import { expiryCountdown, statusDateLabel } from "@/lib/requests-hub-shared";
 import { compatLabel } from "@/lib/compat-engine";
 import { RequestActions } from "@/components/matches/request-actions";
 
@@ -40,6 +41,39 @@ function StatusDate({ card, className }: { card: HubCard; className?: string }) 
   const [label, setLabel] = useState("");
   useEffect(() => setLabel(statusDateLabel(card)), [card]);
   return <span className={className}>{label}</span>;
+}
+
+/**
+ * Remaining time on a pending request (7 days from when it was sent). Ticks once a minute and
+ * reloads the list when the time runs out, so the expired request leaves on its own.
+ */
+function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
+  const router = useRouter();
+  const [state, setState] = useState<ReturnType<typeof expiryCountdown> | null>(null);
+  useEffect(() => {
+    let refreshed = false;
+    const tick = () => {
+      const next = expiryCountdown(expiresAt);
+      setState(next);
+      if (next.msLeft <= 0 && !refreshed) {
+        refreshed = true;
+        router.refresh();
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt, router]);
+  if (!state) return null;
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+        state.soon ? "bg-amber-50 text-amber-700" : "bg-ink-900/5 text-ink-700/70"
+      }`}
+    >
+      {state.label}
+    </span>
+  );
 }
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
@@ -159,8 +193,14 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                     {tab === "matched" && card.lastMessage ? (
                       <p className="text-[12px] text-ink-700 mt-1 line-clamp-1">“{card.lastMessage}”</p>
                     ) : null}
-                    <p className="text-[11px] font-semibold text-ink-700/55 mt-1">
+                    <p className="text-[11px] font-semibold text-ink-700/55 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <StatusDate card={card} />
+                      {card.status === "pending" && card.expiresAt ? (
+                        <ExpiryCountdown expiresAt={card.expiresAt} />
+                      ) : null}
+                      {tab === "sent" && card.tokenRefunded ? (
+                        <span className="text-emerald-700">1 Match Token refunded</span>
+                      ) : null}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
@@ -275,6 +315,9 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
                   <div key={c.id} className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm">
                     <span className="font-semibold">{c.code}</span>
                     <StatusDate card={c} className="text-ink-700/50" />
+                    {c.tokenRefunded ? (
+                      <span className="ml-auto text-[12px] font-semibold text-emerald-700">1 Match Token refunded</span>
+                    ) : null}
                   </div>
                 ))}
               </div>

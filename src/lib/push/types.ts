@@ -2,6 +2,9 @@ export type PushNotificationType =
   | "message"
   | "match"
   | "request_accepted"
+  | "request_reminder"
+  | "request_expired"
+  | "request_refund"
   | "wali"
   | "photo"
   | "profile_view"
@@ -27,4 +30,6 @@ export type PushPayload = {
   groupKey?: string | null;
   groupedTitle?: (count: number) => string;
   groupedBody?: (count: number) => string;
+  /** Wording for the bell row when it should differ from the push text. */
+  inApp?: { title: string; body: string };
 };

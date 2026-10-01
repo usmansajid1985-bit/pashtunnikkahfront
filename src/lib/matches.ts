@@ -4,11 +4,6 @@ import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 export type MatchEndReason = "user" | "admin" | "wali_handover" | "mutual";
 
 /**
- * No cron/job runner exists yet, so expiry is applied lazily: called from every read/write
- * path that touches match_requests, this flips any stale pending row to "expired" before the
- * caller proceeds. Safe to call repeatedly — it's just a conditional UPDATE.
- */
-/**
  * Move ONE pending request to expired/cancelled and give the sender their Match Token back —
  * in one transaction, and only if this call wins the pending→closed transition, so a token can
  * never be refunded twice. Returns true when this call closed (and refunded) it.
@@ -48,19 +43,30 @@ export async function closePendingWithRefund(
   return true;
 }
 
-/** Expire overdue pending requests — each one returns the sender's Match Token. */
-export async function expireStaleRequests() {
+/**
+ * Expire overdue pending requests — each one returns the sender's Match Token, then both
+ * members are told (refund first, notification second). Runs from the cron job and lazily from
+ * every path that reads or acts on requests; safe to call repeatedly.
+ */
+export async function expireStaleRequests(): Promise<number> {
   await ensureMatchRequestsSchema();
   const stale = await prisma.match_requests.findMany({
     where: { status: "pending", expires_at: { lt: new Date() } },
-    select: { id: true },
+    select: { id: true, sender_id: true, receiver_id: true },
     take: 200,
   });
+  let expired = 0;
   for (const r of stale) {
-    await closePendingWithRefund(r.id, "expired", "request_expired_refund").catch((err) =>
-      console.error("[matches] expire refund failed", err)
-    );
+    const closed = await closePendingWithRefund(r.id, "expired", "request_expired_refund").catch((err) => {
+      console.error("[matches] expire refund failed", err);
+      return false;
+    });
+    if (!closed) continue;
+    expired++;
+    const { notifyRequestExpired } = await import("@/lib/request-lifecycle");
+    await notifyRequestExpired(r).catch((err) => console.error("[matches] expiry notification failed", err));
   }
+  return expired;
 }
 
 export async function nextMatchRequestId() {
@@ -143,33 +149,4 @@ export async function endMatchRequest(opts: {
   });
 
   return { endedAt: now, reason: opts.reason };
-}
-
-const WITHDRAW_COOLDOWN_DAYS = 30;
-
-/** Block re-request to same person within 30 days of withdrawing a pending intro. */
-export async function withdrawCooldownBlocked(
-  senderId: bigint,
-  receiverId: bigint
-): Promise<{ blocked: boolean; message?: string }> {
-  await ensureMatchRequestsSchema();
-  const last = await prisma.match_requests.findFirst({
-    where: {
-      sender_id: senderId,
-      receiver_id: receiverId,
-      status: "cancelled",
-    },
-    orderBy: { updated_at: "desc" },
-  });
-  if (!last) return { blocked: false };
-
-  const elapsed = Date.now() - last.updated_at.getTime();
-  const cooldownMs = WITHDRAW_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
-  if (elapsed >= cooldownMs) return { blocked: false };
-
-  const daysLeft = Math.ceil((cooldownMs - elapsed) / (24 * 60 * 60 * 1000));
-  return {
-    blocked: true,
-    message: `You withdrew an introduction to this member recently. You can send another request in about ${daysLeft} day${daysLeft === 1 ? "" : "s"}.`,
-  };
 }

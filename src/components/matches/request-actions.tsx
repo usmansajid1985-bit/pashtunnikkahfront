@@ -67,7 +67,7 @@ export function RequestActions({
         onClick={() => act("withdraw")}
         className="text-sm font-semibold text-ink-700/70 hover:text-rose-600 disabled:opacity-50"
       >
-        Withdraw
+        Withdraw Request
       </button>
     );
   }

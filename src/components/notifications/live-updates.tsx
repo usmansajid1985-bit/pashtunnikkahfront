@@ -8,7 +8,15 @@ import { refreshNavCounts } from "@/components/browse/nav-notifications";
 type Banner = { key: string; title: string; body: string; href: string };
 
 type InboxEvent = { requestId: string; lastMessage: string; fromUserId: string; fromCode?: string | null };
-type RequestEvent = { requestId: string; status: string; fromUserId?: string; fromCode?: string | null };
+type RequestEvent = {
+  requestId: string;
+  status: string;
+  fromUserId?: string;
+  fromCode?: string | null;
+  /** Expiry events: who sent the request (they get the token back) and who it was sent to. */
+  senderUserId?: string;
+  receiverCode?: string | null;
+};
 type PhotoEvent = { requestId: string; fromUserId?: string; fromCode?: string | null; kind?: string };
 type AccountEvent = { status: string };
 
@@ -121,6 +129,15 @@ export function LiveUpdates() {
     const onRequest = (e: RequestEvent) => {
       refreshNavCounts();
       refreshPage();
+      if (e.status === "expired" && e.senderUserId === me.userId) {
+        show({
+          key: `refund-${e.requestId}`,
+          title: "1 Match Token refunded 🎉",
+          body: `Your request to ${e.receiverCode || "a member"} expired without a response.`,
+          href: "/requests?tab=sent",
+        });
+        return;
+      }
       if (!e.fromUserId || e.fromUserId === me.userId) return;
       if (e.status === "pending") {
         show({

@@ -17,6 +17,10 @@ export type HubCard = {
   /** Q06: when the request was sent, and when it reached its current status. */
   requestedAt?: string;
   statusAt?: string;
+  /** Pending requests only: when the 7-day window closes. */
+  expiresAt?: string | null;
+  /** Sent requests: the Match Token came back (withdrawn / expired). */
+  tokenRefunded?: boolean;
   compat: number;
   lastMessage?: string | null;
   photoShared?: boolean;
@@ -52,6 +56,23 @@ export function statusDateLabel(card: Pick<HubCard, "status" | "requestedAt" | "
   const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
   const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${verb[status] ?? "Updated"} on ${date}, ${time}`;
+}
+
+/** "Expires in 6 days" / "Expires in 5 hours" for a pending request; soon = final 24 hours. */
+export function expiryCountdown(expiresAt: string, now = Date.now()): { label: string; soon: boolean; msLeft: number } {
+  const msLeft = new Date(expiresAt).getTime() - now;
+  if (msLeft <= 0) return { label: "Expiring…", soon: true, msLeft };
+  const hours = msLeft / 3_600_000;
+  if (hours >= 24) {
+    const days = Math.round(hours / 24);
+    return { label: `Expires in ${days} day${days === 1 ? "" : "s"}`, soon: false, msLeft };
+  }
+  if (hours >= 1) {
+    const h = Math.floor(hours);
+    return { label: `Expires in ${h} hour${h === 1 ? "" : "s"}`, soon: true, msLeft };
+  }
+  const mins = Math.max(1, Math.floor(msLeft / 60_000));
+  return { label: `Expires in ${mins} min${mins === 1 ? "" : "s"}`, soon: true, msLeft };
 }
 
 /** Lightweight compatibility heuristic for UI (0–99). */
