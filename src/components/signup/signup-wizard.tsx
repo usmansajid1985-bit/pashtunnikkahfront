@@ -12,21 +12,34 @@ import {
   HEIGHTS,
   LANGUAGES_ORDERED,
   MEN_APPEARANCE,
+  OPEN_TO_OPTIONS,
+  WOMEN_DRESS_STYLE,
+  WOMEN_HEAD_COVERING,
   calcAge,
   emptySignupData,
   getSignupSteps,
   isStepValid,
+  normalizeOpenTo,
+  splitWomenAppearance,
   wordCount,
   textQualityIssue,
   SALAH_OPTIONS,
   salahShortLabel,
   type SignupData,
 } from "@/lib/signup";
-import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
+import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 
 const STORAGE_KEY = "pn_signup_draft_v2";
+
+/** Shared by the "your status" and "open to" steps so both show the same tile per status. */
+const MARITAL_TILES = {
+  "Never married": { tone: "mint", icon: I.neverMarried },
+  Divorced: { tone: "rose", icon: I.divorced },
+  Annulled: { tone: "peach", icon: I.annulled },
+  Widowed: { tone: "sky", icon: I.widowed },
+} as const;
 
 function Chip({
   selected,
@@ -49,33 +62,6 @@ function Chip({
     >
       {children}
     </button>
-  );
-}
-
-function ProgressRing({ value, size = 52 }: { value: number; size?: number }) {
-  const r = 20;
-  const c = 2 * Math.PI * r;
-  const offset = c - (value / 100) * c;
-  return (
-    <svg width={size} height={size} viewBox="0 0 52 52" className="shrink-0">
-      <circle cx="26" cy="26" r={r} fill="none" stroke="#f1eeef" strokeWidth="5" />
-      <circle
-        cx="26"
-        cy="26"
-        r={r}
-        fill="none"
-        stroke="#aa1945"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeDasharray={c}
-        strokeDashoffset={offset}
-        transform="rotate(-90 26 26)"
-        className="transition-[stroke-dashoffset] duration-500 ease-out"
-      />
-      <text x="26" y="28" textAnchor="middle" className="fill-ink-950" style={{ fontSize: 11, fontWeight: 700 }}>
-        {Math.round(value)}%
-      </text>
-    </svg>
   );
 }
 
@@ -122,7 +108,19 @@ export function SignupWizard() {
         const parsed = JSON.parse(raw) as { data: SignupData; stepIndex: number };
         if (parsed?.data) {
           const restored = { ...emptySignupData(), ...parsed.data };
+          restored.openTo = normalizeOpenTo(restored.openTo);
           let resumeAt = Math.max(0, parsed.stepIndex || 0);
+          // Drafts saved with the old "open to" options may now have none selected — send them
+          // back to that step, since one is required.
+          const openToIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "openTo");
+          if (openToIndex >= 0 && resumeAt > openToIndex && !restored.openTo.length) {
+            resumeAt = openToIndex;
+          }
+          // Same for sister drafts saved before appearance became head covering + dress style.
+          const appearanceIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "appearance");
+          if (appearanceIndex >= 0 && resumeAt > appearanceIndex && !isStepValid("appearance", restored)) {
+            resumeAt = appearanceIndex;
+          }
           // R04: drafts saved before the city picker existed (or with a typed-in city) must go
           // back and pick the city from the list, instead of failing at "Create account".
           const locationIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "location");
@@ -262,18 +260,10 @@ export function SignupWizard() {
       </header>
 
       <main className="flex-1 w-full max-w-xl mx-auto px-5 py-8 sm:py-12">
-        {/* Trust strip */}
-        <div className="mb-8 rounded-2xl border border-rose-100 bg-white/70 backdrop-blur px-4 py-3 text-center">
-          <p className="text-xs sm:text-sm text-ink-700/80 leading-relaxed">
-            Every profile is manually reviewed · Registration &amp; browsing are free · Gold includes 10 match
-            tokens / month
-          </p>
-        </div>
-
         <div className="rounded-3xl bg-white shadow-[0_20px_60px_-30px_rgba(32,26,29,0.25)] border border-ink-900/6 p-5 sm:p-9">
         {/* Progress */}
         {step.id !== "done" ? (
-          <div className="flex items-center gap-3 mb-2">
+          <div className="relative flex items-center gap-3 mb-6">
             <button
               type="button"
               onClick={() => go(-1)}
@@ -294,17 +284,10 @@ export function SignupWizard() {
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs font-medium text-ink-700/70">
-                <span>
-                  Step {stepIndex + 1} of {total}
-                </span>
-                <span className="text-rose-600">
-                  {left === 0 ? "Last step" : `${left} left`}
-                </span>
-              </div>
+              <p className="absolute inset-x-0 top-full mt-0.5 text-center text-xs font-medium text-ink-700/70">
+                Step {stepIndex + 1} of {total}
+              </p>
             </div>
-
-            <ProgressRing value={progress} />
 
             <Link
               href="/"
@@ -337,19 +320,17 @@ export function SignupWizard() {
           <div className="mt-6 space-y-3">
             {step.id === "gender" && (
               <ChoiceGrid count={2}>
-                <ChoiceTile
+                <GenderTile
                   label="Brother"
-                  hint="Male member"
                   tone="sky"
-                  icon={I.brother}
+                  image="/images/signup/gender-brother.png"
                   selected={data.gender === "Brother"}
                   onClick={() => patch({ gender: "Brother", appearance: [], communicationMode: "" })}
                 />
-                <ChoiceTile
+                <GenderTile
                   label="Sister"
-                  hint="Female member"
                   tone="rose"
-                  icon={I.sister}
+                  image="/images/signup/gender-sister.png"
                   selected={data.gender === "Sister"}
                   onClick={() => patch({ gender: "Sister", appearance: [] })}
                 />
@@ -368,23 +349,19 @@ export function SignupWizard() {
 
             {step.id === "marital" && (
               <ChoiceGrid count={4}>
-                {(
-                  [
-                    { v: "Never Married", tone: "mint" as const, icon: I.ring },
-                    { v: "Divorced", tone: "peach" as const, icon: I.split },
-                    { v: "Annulled", tone: "sky" as const, icon: I.fileX },
-                    { v: "Widowed", tone: "rose" as const, icon: I.flower },
-                  ] as const
-                ).map((o) => (
-                  <ChoiceTile
-                    key={o.v}
-                    label={o.v}
-                    tone={o.tone}
-                    icon={o.icon}
-                    selected={data.maritalStatus === o.v}
-                    onClick={() => patch({ maritalStatus: o.v })}
-                  />
-                ))}
+                {OPEN_TO_OPTIONS.map((o) => {
+                  const v = o === "Never married" ? "Never Married" : o;
+                  return (
+                    <ChoiceTile
+                      key={v}
+                      label={v}
+                      tone={MARITAL_TILES[o].tone}
+                      icon={MARITAL_TILES[o].icon}
+                      selected={data.maritalStatus === v}
+                      onClick={() => patch({ maritalStatus: v })}
+                    />
+                  );
+                })}
               </ChoiceGrid>
             )}
 
@@ -511,69 +488,59 @@ export function SignupWizard() {
 
             {step.id === "openTo" && (
               <>
-                <ChoiceGrid count={5}>
-                  {(
-                    [
-                      { v: "Divorcees", tone: "peach" as const, icon: I.split },
-                      { v: "Widowed", tone: "rose" as const, icon: I.flower },
-                      { v: "Single parents", tone: "sky" as const, icon: I.parent },
-                      { v: "Reverts", tone: "mint" as const, icon: I.spark },
-                      // Polygamy is only a relevant openness for male members.
-                      ...(data.gender === "Brother"
-                        ? [{ v: "Polygamy", tone: "lilac" as const, icon: I.users }]
-                        : []),
-                    ] as const
-                  ).map((item) => {
-                    const on = data.openTo.includes(item.v);
+                <ChoiceGrid count={4}>
+                  {OPEN_TO_OPTIONS.map((v) => {
+                    const on = data.openTo.includes(v);
                     return (
                       <ChoiceTile
-                        key={item.v}
-                        label={item.v}
-                        tone={item.tone}
-                        icon={item.icon}
+                        key={v}
+                        label={v}
+                        tone={MARITAL_TILES[v].tone}
+                        icon={MARITAL_TILES[v].icon}
                         multi
                         selected={on}
                         onClick={() =>
                           patch({
-                            openTo: on
-                              ? data.openTo.filter((x) => x !== item.v)
-                              : [...data.openTo, item.v],
+                            openTo: on ? data.openTo.filter((x) => x !== v) : [...data.openTo, v],
                           })
                         }
                       />
                     );
                   })}
                 </ChoiceGrid>
-                <p className="text-xs text-ink-700/50">Optional — you can continue without selecting any.</p>
+                <p className="text-xs text-ink-700/50 leading-relaxed">
+                  You can select more than one, but at least one must be selected to continue. Leaving an
+                  option unselected means those profiles won&apos;t be included in your preferences.
+                </p>
               </>
             )}
 
             {step.id === "family" && (
               <>
-                <p className="text-xs font-semibold text-ink-900">Do you have children?</p>
+                <p className="text-xs font-semibold text-ink-900">Do you currently have children?</p>
                 <ChoiceGrid count={2}>
                   <ChoiceTile
-                    label="Have Children"
+                    label="Yes, I have children"
                     tone="sky"
                     icon={I.baby}
                     selected={data.hasChildren === "Have Children"}
                     onClick={() => patch({ hasChildren: "Have Children" })}
                   />
                   <ChoiceTile
-                    label="No Children"
+                    label="No, I don't"
                     tone="sand"
                     icon={I.babyOff}
                     selected={data.hasChildren === "No Children"}
                     onClick={() => patch({ hasChildren: "No Children" })}
                   />
                 </ChoiceGrid>
-                <p className="pt-3 text-xs font-semibold text-ink-900">Willing to have children?</p>
+                <p className="pt-3 text-xs font-semibold text-ink-900">Would you like children in the future?</p>
                 <ChoiceGrid count={2}>
                   <ChoiceTile
                     label="Yes, Insha'Allah"
-                    hint="– if Allah wills"
+                    hint="If Allah wills"
                     tone="mint"
-                    icon={I.moon}
+                    icon={I.babySparkle}
                     selected={
                       data.willingChildren === "Insha'Allah if Allah Wills" ||
                       data.willingChildren === "Yes"
@@ -583,7 +550,7 @@ export function SignupWizard() {
                   <ChoiceTile
                     label="No"
                     tone="peach"
-                    icon={I.x}
+                    icon={I.babyNo}
                     selected={data.willingChildren === "No"}
                     onClick={() => patch({ willingChildren: "No" })}
                   />
@@ -596,17 +563,39 @@ export function SignupWizard() {
               <ChoiceGrid count={4}>
                 {(
                   [
-                    { v: "Strictly Practising", tone: "mint" as const, icon: I.moon },
-                    { v: "Actively Practising", tone: "sky" as const, icon: I.book },
-                    { v: "Occasionally Practising", tone: "peach" as const, icon: I.clock },
-                    { v: "Does Not Practise", tone: "sand" as const, icon: I.pause },
+                    {
+                      v: "Strictly Practising",
+                      hint: "All 5 salah consistently; deen guides daily life",
+                      tone: "mint" as const,
+                      icon: I.practiceStrict,
+                    },
+                    {
+                      v: "Actively Practising",
+                      hint: "Prays all 5 salah and actively practises",
+                      tone: "sky" as const,
+                      icon: I.practiceActive,
+                    },
+                    {
+                      v: "Occasionally Practising",
+                      hint: "Practises, but not always consistently",
+                      tone: "peach" as const,
+                      icon: I.practiceOccasional,
+                    },
+                    {
+                      v: "Does Not Practise",
+                      hint: "Muslim, but not currently practising regularly",
+                      tone: "rose" as const,
+                      icon: I.practiceNone,
+                    },
                   ] as const
                 ).map((o) => (
                   <ChoiceTile
                     key={o.v}
                     label={o.v}
+                    hint={o.hint}
                     tone={o.tone}
                     icon={o.icon}
+                    showCheck
                     selected={data.religiousPractice === o.v}
                     onClick={() => patch({ religiousPractice: o.v })}
                   />
@@ -633,12 +622,10 @@ export function SignupWizard() {
 
             {step.id === "appearance" && data.gender === "Brother" && (
               <ChoiceGrid count={5}>
-                {MEN_APPEARANCE.map((v, i) => (
-                  <ChoiceTile
+                {MEN_APPEARANCE.map((v) => (
+                  <BeardTile
                     key={v}
                     label={v}
-                    tone={(["sand", "peach", "sky", "lilac", "mint"] as const)[i]}
-                    icon={I.beard}
                     selected={data.appearance[0] === v}
                     onClick={() => patch({ appearance: [v] })}
                   />
@@ -646,38 +633,51 @@ export function SignupWizard() {
               </ChoiceGrid>
             )}
 
-            {step.id === "appearance" && data.gender === "Sister" && (
-              <ChoiceGrid count={5}>
-                {(
-                  [
-                    { v: "Does Not Wear Hijab", tone: "sand" as const, icon: I.modest },
-                    { v: "Modest", tone: "peach" as const, icon: I.modest },
-                    { v: "Wears Hijab", tone: "rose" as const, icon: I.hijab },
-                    { v: "Wears Niqab", tone: "lilac" as const, icon: I.veil },
-                    { v: "Kamees Partug", tone: "mint" as const, icon: I.spark },
-                  ] as const
-                ).map((o) => {
-                  const on = data.appearance.includes(o.v);
-                  return (
-                    <ChoiceTile
-                      key={o.v}
-                      label={o.v}
-                      tone={o.tone}
-                      icon={o.icon}
-                      multi
-                      selected={on}
-                      onClick={() =>
-                        patch({
-                          appearance: on
-                            ? data.appearance.filter((x) => x !== o.v)
-                            : [...data.appearance, o.v],
-                        })
-                      }
-                    />
-                  );
-                })}
-              </ChoiceGrid>
-            )}
+            {step.id === "appearance" && data.gender === "Sister" && (() => {
+              const { head, dress } = splitWomenAppearance(data.appearance);
+              return (
+                <>
+                  <ChoiceSection title="Head covering" rule="Select one option" />
+                  <div className="dress-grid">
+                    {WOMEN_HEAD_COVERING.map((o) => (
+                      <DressTile
+                        key={o.v}
+                        value={o.v}
+                        label={o.label}
+                        hint={o.hint}
+                        selected={head === o.v}
+                        onClick={() => patch({ appearance: [o.v, ...dress] })}
+                      />
+                    ))}
+                  </div>
+                  <div className="pt-3">
+                    <ChoiceSection title="Dress style" rule="Select one or more options" />
+                  </div>
+                  <div className="dress-grid dress-grid-4">
+                    {WOMEN_DRESS_STYLE.map((o) => {
+                      const on = dress.includes(o.v);
+                      return (
+                        <DressTile
+                          key={o.v}
+                          value={o.v}
+                          label={o.label}
+                          hint={o.hint}
+                          selected={on}
+                          onClick={() =>
+                            patch({
+                              appearance: [
+                                ...(head ? [head] : []),
+                                ...(on ? dress.filter((x) => x !== o.v) : [...dress, o.v]),
+                              ],
+                            })
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
 
             {step.id === "career" && (
               <>
@@ -1010,7 +1010,7 @@ export function SignupWizard() {
               type="button"
               disabled={!canNext || submitting}
               onClick={onNext}
-              className="w-full mt-7 py-3.5 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition disabled:opacity-45 disabled:cursor-not-allowed shadow-[0_10px_30px_-12px_rgba(170,25,69,0.55)]"
+              className="w-full mt-7 py-3.5 flex items-center justify-center gap-2 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition disabled:opacity-45 disabled:cursor-not-allowed shadow-[0_10px_30px_-12px_rgba(170,25,69,0.55)]"
             >
               {submitting
                 ? "Creating account…"
@@ -1020,7 +1020,12 @@ export function SignupWizard() {
                     ? "Continue"
                     : left === 0
                       ? "Finish"
-                      : `Next · ${left} left`}
+                      : "Next"}
+              {!submitting ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              ) : null}
             </button>
           ) : null}
         </div>

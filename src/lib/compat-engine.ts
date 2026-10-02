@@ -100,7 +100,9 @@ function opennessTo(viewer: CompatSide, other: CompatSide): { needed: string | n
   const status = norm(other.maritalStatus);
   const list = openList(viewer.openTo);
   if (status.startsWith("divorc") || status.startsWith("annul")) {
-    if (list.some((x) => x.startsWith("divorc"))) return { needed: "divorced", open: true };
+    // "Annulled" is its own option now; the old "Divorcees" option covered both.
+    const prefix = status.startsWith("annul") ? "annul" : "divorc";
+    if (list.some((x) => x.startsWith(prefix) || x === "divorcees")) return { needed: "divorced", open: true };
     if (yes(viewer.considerDivorcee)) return { needed: "divorced", open: true };
     if (no(viewer.considerDivorcee)) return { needed: "divorced", open: false };
     return { needed: "divorced", open: null };

@@ -9,7 +9,7 @@ import {
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/lib/auth";
-import { calcAge, type SignupData } from "@/lib/signup";
+import { calcAge, normalizeOpenTo, splitWomenAppearance, type SignupData } from "@/lib/signup";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { sendVerificationEmail } from "@/lib/email-verification";
 import {
@@ -102,10 +102,11 @@ export async function POST(req: Request) {
     const profile_code = await nextProfileCode(genderLabel);
     const userId = resumeIncompleteSignup ? existingUser!.id : await nextUserId();
 
-    // "Polygamy" openness is male-only — drop it server-side regardless of client state.
-    const openTo: string[] = (body.openTo ?? []).filter(
-      (o: string) => genderLabel === "Male" || o !== "Polygamy"
-    );
+    const womenAppearance = splitWomenAppearance(Array.isArray(body.appearance) ? body.appearance : []);
+
+    // Only the current marital-history options are stored — drops removed ones (e.g. Polygamy)
+    // from a crafted or stale client.
+    const openTo = normalizeOpenTo(body.openTo);
 
     // Niqab Mode and Wali-Only Mode no longer exist — reject a crafted/stale value server-side
     // rather than silently persisting it (QA item 12).
@@ -190,7 +191,8 @@ export async function POST(req: Request) {
       salah_pattern: body.salah || null,
       appearance:
         genderLabel === "Female"
-          ? (body.appearance ?? []).join(", ")
+          ? // Only current head-covering / dress-style values, head covering first.
+            [womenAppearance.head, ...womenAppearance.dress].filter(Boolean).join(", ")
           : (body.appearance ?? [])[0] || null,
       education: body.education || null,
       occupation: body.occupation || body.employment || null,

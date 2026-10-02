@@ -120,12 +120,13 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       subtitle: "Pashto first — select all that apply.",
     },
     { id: "openTo", title: "Who are you open to?", subtitle: "Select all that apply." },
-    { id: "family", title: "About children", subtitle: "Help families understand your situation." },
-    { id: "faith", title: "How would you describe your practice?", subtitle: "Be honest — faith matters here." },
+    { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },
+    { id: "faith", title: "How would you describe your practice?", subtitle: "Choose the option that best reflects your current practice." },
     {
       id: "appearance",
-      title: gender === "Sister" ? "How do you dress / present?" : "What's your appearance?",
-      subtitle: gender === "Sister" ? "You can select more than one." : "Choose one.",
+      title: gender === "Sister" ? "How do you usually dress?" : "What's your appearance?",
+      subtitle:
+        gender === "Sister" ? "Select what best describes you." : "Choose the option that best describes you.",
     },
     { id: "career", title: "Education & career", subtitle: "Highest qualification and employment." },
     { id: "lifestyle", title: "Health & lifestyle", subtitle: "Smoking and vaping habits." },
@@ -174,6 +175,16 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
   );
 
   return base;
+}
+
+/** Marital histories a member can say they're open to — at least one is required. */
+export const OPEN_TO_OPTIONS = ["Never married", "Divorced", "Annulled", "Widowed"] as const;
+
+/** Keeps only current options, carrying over the old "Divorcees" label. */
+export function normalizeOpenTo(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  const mapped = values.map((v) => (v === "Divorcees" ? "Divorced" : v));
+  return OPEN_TO_OPTIONS.filter((o) => mapped.includes(o));
 }
 
 export const LANGUAGES_ORDERED = [
@@ -279,13 +290,33 @@ export const MEN_APPEARANCE = [
   "Long Beard",
 ] as const;
 
-export const WOMEN_APPEARANCE = [
-  "Does Not Wear Hijab",
-  "Modest",
-  "Wears Hijab",
-  "Wears Niqab",
-  "Kamees Partug",
+// Sister appearance is two questions stored together in `appearance`: one head covering plus
+// one or more dress styles. Values are comma-joined in the DB, so none may contain a comma.
+export const WOMEN_HEAD_COVERING = [
+  { v: "Does Not Wear Hijab", label: "Modest, no hijab", hint: "Modest clothing, no head covering" },
+  { v: "Wears Hijab", label: "Wears hijab", hint: "Covers hair, wears hijab" },
+  { v: "Wears Niqab", label: "Wears niqab", hint: "Covers face, wears niqab" },
 ] as const;
+
+export const WOMEN_DRESS_STYLE = [
+  { v: "Kamees Partug", label: "Kamees Partug", hint: "Traditional Pashtun dress" },
+  { v: "Abaya / Jilbab", label: "Abaya / Jilbab", hint: "Loose, full-length dress" },
+  { v: "Western Modest", label: "Western modest", hint: "Modest western clothing" },
+  { v: "Traditional & Western Mix", label: "Mix of traditional & western", hint: "Both styles" },
+] as const;
+
+export const WOMEN_APPEARANCE = [...WOMEN_HEAD_COVERING, ...WOMEN_DRESS_STYLE].map((o) => o.v);
+
+const inList = (list: readonly { v: string }[], values: string[]) =>
+  values.filter((x) => list.some((o) => o.v === x));
+
+/** Sister's chosen head covering (first valid one) and dress styles, ignoring retired values. */
+export function splitWomenAppearance(values: string[]) {
+  return {
+    head: inList(WOMEN_HEAD_COVERING, values)[0] ?? "",
+    dress: inList(WOMEN_DRESS_STYLE, values),
+  };
+}
 
 // Niqab Mode and Wali-Only Mode were removed entirely (QA item 12) — only these two remain.
 export const COMM_MODES = [
@@ -391,13 +422,16 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "languages":
       return data.languages.length > 0;
     case "openTo":
-      return true;
+      return data.openTo.length > 0;
     case "family":
       return Boolean(data.hasChildren && data.willingChildren);
     case "faith":
       return Boolean(data.religiousPractice && data.salah);
-    case "appearance":
-      return data.appearance.length > 0;
+    case "appearance": {
+      if (data.gender !== "Sister") return data.appearance.length > 0;
+      const { head, dress } = splitWomenAppearance(data.appearance);
+      return Boolean(head) && dress.length > 0;
+    }
     case "career":
       return Boolean(data.education && data.employment);
     case "lifestyle":

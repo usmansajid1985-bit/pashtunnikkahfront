@@ -422,6 +422,140 @@ body {
   border-color: #aa1945;
   color: #fff;
 }
+/* Gender step — illustrated avatar tiles */
+.gender-tile {
+  align-items: center;
+  gap: 12px;
+  padding: 22px 12px 20px;
+  text-align: center;
+}
+.gender-tile-avatar {
+  width: 104px;
+  height: 104px;
+  border-radius: 9999px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 13, 14, 0.04);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  overflow: hidden;
+}
+.gender-tile-avatar img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  object-position: bottom;
+}
+.gender-tile-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f0d0e;
+  line-height: 1.25;
+}
+.gender-tile .choice-check {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+}
+/* Brother appearance — portrait tiles */
+.beard-tile {
+  align-items: center;
+  gap: 4px;
+  padding: 10px 6px 14px;
+  text-align: center;
+}
+.beard-tile-img {
+  width: 100%;
+  max-width: 132px;
+  height: auto;
+}
+.beard-tile-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #0f0d0e;
+  line-height: 1.25;
+}
+.beard-tile .choice-check {
+  top: 8px;
+  right: 8px;
+}
+/* Bottom row: two wide tiles filling the full width */
+@media (min-width: 421px) {
+  .choice-grid-5 > .beard-tile:nth-child(4) {
+    grid-column: 1 / 4;
+  }
+  .choice-grid-5 > .beard-tile:nth-child(5) {
+    grid-column: 4 / 7;
+  }
+}
+@media (max-width: 420px) {
+  .choice-grid-5 > .beard-tile:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+}
+/* Sister appearance — head covering + dress style tiles */
+.choice-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 10px;
+  border-left: 3px solid #aa1945;
+}
+.choice-section-head h2 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f0d0e;
+}
+.choice-section-head span {
+  font-size: 11.5px;
+  color: #6b6266;
+  text-align: right;
+}
+.dress-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.dress-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+@media (max-width: 520px) {
+  .dress-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.dress-tile {
+  gap: 6px;
+  min-height: 0;
+  padding: 10px 10px 12px;
+  background: #faf6f1;
+  border-color: #ebe0d4;
+}
+.dress-tile.is-selected {
+  background: #fff8fa;
+  border-color: #aa1945;
+}
+.dress-tile-img {
+  align-self: center;
+  height: 84px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.dress-grid-4 .dress-tile-img {
+  height: 128px;
+}
+.dress-tile .choice-tile-label {
+  font-size: 13px;
+}
+.dress-tile .choice-tile-hint {
+  margin-top: -2px;
+}
+.dress-tile .choice-check {
+  top: 8px;
+  right: 8px;
+}
 .choice-grid {
   display: grid;
   gap: 10px;

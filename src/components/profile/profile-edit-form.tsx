@@ -378,7 +378,7 @@ export function ProfileEditForm({
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Appearance</h2>
           {isSister ? (
-            <ChoiceGrid count={5}>
+            <ChoiceGrid count={WOMEN_APPEARANCE.length}>
               {WOMEN_APPEARANCE.map((v, i) => {
                 const on = form.appearance.includes(v);
                 return (
@@ -386,7 +386,7 @@ export function ProfileEditForm({
                     key={v}
                     label={v}
                     multi
-                    tone={(["sand", "peach", "rose", "lilac", "mint"] as const)[i]}
+                    tone={(["sand", "peach", "rose", "lilac", "mint"] as const)[i % 5]}
                     icon={I.hijab}
                     selected={on}
                     onClick={() =>
