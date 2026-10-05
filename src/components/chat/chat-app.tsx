@@ -369,8 +369,8 @@ function MessageBubble({
           // C05: reactions tuck under the bubble's bottom edge — outgoing under the time/ticks
           // (right), incoming overlapping the bottom-left corner.
           <div
-            className={`relative z-[1] flex flex-wrap gap-1 -mt-2 ${
-              mine ? "justify-end pr-2" : "justify-start pl-2"
+            className={`relative z-[1] flex flex-wrap gap-1 -mt-2.5 ${
+              mine ? "justify-end pr-2.5" : "justify-start pl-2.5"
             }`}
           >
             {msg.reactions.map((r) => {
@@ -380,9 +380,9 @@ function MessageBubble({
                   key={r.emoji}
                   type="button"
                   onClick={() => onReact(msg, r.emoji)}
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[12px] border transition ${
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[13px] leading-5 border shadow-sm transition ${
                     reactedByMe
-                      ? "bg-rose-50 border-rose-200 text-rose-700"
+                      ? "bg-white border-rose-300 text-rose-700"
                       : "bg-white border-ink-900/10 text-ink-700"
                   }`}
                 >
@@ -1324,7 +1324,7 @@ export function ChatApp({
     setReportTarget({ userId: peer.userId, code: peer.code, requestId: activeId });
   }
 
-  async function blockMember() {
+  async function blockMember(doneMessage = "Member blocked") {
     if (!peer || moreBusy) return;
     setMoreBusy(true);
     try {
@@ -1342,7 +1342,7 @@ export function ChatApp({
       setHeaderMenu(null);
       setActiveId(null);
       if (typeof window !== "undefined") window.history.replaceState(null, "", "/chats");
-      showToast("Member blocked");
+      showToast(doneMessage);
     } catch {
       showToast("Could not block member");
     } finally {
@@ -1384,6 +1384,12 @@ export function ChatApp({
     }
   }
 
+  // A reaction on the newest message makes it taller — stay pinned so the reaction isn't cut off.
+  const lastReactionCount = messages[messages.length - 1]?.reactions?.length ?? 0;
+  useEffect(() => {
+    if (lastReactionCount > 0 && atBottomRef.current) scrollToBottom(true);
+  }, [lastReactionCount, scrollToBottom]);
+
   // When peer is typing and you're at bottom, keep view pinned to latest
   useEffect(() => {
     if (peerTyping && atBottomRef.current) scrollToBottom(true);
@@ -1422,10 +1428,12 @@ export function ChatApp({
       <ReportDialog
         target={reportTarget}
         onClose={() => setReportTarget(null)}
-        onDone={(ok) => {
+        onDone={(ok, alsoBlock) => {
           const wasMessage = Boolean(reportTarget?.message);
           setReportTarget(null);
-          if (ok) showToast(wasMessage ? "Message reported to the PN team" : "Member reported to the PN team");
+          if (!ok) return;
+          if (alsoBlock) void blockMember("Reported to the PN team and blocked");
+          else showToast(wasMessage ? "Message reported to the PN team" : "Member reported to the PN team");
         }}
       />
       <div className="hidden lg:block">
@@ -1861,7 +1869,7 @@ export function ChatApp({
                       <div
                         ref={scrollerRef}
                         onScroll={onScrollThread}
-                        className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 space-y-3 scroll-smooth"
+                        className={`flex-1 overflow-y-auto px-3 sm:px-5 pt-3 space-y-3 scroll-smooth ${peerTyping ? "pb-14" : "pb-4"}`}
                       >
                       {banner ? (
                         <div className="rounded-2xl px-3.5 py-3 flex items-center gap-3 bg-gradient-to-r from-[#eef2ff] to-[#f5f0ff] border border-indigo-100">

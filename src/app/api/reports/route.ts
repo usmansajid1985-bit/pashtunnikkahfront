@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createReport, logModeration } from "@/lib/moderation";
 import { assertMatchParticipant } from "@/lib/chat";
+import { sendMail } from "@/lib/mail";
 import {
   REPORT_DETAILS_MAX,
   REPORT_DETAILS_MIN,
@@ -99,6 +100,34 @@ export async function POST(req: Request) {
     action: "user_reported",
     note: `by ${session.userId}: ${label} — ${trimmedDetails.slice(0, 160)}`,
   });
+
+  // The report is in the admin Reports queue the moment it's saved; this also emails the team
+  // straight away when an alert address is configured. Never blocks or fails the report itself.
+  const alertTo = process.env.REPORT_ALERT_EMAIL?.trim();
+  if (alertTo) {
+    const [reporter, reported] = await Promise.all(
+      [me, reportedId].map((id) =>
+        prisma.profiles.findUnique({ where: { user_id: id }, select: { profile_code: true } }).catch(() => null)
+      )
+    );
+    const who = reported?.profile_code || `user ${reportedId}`;
+    const by = reporter?.profile_code || `user ${me}`;
+    const lines = [
+      `Reported member: ${who}`,
+      `Reported by: ${by}`,
+      `Reason: ${label}`,
+      `Details: ${trimmedDetails}`,
+      quoted ? `Reported message: "${quoted.slice(0, 300)}"` : null,
+      `Report #${report.id}`,
+    ].filter((l): l is string => Boolean(l));
+    const esc = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    await sendMail({
+      to: alertTo,
+      subject: `New report: ${who} — ${label}`,
+      text: lines.join("\n"),
+      html: lines.map((l) => `<p>${esc(l)}</p>`).join(""),
+    }).catch((err) => console.error("report alert email", err));
+  }
 
   return NextResponse.json({ ok: true, id: report.id.toString() });
 }

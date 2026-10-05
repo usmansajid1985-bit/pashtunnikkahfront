@@ -1,12 +1,14 @@
 /** A02: the reasons a member can pick when reporting a message or member (client + server). */
 export const REPORT_REASONS = [
-  { value: "inappropriate", label: "Inappropriate or sexual content" },
-  { value: "harassment", label: "Harassment, threats or abusive language" },
-  { value: "scam", label: "Asking for money or a possible scam" },
-  { value: "contact_details", label: "Pushing to share contact details / move off PN" },
-  { value: "fake_profile", label: "Fake profile or not who they say they are" },
-  { value: "religious_disrespect", label: "Disrespectful about faith or family" },
-  { value: "other", label: "Something else" },
+  { value: "inappropriate_messages", label: "Inappropriate messages or behaviour" },
+  { value: "harassment", label: "Harassment, abuse or threats" },
+  { value: "fake_profile", label: "Fake profile or impersonation" },
+  { value: "not_seeking_marriage", label: "Not genuinely seeking marriage" },
+  { value: "inappropriate_photos", label: "Inappropriate photos or content" },
+  { value: "scam", label: "Scam, fraud or requesting money" },
+  { value: "spam", label: "Spam or unsolicited promotion" },
+  { value: "not_pashtun", label: "Not Pashtun / false ethnicity claim" },
+  { value: "other", label: "Other" },
 ] as const;
 
 export type ReportReason = (typeof REPORT_REASONS)[number]["value"];
