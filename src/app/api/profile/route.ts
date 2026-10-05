@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyCity } from "@/lib/city-search";
+import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
+import { cityInvalidMessage } from "@/lib/country";
 import { textQualityIssue } from "@/lib/signup";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
@@ -72,14 +73,24 @@ export async function PATCH(req: Request) {
       }
     }
 
-    // R04: a changed city must be a real place. Unchanged legacy values are left alone.
-    const cityChanged =
-      typeof body.city === "string" && body.city.trim() !== (existing.city ?? "").trim();
-    if (cityChanged && (await verifyCity(body.city, body.country, body.cityPlaceId)) === "invalid") {
-      return NextResponse.json(
-        { error: "Please choose your city from the suggestions list." },
-        { status: 400 }
-      );
+    // R04: the city must be a real town/city in the profile's country. Re-checked whenever the
+    // city OR the country changes (a new country invalidates the old city); unchanged legacy
+    // values are left alone.
+    const has = (key: string) => Object.prototype.hasOwnProperty.call(body, key);
+    const cityAfter = has("city") ? String(body.city ?? "").trim() : (existing.city ?? "").trim();
+    const countryAfter = has("country") ? String(body.country ?? "") : existing.country;
+    const cityChanged = cityAfter !== (existing.city ?? "").trim();
+    const countryChanged =
+      has("country") && toCountryCode(countryAfter) !== (existing.country_code ?? toCountryCode(existing.country));
+    let verifiedPlaceId: string | null = null;
+    if (cityChanged || countryChanged) {
+      const verdict = cityAfter
+        ? await verifyCity(cityAfter, countryAfter, body.cityPlaceId)
+        : { status: countryChanged ? ("invalid" as const) : ("ok" as const), placeId: null };
+      if (verdict.status === "invalid") {
+        return NextResponse.json({ error: cityInvalidMessage(countryAfter), field: "city" }, { status: 400 });
+      }
+      verifiedPlaceId = verdict.placeId;
     }
 
     let extras: Record<string, unknown> = {};
@@ -181,6 +192,8 @@ export async function PATCH(req: Request) {
     if ((sent("city") || sent("country")) && ((body.city || null) !== existing.city || nextCountry !== existing.country)) {
       await refreshHomeCoords(userId, body.city || null, nextCountry);
     }
+    // Keep the stored place id in step with the city (cleared if it couldn't be confirmed).
+    if (cityChanged || countryChanged) await saveCityPlaceId(userId, verifiedPlaceId);
     if (flagForReview) {
       await ensureBrowseAndWaliSchema();
       await prisma.$executeRaw`UPDATE profiles SET edited_since_review_at = NOW() WHERE user_id = ${userId}`.catch(

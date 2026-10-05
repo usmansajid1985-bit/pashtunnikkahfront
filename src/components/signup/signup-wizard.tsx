@@ -258,7 +258,7 @@ export function SignupWizard() {
             setDir(-1);
             setStepIndex(locationIndex);
           }
-          setError("Please choose your city from the suggestions list.");
+          setError(json.error || "Please select a valid city from the list.");
           return;
         }
         setError(json.error || "Signup failed.");
@@ -481,7 +481,11 @@ export function SignupWizard() {
 
             {step.id === "location" && (
               <>
+                <label htmlFor="signup-country" className="block text-xs font-semibold text-ink-900 mb-1.5">
+                  Country
+                </label>
                 <select
+                  id="signup-country"
                   className="field"
                   value={data.country}
                   onChange={(e) => patch({ country: e.target.value })}
@@ -493,6 +497,7 @@ export function SignupWizard() {
                     </option>
                   ))}
                 </select>
+                <p className="pt-3 text-xs font-semibold text-ink-900 mb-1.5">City / town</p>
                 <CityPicker
                   value={data.city}
                   country={data.country}

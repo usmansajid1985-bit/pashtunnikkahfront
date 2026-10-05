@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { countryInSentence, toCountryCode } from "@/lib/country";
 
 type Suggestion = { city: string; detail: string; label: string; placeId?: string };
 
 /**
- * R04: searchable city/area field. The member types, then MUST pick a real place from the list;
- * free text never counts as a city. `onChange(city, confirmed)` reports the text and whether it
- * came from a selection, so forms can block Continue/Save until it's confirmed.
+ * R04: searchable city / town dropdown for the chosen country. Typing only searches — the value
+ * is always a place picked from the list, never free text: leaving the field without picking
+ * drops what was typed (back to the last picked place, if any). Disabled until a country is
+ * chosen, and cleared when the country changes. `onChange(city, confirmed, placeId)` lets forms
+ * block Continue/Save until a place is picked.
  */
 export function CityPicker({
   value,
   country,
   onChange,
   className = "field",
-  placeholder = "Start typing your city (e.g. Birmingham)",
+  placeholder = "Search your city or town",
   initiallyConfirmed = false,
 }: {
   value: string;
@@ -34,20 +37,35 @@ export function CityPicker({
   const [unavailable, setUnavailable] = useState(false);
   const [active, setActive] = useState(0);
   const listId = useId();
-  const wrapRef = useRef<HTMLDivElement>(null);
   const reqId = useRef(0);
 
-  // Changing country invalidates a city picked for the old one.
+  /** The last place actually picked — what the field falls back to if typing is abandoned. */
+  const picked = useRef<{ city: string; placeId?: string } | null>(
+    initiallyConfirmed && value ? { city: value } : null
+  );
+
+  // A city belongs to its country: changing country clears it and a new one must be picked.
   const lastCountry = useRef(country);
   useEffect(() => {
     if (lastCountry.current === country) return;
     lastCountry.current = country;
-    if (confirmed) {
-      setConfirmed(false);
-      onChange(query, false);
-    }
+    picked.current = null;
+    setQuery("");
+    setConfirmed(false);
+    setResults([]);
+    onChange("", false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [country]);
+
+  /** Leaving without picking: typed text is not a city. */
+  function dropTyped() {
+    setOpen(false);
+    if (confirmed) return;
+    const last = picked.current;
+    setQuery(last?.city ?? "");
+    setConfirmed(Boolean(last));
+    onChange(last?.city ?? "", Boolean(last), last?.placeId);
+  }
 
   useEffect(() => {
     if (confirmed || query.trim().length < 2) {
@@ -75,15 +93,8 @@ export function CityPicker({
     return () => clearTimeout(t);
   }, [query, country, confirmed]);
 
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
   function pick(s: Suggestion) {
+    picked.current = { city: s.city, placeId: s.placeId };
     setQuery(s.city);
     setConfirmed(true);
     setOpen(false);
@@ -92,14 +103,18 @@ export function CityPicker({
   }
 
   const showList = open && !confirmed && query.trim().length >= 2;
+  const countryName = countryInSentence(toCountryCode(country));
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div className="relative">
       <input
         className={className}
         value={query}
-        placeholder={placeholder}
+        placeholder={country ? placeholder : "Select a country first"}
         autoComplete="off"
+        disabled={!country}
+        aria-label="City or town"
+        onBlur={dropTyped}
         role="combobox"
         aria-expanded={showList}
         aria-controls={listId}
@@ -161,15 +176,12 @@ export function CityPicker({
                 ? "Searching…"
                 : unavailable
                   ? "City search is unavailable right now — please try again shortly."
-                  : "No matching city — check the spelling or try a nearby town."}
+                  : `No matching city or town${countryName ? ` in ${countryName}` : ""} — check the spelling or try a nearby town.`}
             </li>
           ) : null}
         </ul>
       ) : null}
 
-      {!confirmed && query.trim().length >= 2 && !open ? (
-        <p className="mt-1 text-[12px] text-rose-600">Please choose your city from the list.</p>
-      ) : null}
     </div>
   );
 }

@@ -100,6 +100,19 @@ export function countryLabel(code: string | null | undefined): string | null {
   return countryByCode(code)?.name ?? null;
 }
 
+/** Name as it reads mid-sentence ("the United Kingdom", "Pakistan"); null for unknown / Other. */
+export function countryInSentence(code: string | null | undefined): string | null {
+  const c = countryByCode(code);
+  if (!c || c.code === OTHER_COUNTRY.code) return null;
+  return ["GB", "US", "AE", "NL"].includes(c.code) ? `the ${c.name}` : c.name;
+}
+
+/** "Please select a valid city in the United Kingdom." — accepts a code, name or flag label. */
+export function cityInvalidMessage(country?: string | null): string {
+  const place = countryInSentence(toCountryCode(country));
+  return place ? `Please select a valid city in ${place}.` : "Please select a valid city from the list.";
+}
+
 /** Flag + name ("🇬🇧 United Kingdom") for pickers. */
 export function countryDisplay(code: string | null | undefined): string | null {
   const c = countryByCode(code);

@@ -1,5 +1,6 @@
 import { googleMapsApiKey } from "@/lib/geo";
 import { toCountryCode } from "@/lib/country";
+import { prisma } from "@/lib/prisma";
 
 export type CitySuggestion = { city: string; detail: string; label: string; placeId: string };
 
@@ -68,10 +69,16 @@ export async function searchCities(
 
 /**
  * The member picked this exact place from the list — confirm it with Google by its id rather than
- * re-searching by name (a re-search can rank the same town differently or leave it out).
+ * re-searching by name (a re-search can rank the same town differently or leave it out). The
+ * place must be a town/city with that name AND sit in the chosen country, so a hand-crafted
+ * request can't pair a country with another country's city. Null = couldn't check.
  */
-async function placeIdMatches(placeId: string, city: string): Promise<boolean | null> {
-  if (!/^[A-Za-z0-9_-]{10,300}$/.test(placeId)) return false;
+async function checkPlaceId(
+  placeId: string,
+  city: string,
+  countryCode: string | null
+): Promise<"ok" | "wrong-country" | "no-match" | null> {
+  if (!/^[A-Za-z0-9_-]{10,300}$/.test(placeId)) return "no-match";
   let key: string;
   try {
     key = googleMapsApiKey();
@@ -80,35 +87,69 @@ async function placeIdMatches(placeId: string, city: string): Promise<boolean | 
   }
   try {
     const res = await fetch(`https://places.googleapis.com/v1/places/${placeId}?languageCode=en`, {
-      headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "displayName,types" },
+      headers: { "X-Goog-Api-Key": key, "X-Goog-FieldMask": "displayName,types,addressComponents" },
+      signal: AbortSignal.timeout(4000),
     });
+    if (res.status === 400 || res.status === 404) return "no-match";
     if (!res.ok) return null;
-    const data = (await res.json()) as { displayName?: { text?: string }; types?: string[] };
+    const data = (await res.json()) as {
+      displayName?: { text?: string };
+      types?: string[];
+      addressComponents?: { shortText?: string; types?: string[] }[];
+    };
     const name = data.displayName?.text?.trim().toLowerCase();
-    return name === city.trim().toLowerCase();
+    if (name !== city.trim().toLowerCase()) return "no-match";
+    if (!(data.types ?? []).some((t) => CITY_TYPES.includes(t))) return "no-match";
+    const placeCountry = data.addressComponents?.find((c) => c.types?.includes("country"))?.shortText?.toUpperCase();
+    if (countryCode && placeCountry && placeCountry !== countryCode) return "wrong-country";
+    return "ok";
   } catch {
     return null;
   }
 }
 
+export type CityVerdict = {
+  /** "unknown" = the lookup is down — signup and profile saves must never fail just for that. */
+  status: "ok" | "invalid" | "unknown";
+  /** Google place id of the verified city — the stable reference stored with the profile. */
+  placeId: string | null;
+};
+
 /**
- * Server-side guard: is `city` a real town/city (in `country`, when given)? Unknown when the
- * lookup is down — signup and profile saves must never fail just because Google is unreachable.
+ * Server-side guard: is `city` a real town/city in `country`? Checked by the picked place id
+ * first; a missing/stale id falls back to a country-restricted search by name.
  */
 export async function verifyCity(
   city: string | null | undefined,
   country?: string | null,
   placeId?: string | null
-): Promise<"ok" | "invalid" | "unknown"> {
+): Promise<CityVerdict> {
   const name = (city ?? "").trim();
-  if (!name) return "ok"; // empty is handled by each form's own required-field rules
+  if (!name) return { status: "ok", placeId: null }; // empty is handled by each form's own rules
+  const code = toCountryCode(country);
   if (placeId) {
-    const byId = await placeIdMatches(placeId, name);
-    if (byId === true) return "ok";
-    if (byId === null) return "unknown";
+    const byId = await checkPlaceId(placeId, name, code && code !== "ZZ" ? code : null);
+    if (byId === "ok") return { status: "ok", placeId };
+    if (byId === "wrong-country") return { status: "invalid", placeId: null };
+    if (byId === null) return { status: "unknown", placeId: null };
   }
   const results = await searchCities(name, country);
-  if (results === null) return "unknown";
-  const wanted = name.toLowerCase();
-  return results.some((r) => r.city.toLowerCase() === wanted) ? "ok" : "invalid";
+  if (results === null) return { status: "unknown", placeId: null };
+  const match = results.find((r) => r.city.toLowerCase() === name.toLowerCase());
+  return match ? { status: "ok", placeId: match.placeId || null } : { status: "invalid", placeId: null };
+}
+
+let placeIdColumnEnsured = false;
+
+/** Store the Google place id next to the profile's city text (null clears a stale one). */
+export async function saveCityPlaceId(userId: bigint, placeId: string | null) {
+  try {
+    if (!placeIdColumnEnsured) {
+      await prisma.$executeRawUnsafe(`ALTER TABLE profiles ADD COLUMN IF NOT EXISTS city_place_id VARCHAR(300)`);
+      placeIdColumnEnsured = true;
+    }
+    await prisma.$executeRaw`UPDATE profiles SET city_place_id = ${placeId} WHERE user_id = ${userId}`;
+  } catch (err) {
+    console.error("saveCityPlaceId", err);
+  }
 }

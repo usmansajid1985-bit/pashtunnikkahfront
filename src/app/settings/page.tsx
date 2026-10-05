@@ -153,21 +153,46 @@ export default async function SettingsPage() {
         <SettingsRow
           href="/settings/notifications"
           title="Notifications"
-          description="What you're alerted about, push, and your inbox"
+          description="Choose what you're alerted about"
           iconBg="#e0f2fe"
           iconColor="#0369a1"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>}
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Privacy &amp; Safety">
+      <SettingsGroup title="Wali">
+        <div id="wali-settings" className="px-1 pb-1">
+          <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
+        </div>
+        {view.gender?.toLowerCase() === "female" ? (
+          <SettingsRow
+            href="/profile/edit#wali"
+            title="Wali access &amp; activity log"
+            description="Invite your wali, choose notifications, see their activity"
+            iconBg="#eef2ff"
+            iconColor="#4338ca"
+            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.5c2.8-.4 5.5 1.2 5.5 4.5" /></svg>}
+          />
+        ) : null}
+      </SettingsGroup>
+
+      {/* Close account sits last here, directly after Pause profile. */}
+      <SettingsGroup title="Privacy &amp; Security">
         <SettingsRow
-          href="/settings/visibility"
-          title="Profile visibility"
-          description={profile.is_hidden ? "Paused — hidden from Browse" : "Active — visible in Browse"}
-          iconBg={profile.is_hidden ? "#fef3c7" : "#ecfdf5"}
-          iconColor={profile.is_hidden ? "#b45309" : "#059669"}
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>}
+          href="/settings/security"
+          title="Security"
+          description="Password and recent sign-ins"
+          iconBg="#ecfdf5"
+          iconColor="#059669"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
+        />
+        <SettingsRow
+          href="/settings/privacy"
+          title="Privacy &amp; data"
+          description="Privacy controls and data export"
+          iconBg="#eff6ff"
+          iconColor="#2563eb"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>}
         />
         <SettingsRow
           href="/settings/privacy#blocked"
@@ -178,12 +203,20 @@ export default async function SettingsPage() {
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>}
         />
         <SettingsRow
-          href="/settings/privacy"
-          title="Privacy &amp; data"
-          description="Privacy controls and data export"
-          iconBg="#eff6ff"
-          iconColor="#2563eb"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>}
+          href="/settings/visibility"
+          title="Pause profile"
+          description={profile.is_hidden ? "Paused — hidden from Browse" : "Temporarily hide your profile"}
+          iconBg={profile.is_hidden ? "#fef3c7" : "#ecfdf5"}
+          iconColor={profile.is_hidden ? "#b45309" : "#059669"}
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>}
+        />
+        <SettingsRow
+          href="/settings/delete-account"
+          title="Close account"
+          description="Permanently remove your account"
+          iconBg="#fef2f2"
+          iconColor="#dc2626"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6v14H5V6" /></svg>}
         />
       </SettingsGroup>
       {warnings.length ? (
@@ -202,34 +235,10 @@ export default async function SettingsPage() {
         </div>
       ) : null}
 
-      <SettingsGroup title="Wali">
-        <div id="wali-settings" className="px-1 pb-1">
-          <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
-        </div>
-        {view.gender?.toLowerCase() === "female" ? (
-          <SettingsRow
-            href="/profile/edit#wali"
-            title="Wali access &amp; activity log"
-            description="Invite your wali, choose notifications, see their activity"
-            iconBg="#eef2ff"
-            iconColor="#4338ca"
-            icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.5c2.8-.4 5.5 1.2 5.5 4.5" /></svg>}
-          />
-        ) : null}
-      </SettingsGroup>
 
-      <SettingsGroup title="Security">
-        <SettingsRow
-          href="/settings/security"
-          title="Security"
-          description="Password and recent sign-ins"
-          iconBg="#ecfdf5"
-          iconColor="#059669"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
-        />
-      </SettingsGroup>
+      <MobileNavStyleSettings />
 
-      <SettingsGroup title="Help &amp; Support">
+      <SettingsGroup title="Support">
         <SettingsRow
           href="mailto:support@pashtunnikah.com"
           title="Help &amp; support"
@@ -240,34 +249,12 @@ export default async function SettingsPage() {
         />
       </SettingsGroup>
 
-      <MobileNavStyleSettings />
-
-      <SettingsGroup title="Danger zone">
-        <SettingsRow
-          href="/settings/delete-account"
-          title="Delete account"
-          description="Schedule account removal"
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6v14H5V6" /></svg>}
-        />
-      </SettingsGroup>
-
-      <div className="mt-8 flex items-start gap-2.5 px-1">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="1.8" className="shrink-0 mt-0.5">
-          <path d="M12 3 5 6v5c0 4.5 3 7.8 7 9 4-1.2 7-4.5 7-9V6l-7-3Z" />
-        </svg>
-        <p className="text-[12.5px] text-ink-700/60 leading-relaxed">
-          Your privacy and security are important to us. You&apos;re in control.
-        </p>
-      </div>
-
       <div className="mt-6 flex gap-3">
         <Link
           href="/profile"
           className="flex-1 text-center py-3 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700"
         >
-          Open my profile
+          Preview my profile
         </Link>
         <Link
           href="/profile/edit"

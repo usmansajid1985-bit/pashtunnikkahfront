@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { verifyCity } from "@/lib/city-search";
+import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
+import { cityInvalidMessage } from "@/lib/country";
 import { occupationIssue, textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { getPhoneCountryCodes } from "@/lib/phone-codes";
@@ -100,13 +101,11 @@ export async function POST(req: Request) {
     }
     if (!phoneE164) return NextResponse.json({ error: PHONE_INVALID_MESSAGE }, { status: 400 });
 
-    // R04: the city must be a real, selectable place (the form only offers real ones — this
-    // stops a hand-crafted request). If the lookup is down, don't block the signup.
-    if ((await verifyCity(body.city, body.country, body.cityPlaceId)) === "invalid") {
-      return NextResponse.json(
-        { error: "Please choose your city from the suggestions list.", code: "CITY_INVALID" },
-        { status: 400 }
-      );
+    // R04: the city must be a real town/city in the chosen country (the form only offers those —
+    // this stops a hand-crafted request). If the lookup is down, don't block the signup.
+    const cityVerdict = await verifyCity(body.city, body.country, body.cityPlaceId);
+    if (cityVerdict.status === "invalid") {
+      return NextResponse.json({ error: cityInvalidMessage(body.country), code: "CITY_INVALID" }, { status: 400 });
     }
 
     const existingUser = await prisma.users.findFirst({
@@ -299,6 +298,7 @@ export async function POST(req: Request) {
     // B07: the member's own (home) coordinates — separate from location_*, which is their
     // Browse search centre and changes whenever they search another area.
     if (geo) await saveHomeCoords(user.id, geo.lat, geo.lng);
+    if (cityVerdict.placeId) await saveCityPlaceId(user.id, cityVerdict.placeId);
 
     if (photoUrl) {
       const { logModeration } = await import("@/lib/moderation");

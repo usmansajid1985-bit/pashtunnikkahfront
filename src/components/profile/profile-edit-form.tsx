@@ -24,6 +24,7 @@ import { GuardianContactManager } from "@/components/profile/guardian-contact-ma
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
 import { CityPicker } from "@/components/location/city-picker";
+import { cityInvalidMessage } from "@/lib/country";
 
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
@@ -169,7 +170,7 @@ export function ProfileEditForm({
     e.preventDefault();
     setError(null);
     if (!cityConfirmed) {
-      setError("Please choose your city from the suggestions list.");
+      setError(cityInvalidMessage(form.country));
       return;
     }
     for (const [value, before, label] of [
@@ -280,20 +281,6 @@ export function ProfileEditForm({
           </select>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold mb-1">City</label>
-              <CityPicker
-                className={field}
-                value={form.city}
-                country={form.country}
-                initiallyConfirmed
-                onChange={(city, confirmed, placeId) => {
-                  patch("city", city);
-                  setCityConfirmed(confirmed);
-                  setCityPlaceId(placeId ?? null);
-                }}
-              />
-            </div>
-            <div>
               <label className="block text-xs font-semibold mb-1">Country</label>
               <select className={field} value={form.country} onChange={(e) => patch("country", e.target.value)}>
                 <option value="">Select country</option>
@@ -306,6 +293,20 @@ export function ProfileEditForm({
                   </option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1">City / town</label>
+              <CityPicker
+                className={field}
+                value={form.city}
+                country={form.country}
+                initiallyConfirmed
+                onChange={(city, confirmed, placeId) => {
+                  patch("city", city);
+                  setCityConfirmed(confirmed);
+                  setCityPlaceId(placeId ?? null);
+                }}
+              />
             </div>
           </div>
           <label className="block text-xs font-semibold">Marital status</label>
