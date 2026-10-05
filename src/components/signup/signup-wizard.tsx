@@ -32,6 +32,7 @@ import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
+import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
 import { PasswordField } from "@/components/signup/password-field";
 import {
   PASSWORD_HINT,
@@ -176,6 +177,11 @@ export function SignupWizard() {
           const locationIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "location");
           if (locationIndex >= 0 && resumeAt > locationIndex && !restored.cityConfirmed) {
             resumeAt = locationIndex;
+          }
+          // Drafts saved before Pashto speakers were asked their level.
+          const languagesIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "languages");
+          if (languagesIndex >= 0 && resumeAt > languagesIndex && !isStepValid("languages", restored)) {
+            resumeAt = languagesIndex;
           }
           // Drafts saved before numbers were validated per country: fix the number before the
           // account step rather than failing at "Create account".
@@ -412,7 +418,7 @@ export function SignupWizard() {
             {step.id === "name" && (
               <input
                 className="field"
-                placeholder="e.g. Ahmed Khan"
+                placeholder={data.gender === "Sister" ? "e.g. Fatima Khan" : "e.g. Ahmed Khan"}
                 value={data.fullName}
                 onChange={(e) => patch({ fullName: e.target.value })}
                 autoFocus
@@ -541,26 +547,34 @@ export function SignupWizard() {
             )}
 
             {step.id === "languages" && (
-              <div className="flex flex-wrap gap-2">
-                {LANGUAGES_ORDERED.map((lang) => {
-                  const on = data.languages.includes(lang);
-                  return (
-                    <Chip
-                      key={lang}
-                      selected={on}
-                      onClick={() =>
-                        patch({
-                          languages: on
-                            ? data.languages.filter((l) => l !== lang)
-                            : [...data.languages, lang],
-                        })
-                      }
-                    >
-                      {lang}
-                    </Chip>
-                  );
-                })}
-              </div>
+              <>
+                <p className="text-sm font-semibold text-ink-950">Languages</p>
+                <div className="flex flex-wrap gap-2">
+                  {LANGUAGES_ORDERED.map((lang) => {
+                    const on = data.languages.includes(lang);
+                    return (
+                      <Chip
+                        key={lang}
+                        selected={on}
+                        onClick={() =>
+                          patch({
+                            languages: on
+                              ? data.languages.filter((l) => l !== lang)
+                              : [...data.languages, lang],
+                            // The level only exists alongside Pashto.
+                            ...(lang === "Pashto" && on ? { pashtoLevel: "" } : {}),
+                          })
+                        }
+                      >
+                        {lang}
+                      </Chip>
+                    );
+                  })}
+                </div>
+                {data.languages.includes("Pashto") ? (
+                  <PashtoLevelQuestion value={data.pashtoLevel} onChange={(v) => patch({ pashtoLevel: v })} />
+                ) : null}
+              </>
             )}
 
             {step.id === "openTo" && (

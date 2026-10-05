@@ -172,7 +172,7 @@ export function ProfileDesktop({
                         {profile.maritalStatus}
                       </span>
                     ) : null}
-                    {profile.pashto ? (
+                    {profile.pashto && profile.pashto !== "None" ? (
                       <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold">
                         {profile.pashto} Pashto
                       </span>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
-import { textQualityIssue } from "@/lib/signup";
+import { isPashtoLevel, textQualityIssue } from "@/lib/signup";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
@@ -118,6 +118,15 @@ export async function PATCH(req: Request) {
       ? body.languages.join(", ")
       : existing.home_language;
 
+    // The Pashto level only exists alongside Pashto: removing the language clears it; an unknown
+    // or missing value leaves what's stored alone.
+    const nextPashtoLevel =
+      Array.isArray(body.languages) && !body.languages.includes("Pashto")
+        ? null
+        : isPashtoLevel(body.pashtoLevel)
+          ? body.pashtoLevel
+          : undefined;
+
     // Pause Profile (visibility only) is submitted through this same form/endpoint as everything
     // else, so re-review must be keyed on whether a moderation-relevant field actually changed —
     // not "was this endpoint called while approved". Toggling Pause on its own must not send an
@@ -175,6 +184,7 @@ export async function PATCH(req: Request) {
         education: ifSent("education", body.education || null),
         occupation: sent("occupation") || sent("employment") ? nextOccupation : undefined,
         home_language: ifSent("languages", nextHomeLanguage),
+        pashto_level: nextPashtoLevel,
         about_me: ifSent("aboutMe", body.aboutMe || null),
         partner_preferences: ifSent("lookingFor", body.lookingFor || null),
         // Only touch Pause when the caller actually sent it — never un-pause as a side effect.

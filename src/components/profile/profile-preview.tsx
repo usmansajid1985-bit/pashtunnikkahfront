@@ -242,7 +242,7 @@ export function ProfilePreview({
         {profile.maritalStatus || profile.pashto || (profile.plan === "gold" && !profile.hideGoldBadge) ? (
           <div className="pt-4 flex flex-wrap gap-1.5">
             {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
-            {profile.pashto ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
+            {profile.pashto && profile.pashto !== "None" ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
             {profile.plan === "gold" && !profile.hideGoldBadge ? <Pill tone="amber">Gold</Pill> : null}
           </div>
         ) : null}

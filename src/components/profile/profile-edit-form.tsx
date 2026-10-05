@@ -13,6 +13,7 @@ import {
   WOMEN_HEAD_COVERING,
   splitWomenAppearance,
   LANGUAGES_ORDERED,
+  PASHTO_LEVELS,
   SALAH_OPTIONS,
   occupationPrompt,
   textQualityIssue,
@@ -25,6 +26,7 @@ import { WaliAccessManager } from "@/components/profile/wali-access-manager";
 import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
+import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
 import { CityPicker } from "@/components/location/city-picker";
 import { cityInvalidMessage } from "@/lib/country";
 
@@ -128,6 +130,7 @@ export function ProfileEditForm({
     smoking: initial.smoking || "",
     vaping: initial.vaping || "",
     languages: initial.languages,
+    pashtoLevel: PASHTO_LEVELS.find((l) => l.toLowerCase() === (initial.pashto || "").toLowerCase()) ?? "",
     aboutMe: initial.aboutMe || "",
     lookingFor: initial.lookingFor || "",
     isHidden: initial.isHidden,
@@ -529,11 +532,13 @@ export function ProfileEditForm({
                   key={lang}
                   type="button"
                   onClick={() =>
+{
                     patch(
                       "languages",
                       on ? form.languages.filter((l) => l !== lang) : [...form.languages, lang]
-                    )
-                  }
+                    );
+                    if (lang === "Pashto" && on) patch("pashtoLevel", "");
+                  }}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
                     on ? "bg-rose-600 text-white border-rose-600" : "bg-white border-[#ece7e6]"
                   }`}
@@ -543,6 +548,9 @@ export function ProfileEditForm({
               );
             })}
           </div>
+          {form.languages.includes("Pashto") ? (
+            <PashtoLevelQuestion compact value={form.pashtoLevel} onChange={(v) => patch("pashtoLevel", v)} />
+          ) : null}
         </section>
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">

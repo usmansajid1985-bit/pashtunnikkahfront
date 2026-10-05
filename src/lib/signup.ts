@@ -34,6 +34,8 @@ export type SignupData = {
   photos: string[]; // up to 3 cropped data-URLs
   mainPhotoIndex: number;
   communicationMode: string;
+  /** How well they speak Pashto — only asked when Pashto is among `languages`. */
+  pashtoLevel: string;
   /** Dial code, e.g. "+44" — what is stored on the profile. */
   phoneCountry: string;
   /** ISO country picked for that dial code (US and Canada share +1). */
@@ -70,6 +72,7 @@ export const emptySignupData = (): SignupData => ({
   photos: [],
   mainPhotoIndex: 0,
   communicationMode: "",
+  pashtoLevel: "",
   phoneCountry: "+44",
   phoneIso: "GB",
   phone: "",
@@ -123,7 +126,7 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
     {
       id: "languages",
       title: "Which languages do you speak?",
-      subtitle: "Pashto first — select all that apply.",
+      subtitle: "Select all that apply. If you speak Pashto, tell us your level too.",
     },
     { id: "openTo", title: "Who are you open to?", subtitle: "Select all that apply." },
     { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },
@@ -316,6 +319,13 @@ export const WOMEN_APPEARANCE = [...WOMEN_HEAD_COVERING, ...WOMEN_DRESS_STYLE].m
 const inList = (list: readonly { v: string }[], values: string[]) =>
   values.filter((x) => list.some((o) => o.v === x));
 
+/** Answers to "How well do you speak Pashto?" — shown only to members who select Pashto. */
+export const PASHTO_LEVELS = ["None", "Basic", "Conversational", "Fluent"] as const;
+
+export function isPashtoLevel(value: unknown): value is (typeof PASHTO_LEVELS)[number] {
+  return (PASHTO_LEVELS as readonly unknown[]).includes(value);
+}
+
 /** Sister's chosen head covering (first valid one) and dress styles, ignoring retired values. */
 export function splitWomenAppearance(values: string[]) {
   return {
@@ -483,7 +493,8 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "roots":
       return Boolean(data.ancestralRegion && data.relocation);
     case "languages":
-      return data.languages.length > 0;
+      // The Pashto level is only asked (and only required) when Pashto is one of the languages.
+      return data.languages.length > 0 && (!data.languages.includes("Pashto") || isPashtoLevel(data.pashtoLevel));
     case "openTo":
       return data.openTo.length > 0;
     case "family":

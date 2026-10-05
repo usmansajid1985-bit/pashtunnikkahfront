@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
-import { occupationIssue, textQualityIssue } from "@/lib/signup";
+import { isPashtoLevel, occupationIssue, textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { getPhoneCountryCodes } from "@/lib/phone-codes";
 import { PHONE_INVALID_MESSAGE, toE164 } from "@/lib/phone";
@@ -81,6 +81,13 @@ export async function POST(req: Request) {
       const issue = textQualityIssue(String(value ?? ""));
       if (issue) return NextResponse.json({ error: `${label}: ${issue}` }, { status: 400 });
     }
+
+    // Pashto speakers must say how well they speak it; nobody else is asked.
+    const speaksPashto = (body.languages ?? []).includes("Pashto");
+    if (speaksPashto && !isPashtoLevel(body.pashtoLevel)) {
+      return NextResponse.json({ error: "Please tell us how well you speak Pashto." }, { status: 400 });
+    }
+    const pashtoLevel = speaksPashto ? String(body.pashtoLevel) : null;
 
     // Career: workers say what they do, students what they study; nobody else is asked.
     const careerIssue = occupationIssue(String(body.employment ?? ""), String(body.occupation ?? ""));
@@ -215,6 +222,7 @@ export async function POST(req: Request) {
       willing_to_relocate: normalizeRelocation(body.relocation),
       relocate: null,
       home_language: (body.languages ?? []).join(", ") || null,
+      pashto_level: pashtoLevel,
       religious_practice: body.religiousPractice || null,
       salah_pattern: body.salah || null,
       appearance:
