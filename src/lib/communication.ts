@@ -1,3 +1,4 @@
+import { displayStoredPhone } from "@/lib/phone";
 import { prisma } from "@/lib/prisma";
 import type { ProfileExtras } from "@/lib/profile";
 
@@ -74,7 +75,7 @@ export async function loadWaliContact(femaleUserId: bigint) {
 
   const contact =
     guardian?.contact ||
-    [profile.phone_country_code, profile.phone].filter(Boolean).join(" ").trim() ||
+    displayStoredPhone(profile.phone_country_code, profile.phone) ||
     null;
 
   return {

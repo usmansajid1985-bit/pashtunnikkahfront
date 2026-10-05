@@ -20,6 +20,7 @@ import {
   getSignupSteps,
   isStepValid,
   normalizeOpenTo,
+  occupationPrompt,
   splitWomenAppearance,
   wordCount,
   textQualityIssue,
@@ -30,6 +31,17 @@ import {
 import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
+import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
+import { PasswordField } from "@/components/signup/password-field";
+import {
+  PASSWORD_HINT,
+  PASSWORD_MAX,
+  PASSWORD_MIN,
+  PASSWORD_WEAK_MESSAGE,
+  checkPassword,
+  isBreachedPassword,
+} from "@/lib/password-strength";
+import { PHONE_INVALID_MESSAGE, phonePlaceholder, sanitizePhoneInput, toE164 } from "@/lib/phone";
 
 const STORAGE_KEY = "pn_signup_draft_v2";
 
@@ -65,13 +77,29 @@ function Chip({
   );
 }
 
-/** Word count, plus the quality message once they've written enough words to judge. */
+/** One line of the live password checklist. */
+function PasswordRule({ state, children }: { state: "pass" | "fail" | "pending"; children: React.ReactNode }) {
+  const tone = state === "pass" ? "text-emerald-700" : state === "fail" ? "text-rose-700" : "text-ink-700/60";
+  return (
+    <p className={`flex items-center gap-1.5 ${tone}`}>
+      <span aria-hidden className="inline-block w-3 text-center">
+        {state === "pass" ? "✓" : state === "fail" ? "✕" : "•"}
+      </span>
+      <span className="sr-only">{state === "pass" ? "Met:" : state === "fail" ? "Not met:" : ""}</span>
+      {children}
+    </p>
+  );
+}
+
+/** Meaningful-word count, plus the quality message once there are enough words to judge. */
 function WordHint({ text }: { text: string }) {
   const n = wordCount(text);
   const issue = n >= 30 ? textQualityIssue(text) : null;
   return (
     <>
-      <p className="text-xs text-ink-700/50 text-right">{n} / 30 words minimum</p>
+      <p className={`text-xs text-right ${n >= 30 ? "text-ink-700/50" : "text-ink-700/60"}`}>
+        {n} / 30 meaningful words
+      </p>
       {issue ? <p className="text-xs text-rose-700">{issue}</p> : null}
     </>
   );
@@ -88,6 +116,8 @@ export function SignupWizard() {
   const [cropSource, setCropSource] = useState<string | null>(null);
   /** null = adding a new photo; number = replacing the photo at that index. */
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [breach, setBreach] = useState<{ password: string; breached: boolean | null } | null>(null);
   const [, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -99,7 +129,21 @@ export function SignupWizard() {
   const total = steps.length;
   const left = Math.max(0, total - stepIndex - 1);
   const progress = ((stepIndex + 1) / total) * 100;
-  const canNext = isStepValid(step.id, data);
+  // The phone step is checked against the selected country's numbering plan, not just length.
+  const phoneValid = toE164(data.phoneIso, data.phone) !== null;
+  // Password: the instant rules, then a breach-list lookup for the exact password typed. If that
+  // lookup can't be reached it doesn't block (the server tries again on submit).
+  const pw = checkPassword(data.password, data.email);
+  const breachKnown = breach?.password === data.password;
+  const breachChecking = pw.ok && !breachKnown;
+  const passwordWeak = !pw.hardToGuess || pw.tooLong || (breachKnown && breach?.breached === true);
+  const canNext =
+    isStepValid(step.id, data) &&
+    (step.id !== "phone" || phoneValid) &&
+    (step.id !== "account" || (breachKnown && breach?.breached !== true));
+  // Don't nag on the first few digits — only once they've left the field or typed a full number.
+  const phoneError =
+    !phoneValid && data.phone.trim() !== "" && (phoneTouched || data.phone.replace(/\D/g, "").length >= 9);
 
   useEffect(() => {
     try {
@@ -121,11 +165,23 @@ export function SignupWizard() {
           if (appearanceIndex >= 0 && resumeAt > appearanceIndex && !isStepValid("appearance", restored)) {
             resumeAt = appearanceIndex;
           }
+          // Drafts saved while "Profession / role" was optional: workers and students must now
+          // answer it, so send them back to that step.
+          const careerIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "career");
+          if (careerIndex >= 0 && resumeAt > careerIndex && !isStepValid("career", restored)) {
+            resumeAt = careerIndex;
+          }
           // R04: drafts saved before the city picker existed (or with a typed-in city) must go
           // back and pick the city from the list, instead of failing at "Create account".
           const locationIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "location");
           if (locationIndex >= 0 && resumeAt > locationIndex && !restored.cityConfirmed) {
             resumeAt = locationIndex;
+          }
+          // Drafts saved before numbers were validated per country: fix the number before the
+          // account step rather than failing at "Create account".
+          const phoneIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "phone");
+          if (phoneIndex >= 0 && resumeAt > phoneIndex && toE164(restored.phoneIso, restored.phone) === null) {
+            resumeAt = phoneIndex;
           }
           setData(restored);
           setStepIndex(resumeAt);
@@ -139,8 +195,24 @@ export function SignupWizard() {
 
   useEffect(() => {
     if (!hydrated || step.id === "done") return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, stepIndex }));
+    // The draft lives in localStorage in plain text — never keep the password there.
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: { ...data, password: "", confirmPassword: "" }, stepIndex }));
   }, [data, stepIndex, hydrated, step.id]);
+
+  // Breach lookup, once they pause typing a password that passes the instant rules.
+  const passwordToLookUp = step.id === "account" && checkPassword(data.password, data.email).ok ? data.password : null;
+  useEffect(() => {
+    if (passwordToLookUp === null) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const breached = await isBreachedPassword(passwordToLookUp);
+      if (!cancelled) setBreach({ password: passwordToLookUp, breached });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [passwordToLookUp]);
 
   // Keep step index valid when sister/brother changes step list length
   useEffect(() => {
@@ -720,16 +792,36 @@ export function SignupWizard() {
                       tone={o.tone}
                       icon={o.icon}
                       selected={data.employment === o.v}
-                      onClick={() => patch({ employment: o.v })}
+                      onClick={() =>
+                        // Homemaker / Unemployed aren't asked — drop any answer typed earlier.
+                        patch({ employment: o.v, ...(occupationPrompt(o.v) ? {} : { occupation: "" }) })
+                      }
                     />
                   ))}
                 </ChoiceGrid>
-                <input
-                  className="field mt-2"
-                  placeholder="Profession / role (optional)"
-                  value={data.occupation}
-                  onChange={(e) => patch({ occupation: e.target.value })}
-                />
+                {(() => {
+                  const prompt = occupationPrompt(data.employment);
+                  if (!prompt) return null;
+                  return (
+                    <>
+                      <label
+                        htmlFor="signup-occupation"
+                        className="block pt-3 text-xs font-semibold text-ink-900 mb-1.5"
+                      >
+                        {prompt.label}
+                      </label>
+                      <input
+                        id="signup-occupation"
+                        className="field"
+                        placeholder={prompt.placeholder}
+                        maxLength={100}
+                        required
+                        value={data.occupation}
+                        onChange={(e) => patch({ occupation: e.target.value })}
+                      />
+                    </>
+                  );
+                })()}
               </>
             )}
 
@@ -916,60 +1008,99 @@ export function SignupWizard() {
             )}
 
             {step.id === "phone" && (
+              <>
               <div className="flex gap-2">
-                <select
-                  className="field shrink-0"
-                  style={{ width: 110 }}
-                  value={data.phoneCountry}
-                  onChange={(e) => patch({ phoneCountry: e.target.value })}
-                >
-                  <option value="+44">🇬🇧 +44</option>
-                  <option value="+92">🇵🇰 +92</option>
-                  <option value="+93">🇦🇫 +93</option>
-                  <option value="+1">🇺🇸 +1</option>
-                  <option value="+971">🇦🇪 +971</option>
-                  <option value="+61">🇦🇺 +61</option>
-                  <option value="+49">🇩🇪 +49</option>
-                </select>
+                <PhoneCodePicker
+                  iso={data.phoneIso}
+                  dialCode={data.phoneCountry}
+                  onChange={(c) => patch({ phoneIso: c.iso, phoneCountry: c.dialCode })}
+                />
                 <input
                   className="field"
                   type="tel"
-                  placeholder="7911 123456"
+                  inputMode="tel"
+                  autoComplete="tel-national"
+                  maxLength={24}
+                  aria-label="Phone number"
+                  aria-invalid={phoneError}
+                  aria-describedby={phoneError ? "signup-phone-error" : undefined}
+                  placeholder={phonePlaceholder(data.phoneIso)}
                   value={data.phone}
-                  onChange={(e) => patch({ phone: e.target.value })}
+                  onChange={(e) => patch({ phone: sanitizePhoneInput(e.target.value) })}
+                  onBlur={() => setPhoneTouched(true)}
                 />
               </div>
+              {phoneError ? (
+                <p id="signup-phone-error" role="alert" className="text-xs text-rose-700">
+                  {PHONE_INVALID_MESSAGE}
+                </p>
+              ) : null}
+              </>
             )}
 
             {step.id === "account" && (
               <>
-                <input
-                  className="field"
-                  type="email"
-                  placeholder="Email address"
-                  autoComplete="email"
-                  value={data.email}
-                  onChange={(e) => patch({ email: e.target.value })}
-                />
-                <input
-                  className="field"
-                  type="password"
-                  placeholder="Password (min 8 characters)"
-                  autoComplete="new-password"
-                  value={data.password}
-                  onChange={(e) => patch({ password: e.target.value })}
-                />
-                <input
-                  className="field"
-                  type="password"
-                  placeholder="Confirm password"
-                  autoComplete="new-password"
-                  value={data.confirmPassword}
-                  onChange={(e) => patch({ confirmPassword: e.target.value })}
-                />
-                {data.password && data.confirmPassword && data.password !== data.confirmPassword ? (
-                  <p className="text-sm text-red-600">Passwords do not match.</p>
-                ) : null}
+                <div>
+                  <label htmlFor="signup-email" className="block text-xs font-semibold text-ink-900 mb-1.5">
+                    Email address
+                  </label>
+                  <input
+                    id="signup-email"
+                    className="field"
+                    type="email"
+                    autoComplete="email"
+                    value={data.email}
+                    onChange={(e) => patch({ email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <PasswordField
+                    id="signup-password"
+                    label="Password"
+                    value={data.password}
+                    maxLength={PASSWORD_MAX}
+                    invalid={data.password !== "" && passwordWeak}
+                    describedBy="signup-password-help"
+                    onChange={(v) => patch({ password: v })}
+                  />
+                  <div id="signup-password-help" className="mt-1.5 text-xs" aria-live="polite">
+                    {data.password === "" ? (
+                      <p className="text-ink-700/60">{PASSWORD_HINT}</p>
+                    ) : (
+                      <>
+                        <PasswordRule state={pw.longEnough ? "pass" : "fail"}>{PASSWORD_MIN}+ characters</PasswordRule>
+                        <PasswordRule
+                          state={!pw.longEnough ? "pending" : passwordWeak ? "fail" : breachChecking ? "pending" : "pass"}
+                        >
+                          {pw.longEnough && !passwordWeak && breachChecking
+                            ? "Checking against known breached passwords…"
+                            : "Not a common or easily guessed password"}
+                        </PasswordRule>
+                        {pw.longEnough && passwordWeak ? (
+                          <p role="alert" className="mt-1 text-rose-700">{PASSWORD_WEAK_MESSAGE}</p>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <PasswordField
+                    id="signup-confirm-password"
+                    label="Confirm password"
+                    value={data.confirmPassword}
+                    maxLength={PASSWORD_MAX}
+                    invalid={data.confirmPassword !== "" && data.password !== data.confirmPassword}
+                    describedBy="signup-confirm-help"
+                    onChange={(v) => patch({ confirmPassword: v })}
+                  />
+                  <div id="signup-confirm-help" className="mt-1.5 text-xs" aria-live="polite">
+                    {data.confirmPassword !== "" ? (
+                      <PasswordRule state={data.password === data.confirmPassword ? "pass" : "fail"}>
+                        {data.password === data.confirmPassword ? "Passwords match" : "Passwords do not match"}
+                      </PasswordRule>
+                    ) : null}
+                  </div>
+                </div>
               </>
             )}
 

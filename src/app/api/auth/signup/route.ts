@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { verifyCity } from "@/lib/city-search";
-import { textQualityIssue } from "@/lib/signup";
+import { occupationIssue, textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
+import { getPhoneCountryCodes } from "@/lib/phone-codes";
+import { PHONE_INVALID_MESSAGE, toE164 } from "@/lib/phone";
+import { PASSWORD_WEAK_MESSAGE, isBreachedPassword, passwordIssue } from "@/lib/password-strength";
 import { prisma } from "@/lib/prisma";
 import {
   createSessionToken,
@@ -53,8 +56,15 @@ export async function POST(req: Request) {
     const fullName = String(body.fullName ?? "").trim();
     const genderLabel = body.gender === "Sister" ? "Female" : body.gender === "Brother" ? "Male" : "";
 
-    if (!email || !password || password.length < 8 || !fullName || !genderLabel) {
+    if (!email || !password || !fullName || !genderLabel) {
       return NextResponse.json({ error: "Missing required account details." }, { status: 400 });
+    }
+
+    // Same password rules as the form, then a breach-list lookup (skipped if it can't be reached).
+    const weakPassword = passwordIssue(password, email);
+    if (weakPassword) return NextResponse.json({ error: weakPassword }, { status: 400 });
+    if ((await isBreachedPassword(password)) === true) {
+      return NextResponse.json({ error: PASSWORD_WEAK_MESSAGE }, { status: 400 });
     }
 
     const age = calcAge(String(body.dob ?? ""));
@@ -70,6 +80,25 @@ export async function POST(req: Request) {
       const issue = textQualityIssue(String(value ?? ""));
       if (issue) return NextResponse.json({ error: `${label}: ${issue}` }, { status: 400 });
     }
+
+    // Career: workers say what they do, students what they study; nobody else is asked.
+    const careerIssue = occupationIssue(String(body.employment ?? ""), String(body.occupation ?? ""));
+    if (careerIssue) return NextResponse.json({ error: careerIssue }, { status: 400 });
+
+    // Phone: re-validated here against the chosen country's numbering plan and stored as E.164.
+    // The country must be one the picker offers (skipped only if that list can't be loaded).
+    const phoneCodes = await getPhoneCountryCodes();
+    const offered = (iso: string) => !phoneCodes.length || phoneCodes.some((c) => c.iso === iso);
+    // Older clients send only the dial code — try each country that uses it (+1: US and Canada).
+    const phoneIsos = body.phoneIso
+      ? [String(body.phoneIso)]
+      : phoneCodes.filter((c) => c.dialCode === body.phoneCountry).map((c) => c.iso);
+    let phoneE164: string | null = null;
+    for (const iso of phoneIsos.filter(offered)) {
+      phoneE164 = toE164(iso, String(body.phone ?? ""));
+      if (phoneE164) break;
+    }
+    if (!phoneE164) return NextResponse.json({ error: PHONE_INVALID_MESSAGE }, { status: 400 });
 
     // R04: the city must be a real, selectable place (the form only offers real ones — this
     // stops a hand-crafted request). If the lookup is down, don't block the signup.
@@ -201,7 +230,7 @@ export async function POST(req: Request) {
       about_me: body.about || null,
       partner_preferences: body.lookingFor || null,
       open_to: openTo.join(", ") || null,
-      phone: body.phone || null,
+      phone: phoneE164,
       phone_country_code: body.phoneCountry || null,
       photo_status: photoUrl ? "pending" : null,
       photo_url: photoUrl,

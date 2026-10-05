@@ -1,3 +1,5 @@
+import { checkPassword } from "@/lib/password-strength";
+
 export type SignupGender = "Brother" | "Sister";
 
 export type SignupData = {
@@ -32,7 +34,10 @@ export type SignupData = {
   photos: string[]; // up to 3 cropped data-URLs
   mainPhotoIndex: number;
   communicationMode: string;
+  /** Dial code, e.g. "+44" — what is stored on the profile. */
   phoneCountry: string;
+  /** ISO country picked for that dial code (US and Canada share +1). */
+  phoneIso: string;
   phone: string;
   email: string;
   password: string;
@@ -66,6 +71,7 @@ export const emptySignupData = (): SignupData => ({
   mainPhotoIndex: 0,
   communicationMode: "",
   phoneCountry: "+44",
+  phoneIso: "GB",
   phone: "",
   email: "",
   password: "",
@@ -332,9 +338,33 @@ export const COMM_MODES = [
   },
 ] as const;
 
+/**
+ * A word only counts when it reads like one: at least 2 letters, mostly letters, not a single
+ * repeated character ("dddd") and no run of 3+ identical letters ("aaaah"). Single letters,
+ * dashes, punctuation, numbers, symbols and emojis never count.
+ */
+function isMeaningfulWord(token: string): boolean {
+  const letters = token.match(/\p{L}/gu) ?? [];
+  if (letters.length < 2) return false;
+  if (letters.length * 2 < [...token].length) return false;
+  const lower = letters.join("").toLowerCase();
+  if (new Set(lower).size === 1) return false;
+  if (/(\p{L})\1\1/u.test(lower)) return false;
+  return true;
+}
+
+/** The words of a text that count towards the minimum, lower-cased and trimmed of punctuation. */
+export function meaningfulWords(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map((w) => w.replace(/^[^\p{L}]+|[^\p{L}]+$/gu, ""))
+    .filter(isMeaningfulWord)
+    .map((w) => w.toLowerCase());
+}
+
+/** Meaningful words only — what the About Me / Looking For counters show. */
 export function wordCount(text: string) {
-  const t = text.trim();
-  return t ? t.split(/\s+/).length : 0;
+  return meaningfulWords(text).length;
 }
 
 /** Salah answers — the same wording existing profiles already use, so the Salah filter keeps working. */
@@ -377,14 +407,26 @@ const COMMON_WORDS = new Set(
  * (almost no everyday words) and the same few words repeated.
  */
 export function textQualityIssue(text: string, minWords = 30): string | null {
-  const n = wordCount(text);
-  if (n < minWords) return `Please write at least ${minWords} words (${n} so far).`;
-  const words = text
-    .toLowerCase()
-    .split(/\s+/)
-    .map((w) => w.replace(/^[^\p{L}]+|[^\p{L}'-]+$/gu, ""))
-    .filter(Boolean);
-  if (words.length === 0) return "Please write a few real sentences.";
+  const words = meaningfulWords(text);
+  const n = words.length;
+  if (n < minWords) return `Please write at least ${minWords} meaningful words (${n} so far).`;
+
+  // The same word over and over: three times in a row, or one (non-everyday) word making up
+  // too much of the text.
+  for (let i = 2; i < words.length; i++) {
+    if (words[i] === words[i - 1] && words[i] === words[i - 2]) {
+      return "Please avoid repeating the same word — tell members a little more.";
+    }
+  }
+  const counts = new Map<string, number>();
+  for (const w of words) counts.set(w, (counts.get(w) ?? 0) + 1);
+  const cap = Math.max(3, Math.ceil(words.length * 0.1));
+  for (const [w, c] of counts) {
+    if (c > cap && !COMMON_WORDS.has(w)) {
+      return "Please avoid repeating the same word — tell members a little more.";
+    }
+  }
+
   const common = words.filter((w) => COMMON_WORDS.has(w)).length;
   if (common / words.length < 0.25) {
     return "This doesn't look like real sentences yet — please describe yourself in your own words.";
@@ -392,6 +434,27 @@ export function textQualityIssue(text: string, minWords = 30): string | null {
   const distinct = new Set(words).size;
   if (distinct / words.length < 0.35) return "Please avoid repeating the same words — tell members a little more.";
   return null;
+}
+
+/**
+ * The career question follows the employment choice: workers are asked what they do, students
+ * what they study (both mandatory); homemakers and the unemployed are not asked at all.
+ */
+export function occupationPrompt(employment: string): { label: string; placeholder: string } | null {
+  if (employment === "Employed" || employment === "Self-employed") {
+    return { label: "What do you do?", placeholder: "e.g. Software engineer" };
+  }
+  if (employment === "Student") {
+    return { label: "What are you studying?", placeholder: "e.g. Medicine" };
+  }
+  return null;
+}
+
+/** Null when fine, otherwise why the career answer can't be accepted. */
+export function occupationIssue(employment: string, occupation: string): string | null {
+  const prompt = occupationPrompt(employment);
+  if (!prompt) return null;
+  return occupation.trim().length >= 2 ? null : `Please answer "${prompt.label}"`;
 }
 
 export function calcAge(dob: string): number | null {
@@ -433,7 +496,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
       return Boolean(head) && dress.length > 0;
     }
     case "career":
-      return Boolean(data.education && data.employment);
+      return Boolean(data.education && data.employment) && !occupationIssue(data.employment, data.occupation);
     case "lifestyle":
       return Boolean(data.smoking && data.vaping);
     case "about":
@@ -449,7 +512,7 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "account":
       return (
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim()) &&
-        data.password.length >= 8 &&
+        checkPassword(data.password, data.email).ok &&
         data.password === data.confirmPassword
       );
     case "done":

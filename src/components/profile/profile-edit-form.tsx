@@ -12,6 +12,7 @@ import {
   WOMEN_APPEARANCE,
   LANGUAGES_ORDERED,
   SALAH_OPTIONS,
+  occupationPrompt,
   textQualityIssue,
   wordCount,
 } from "@/lib/signup";
@@ -27,15 +28,29 @@ import { CityPicker } from "@/components/location/city-picker";
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
-/** Word count + quality note for About / Looking for — only once it's been edited. */
+/**
+ * Meaningful-word counter for About / Looking for, plus the quality note once it's been edited
+ * (an untouched older text never blocks saving other fields).
+ */
 function TextHint({ text, initial }: { text: string; initial: string }) {
-  if (text.trim() === initial.trim()) return null;
-  const issue = textQualityIssue(text);
+  const edited = text.trim() !== initial.trim();
+  const issue = edited ? textQualityIssue(text) : null;
   return (
-    <p className={`text-xs ${issue ? "text-rose-700" : "text-ink-700/50"}`}>
-      {issue ?? `${wordCount(text)} words`}
-    </p>
+    <div className="flex items-start justify-between gap-3 text-xs">
+      <p className="text-rose-700">{issue}</p>
+      <p className="shrink-0 text-ink-700/50">{wordCount(text)} / 30 meaningful words</p>
+    </div>
   );
+}
+
+/** About / Looking for were changed and don't meet the requirement yet — Save stays disabled. */
+function textBlocksSave(form: { aboutMe: string; lookingFor: string }, initial: { aboutMe?: string | null; lookingFor?: string | null }) {
+  return (
+    [
+      [form.aboutMe, initial.aboutMe || ""],
+      [form.lookingFor, initial.lookingFor || ""],
+    ] as const
+  ).some(([value, before]) => value.trim() !== before.trim() && textQualityIssue(value) !== null);
 }
 
 /** P10: comparable form state — Pause saves instantly on its own, so it never counts as unsaved. */
@@ -240,7 +255,7 @@ export function ProfileEditForm({
             ) : null}
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || textBlocksSave(form, initial)}
               className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save changes"}
@@ -494,7 +509,10 @@ export function ProfileEditForm({
                 tone={o.tone}
                 icon={o.icon}
                 selected={form.employment === o.v}
-                onClick={() => patch("employment", o.v)}
+                onClick={() => {
+                  patch("employment", o.v);
+                  if (!occupationPrompt(o.v)) patch("occupation", "");
+                }}
               />
             ))}
           </ChoiceGrid>
@@ -507,8 +525,23 @@ export function ProfileEditForm({
               </option>
             ))}
           </select>
-          <label className="block text-xs font-semibold">Profession</label>
-          <input className={field} value={form.occupation} onChange={(e) => patch("occupation", e.target.value)} />
+          {(() => {
+            // Follows the employment choice, as in signup; hidden for Homemaker / Unemployed.
+            const prompt = form.employment ? occupationPrompt(form.employment) : { label: "Profession", placeholder: "" };
+            if (!prompt) return null;
+            return (
+              <>
+                <label className="block text-xs font-semibold">{prompt.label}</label>
+                <input
+                  className={field}
+                  placeholder={prompt.placeholder}
+                  maxLength={100}
+                  value={form.occupation}
+                  onChange={(e) => patch("occupation", e.target.value)}
+                />
+              </>
+            );
+          })()}
         </section>
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
@@ -600,7 +633,7 @@ export function ProfileEditForm({
             ) : null}
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || textBlocksSave(form, initial)}
               className="w-full py-3.5 rounded-2xl bg-rose-600 text-white font-semibold hover:bg-rose-700 disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save changes"}
