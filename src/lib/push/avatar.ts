@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from "crypto";
-import sharp from "sharp";
 import { prisma } from "@/lib/prisma";
 import { fetchPhotoBytes } from "@/lib/photos";
 import { HEART_MARK_PNG_BASE64 } from "@/lib/push/heart-mark";
@@ -53,6 +52,9 @@ export async function buildPushAvatar(actorUserId: bigint): Promise<Buffer | nul
   const bytes = await fetchPhotoBytes(profile.photo_blur_url);
   if (!bytes) return null;
 
+  // Loaded on demand, like every other sharp use here: a top-level import makes any route that
+  // merely imports this file (all of chat) fail to load if the native binary can't be resolved.
+  const sharp = (await import("sharp")).default;
   const circle = Buffer.from(`<svg width="${SIZE}" height="${SIZE}"><circle cx="${SIZE / 2}" cy="${SIZE / 2}" r="${SIZE / 2}"/></svg>`);
   const photo = await sharp(bytes)
     .resize(SIZE, SIZE, { fit: "cover" })
