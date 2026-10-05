@@ -9,14 +9,16 @@ import {
   COUNTRIES,
   HEIGHTS,
   MEN_APPEARANCE,
-  WOMEN_APPEARANCE,
+  WOMEN_DRESS_STYLE,
+  WOMEN_HEAD_COVERING,
+  splitWomenAppearance,
   LANGUAGES_ORDERED,
   SALAH_OPTIONS,
   occupationPrompt,
   textQualityIssue,
   wordCount,
 } from "@/lib/signup";
-import { ChoiceGrid, ChoiceTile, I } from "@/components/signup/choice-tile";
+import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
@@ -235,8 +237,8 @@ export function ProfileEditForm({
         onSubmit={onSubmit}
         className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(7rem+var(--pn-bottom-nav-h))] lg:pb-12"
       >
-        {/* Desktop tabs */}
-        <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2">
+        {/* Desktop tabs + Save — stays pinned to the top while scrolling */}
+        <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 lg:py-3 bg-[#faf8f7]/95 backdrop-blur border-b border-ink-900/8">
           <div className="flex gap-8 text-[15px]">
             <Link href="/profile" className="pb-2 font-medium text-ink-700/50 hover:text-ink-900">
               Preview
@@ -265,6 +267,28 @@ export function ProfileEditForm({
         </div>
 
         <PhotoGallery initialPhotos={photos} />
+
+        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
+          <h2 className="font-bold text-ink-950">About me &amp; looking for</h2>
+          <label htmlFor="edit-about-me" className="block text-xs font-semibold">About me</label>
+          <textarea
+            id="edit-about-me"
+            className={`${field} min-h-[120px]`}
+            value={form.aboutMe}
+            onChange={(e) => patch("aboutMe", e.target.value)}
+            placeholder="About you"
+          />
+          <TextHint text={form.aboutMe} initial={initial.aboutMe || ""} />
+          <label htmlFor="edit-looking-for" className="block text-xs font-semibold">What I&apos;m looking for</label>
+          <textarea
+            id="edit-looking-for"
+            className={`${field} min-h-[120px]`}
+            value={form.lookingFor}
+            onChange={(e) => patch("lookingFor", e.target.value)}
+            placeholder="What you're looking for"
+          />
+          <TextHint text={form.lookingFor} initial={initial.lookingFor || ""} />
+        </section>
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Basics</h2>
@@ -357,19 +381,20 @@ export function ProfileEditForm({
           <ChoiceGrid count={4}>
             {(
               [
-                "Strictly Practising",
-                "Actively Practising",
-                "Occasionally Practising",
-                "Does Not Practise",
+                { v: "Strictly Practising", tone: "mint" as const, icon: I.practiceStrict },
+                { v: "Actively Practising", tone: "sky" as const, icon: I.practiceActive },
+                { v: "Occasionally Practising", tone: "peach" as const, icon: I.practiceOccasional },
+                { v: "Does Not Practise", tone: "rose" as const, icon: I.practiceNone },
               ] as const
-            ).map((v, i) => (
+            ).map((o) => (
               <ChoiceTile
-                key={v}
-                label={v}
-                tone={(["mint", "sky", "peach", "sand"] as const)[i]}
-                icon={I.moon}
-                selected={form.religiousPractice === v}
-                onClick={() => patch("religiousPractice", v)}
+                key={o.v}
+                label={o.v}
+                tone={o.tone}
+                icon={o.icon}
+                showCheck
+                selected={form.religiousPractice === o.v}
+                onClick={() => patch("religiousPractice", o.v)}
               />
             ))}
           </ChoiceGrid>
@@ -394,35 +419,55 @@ export function ProfileEditForm({
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Appearance</h2>
           {isSister ? (
-            <ChoiceGrid count={WOMEN_APPEARANCE.length}>
-              {WOMEN_APPEARANCE.map((v, i) => {
-                const on = form.appearance.includes(v);
-                return (
-                  <ChoiceTile
-                    key={v}
-                    label={v}
-                    multi
-                    tone={(["sand", "peach", "rose", "lilac", "mint"] as const)[i % 5]}
-                    icon={I.hijab}
-                    selected={on}
-                    onClick={() =>
-                      patch(
-                        "appearance",
-                        on ? form.appearance.filter((x) => x !== v) : [...form.appearance, v]
-                      )
-                    }
-                  />
-                );
-              })}
-            </ChoiceGrid>
+            (() => {
+              const { head, dress } = splitWomenAppearance(form.appearance);
+              return (
+                <>
+                  <ChoiceSection title="Head covering" rule="Select one option" />
+                  <div className="dress-grid">
+                    {WOMEN_HEAD_COVERING.map((o) => (
+                      <DressTile
+                        key={o.v}
+                        value={o.v}
+                        label={o.label}
+                        hint={o.hint}
+                        selected={head === o.v}
+                        onClick={() => patch("appearance", [o.v, ...dress])}
+                      />
+                    ))}
+                  </div>
+                  <div className="pt-3">
+                    <ChoiceSection title="Dress style" rule="Select one or more options" />
+                  </div>
+                  <div className="dress-grid dress-grid-4">
+                    {WOMEN_DRESS_STYLE.map((o) => {
+                      const on = dress.includes(o.v);
+                      return (
+                        <DressTile
+                          key={o.v}
+                          value={o.v}
+                          label={o.label}
+                          hint={o.hint}
+                          selected={on}
+                          onClick={() =>
+                            patch("appearance", [
+                              ...(head ? [head] : []),
+                              ...(on ? dress.filter((x) => x !== o.v) : [...dress, o.v]),
+                            ])
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()
           ) : (
             <ChoiceGrid count={5}>
-              {MEN_APPEARANCE.map((v, i) => (
-                <ChoiceTile
+              {MEN_APPEARANCE.map((v) => (
+                <BeardTile
                   key={v}
                   label={v}
-                  tone={(["sand", "peach", "sky", "lilac", "mint"] as const)[i]}
-                  icon={I.beard}
                   selected={form.appearance[0] === v}
                   onClick={() => patch("appearance", [v])}
                 />
@@ -433,43 +478,44 @@ export function ProfileEditForm({
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Family</h2>
+          <p className="text-xs font-semibold">Do you have children?</p>
           <ChoiceGrid count={2}>
             <ChoiceTile
-              label="Have Children"
+              label="Yes, I have children"
               tone="sky"
               icon={I.baby}
+              showCheck
               selected={form.hasChildren === "Have Children"}
               onClick={() => patch("hasChildren", "Have Children")}
             />
             <ChoiceTile
-              label="No Children"
+              label="No, I don't"
               tone="sand"
               icon={I.babyOff}
+              showCheck
               selected={form.hasChildren === "No Children"}
               onClick={() => patch("hasChildren", "No Children")}
             />
           </ChoiceGrid>
-          <p className="text-xs font-semibold">Willing to have children</p>
+          <p className="text-xs font-semibold">Do you want to have children?</p>
           <ChoiceGrid count={2}>
-            {(
-              [
-                { v: "Insha'Allah if Allah Wills", label: "Yes, Insha'Allah", icon: I.moon, tone: "mint" as const },
-                { v: "No", label: "No", icon: I.x, tone: "peach" as const },
-              ] as const
-            ).map((o) => (
-              <ChoiceTile
-                key={o.v}
-                label={o.label}
-                hint={o.v === "Insha'Allah if Allah Wills" ? "– if Allah wills" : undefined}
-                tone={o.tone}
-                icon={o.icon}
-                selected={
-                  form.willingChildren === o.v ||
-                  (o.v === "Insha'Allah if Allah Wills" && form.willingChildren === "Yes")
-                }
-                onClick={() => patch("willingChildren", o.v)}
-              />
-            ))}
+            <ChoiceTile
+              label="Yes, Insha'Allah"
+              hint="If Allah wills"
+              tone="mint"
+              icon={I.babySparkle}
+              showCheck
+              selected={form.willingChildren === "Insha'Allah if Allah Wills" || form.willingChildren === "Yes"}
+              onClick={() => patch("willingChildren", "Insha'Allah if Allah Wills")}
+            />
+            <ChoiceTile
+              label="No"
+              tone="peach"
+              icon={I.babyNo}
+              showCheck
+              selected={form.willingChildren === "No"}
+              onClick={() => patch("willingChildren", "No")}
+            />
           </ChoiceGrid>
         </section>
 
@@ -501,7 +547,7 @@ export function ProfileEditForm({
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Career</h2>
-          <label className="block text-xs font-semibold">Employment</label>
+          <p className="text-xs font-semibold">Employment status</p>
           <ChoiceGrid count={5}>
             {EMPLOYMENT.map((o) => (
               <ChoiceTile
@@ -554,7 +600,8 @@ export function ProfileEditForm({
                 key={v}
                 label={v}
                 tone={(["mint", "peach", "rose"] as const)[i]}
-                icon={i === 0 ? I.ban : I.clock}
+                icon={[I.ban, I.clock, I.waves][i]}
+                showCheck
                 selected={form.smoking === v}
                 onClick={() => patch("smoking", v)}
               />
@@ -567,30 +614,13 @@ export function ProfileEditForm({
                 key={v}
                 label={v}
                 tone={(["mint", "peach", "rose"] as const)[i]}
-                icon={i === 0 ? I.ban : I.clock}
+                icon={[I.ban, I.clock, I.waves][i]}
+                showCheck
                 selected={form.vaping === v}
                 onClick={() => patch("vaping", v)}
               />
             ))}
           </ChoiceGrid>
-        </section>
-
-        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
-          <h2 className="font-bold text-ink-950">About & looking for</h2>
-          <textarea
-            className={`${field} min-h-[120px]`}
-            value={form.aboutMe}
-            onChange={(e) => patch("aboutMe", e.target.value)}
-            placeholder="About you"
-          />
-          <TextHint text={form.aboutMe} initial={initial.aboutMe || ""} />
-          <textarea
-            className={`${field} min-h-[120px]`}
-            value={form.lookingFor}
-            onChange={(e) => patch("lookingFor", e.target.value)}
-            placeholder="What you're looking for"
-          />
-          <TextHint text={form.lookingFor} initial={initial.lookingFor || ""} />
         </section>
 
         <section id="visibility" className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
