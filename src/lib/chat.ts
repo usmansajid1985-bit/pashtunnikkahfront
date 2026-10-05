@@ -542,14 +542,17 @@ export async function createMessage(opts: {
     )
     .catch(() => {});
 
-  // Privacy-safe: no message content in the payload (spec §8). Repeat messages from the same
-  // sender fold into one bell row: "PNF142 sent you 5 messages" (spec §7). The push runs before
-  // the email so the grouped notification row exists for the email's once-per-conversation guard.
+  // The push shows a short preview of the message (as saved, i.e. after the safety filter); the
+  // bell row and emails stay content-free. Repeat messages from the same sender fold into one
+  // bell row: "PNF142 sent you 5 messages" (spec §7). The push runs before the email so the
+  // grouped notification row exists for the email's once-per-conversation guard.
   const { profileCodeOf } = await import("@/lib/notifications");
   const senderCode = await profileCodeOf(opts.senderId);
+  const preview = created.body.replace(/\s+/g, " ").trim();
   void sendPushNotification(opts.receiverId, {
     title: `${senderCode} sent you a message`,
-    body: "1 unread message",
+    body: preview ? (preview.length > 120 ? `${preview.slice(0, 117)}…` : preview) : "1 unread message",
+    inApp: { title: `${senderCode} sent you a message`, body: "1 unread message" },
     url: `/chats/${opts.requestId}`,
     tag: `message-${opts.requestId}`,
     type: "message",

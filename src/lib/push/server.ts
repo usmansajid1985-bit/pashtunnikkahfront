@@ -1,3 +1,4 @@
+import { pushAvatarPath } from "@/lib/push/avatar";
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { siteOrigin } from "@/lib/site-url";
@@ -56,8 +57,8 @@ function appOrigin() {
 }
 
 /**
- * N03: the sender's photo for the notification's large icon — only ever the server-made BLURRED
- * derivative (the bucket is private, so it's signed; 24h to match the push TTL).
+ * N03: the notification picture — the sender's BLURRED photo with the PN badge on it, served by
+ * /api/push/avatar through a signed, short-lived link. Null when the sender has no approved photo.
  */
 async function senderIconUrl(actorUserId: bigint | null | undefined): Promise<string | null> {
   if (!actorUserId) return null;
@@ -67,7 +68,9 @@ async function senderIconUrl(actorUserId: bigint | null | undefined): Promise<st
       select: { photo_blur_url: true, photo_status: true },
     });
     if (!profile?.photo_blur_url || profile.photo_status !== "approved") return null;
-    return await signedPhotoUrl(profile.photo_blur_url, 60 * 60 * 24);
+    const path = pushAvatarPath(actorUserId);
+    // No signing secret configured: fall back to the plain blurred photo.
+    return path ? `${appOrigin()}${path}` : await signedPhotoUrl(profile.photo_blur_url, 60 * 60 * 24);
   } catch {
     return null;
   }
