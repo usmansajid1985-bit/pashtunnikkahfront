@@ -31,28 +31,25 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
 
   return (
     <section className="bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-5">
-      <h2 className="font-bold text-ink-950">Profile Views</h2>
+      <div className="flex items-center gap-2.5">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-ink-700" aria-hidden>
+          <path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </svg>
+        <h2 className="font-bold text-ink-950">Profile views</h2>
+      </div>
+      <p className="mt-2 flex items-baseline gap-3">
+        <span className="text-3xl font-bold text-ink-950 tabular-nums">{data.summary.last7d}</span>
+        <span className="text-sm text-ink-700/60">in the last 7 days</span>
+      </p>
 
       {data.locked ? (
-        <div className="mt-3">
-          <p className="text-sm text-ink-950">
-            {data.summary && data.summary.total > 0
-              ? `${data.summary.total} people viewed your profile`
-              : "No one has viewed your profile yet"}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-rose-50/70 px-3.5 py-3">
+          <p className="text-[13px] text-ink-700/75 leading-snug">
+            Upgrade to Gold to see who viewed your profile and get more visibility.
           </p>
-          {data.summary && data.summary.total > 0 ? (
-            <p className="mt-1 text-xs text-ink-700/60">
-              {data.summary.last7d} in the last 7 days · {data.summary.last30d} in the last 30 days
-            </p>
-          ) : null}
-          <p className="mt-2 text-sm text-ink-700/70">
-            Upgrade to Gold to see who viewed you and send them a request.
-          </p>
-          <Link
-            href="/settings/membership"
-            className="inline-block mt-3 px-4 py-2 rounded-full bg-amber-600 text-white text-xs font-semibold"
-          >
-            Upgrade to Gold
+          <Link href="/settings/membership" className="text-[13px] font-semibold text-rose-600 hover:text-rose-700 whitespace-nowrap">
+            Upgrade to Gold →
           </Link>
         </div>
       ) : data.viewers.length === 0 ? (

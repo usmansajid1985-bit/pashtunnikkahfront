@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import { blockedUserIds } from "@/lib/blocking";
+import { fetchPhotoBytes, signedPhotoUrl } from "@/lib/photos";
 
 export type IntroductionStats = {
   active: number;
@@ -27,10 +29,16 @@ export async function getIntroductionStats(userId: bigint): Promise<Introduction
 export type ActivityItem = {
   id: string;
   type: string;
+  /** Drives the row icon. */
+  kind: "view" | "message" | "request" | "photo" | "wali" | "other";
   title: string;
   body: string;
   url: string | null;
   createdAt: string;
+  /** Profile-view rows only: a blurred picture of the viewer. Never a clear photo. */
+  avatarUrl: string | null;
+  /** Free members: the avatar is an unrecognisable smear, so blur it harder still in the UI. */
+  avatarObscured: boolean;
 };
 
 const LEGACY_TITLES: Record<string, string> = {
@@ -41,22 +49,123 @@ const LEGACY_TITLES: Record<string, string> = {
   system: "Account update",
 };
 
-export async function getRecentActivity(userId: bigint, limit = 6): Promise<ActivityItem[]> {
+function activityKind(type: string): ActivityItem["kind"] {
+  if (type === "profile_view") return "view";
+  if (type === "message") return "message";
+  if (type === "photo") return "photo";
+  if (type === "wali") return "wali";
+  if (type === "match" || type.startsWith("request")) return "request";
+  return "other";
+}
+
+/**
+ * A 12px, heavily blurred thumbnail as a data URL. Used for free members' "viewed your profile"
+ * rows: it gives a hint of a person but carries no recoverable detail, and — unlike a signed
+ * storage URL — nothing in it points back to whose photo it was.
+ */
+const obscuredAvatar = unstable_cache(
+  async (stored: string): Promise<string | null> => {
+    try {
+      const bytes = await fetchPhotoBytes(stored);
+      if (!bytes) return null;
+      const sharp = (await import("sharp")).default;
+      const tiny = await sharp(bytes).resize(12, 12, { fit: "cover" }).blur(2).jpeg({ quality: 40 }).toBuffer();
+      return `data:image/jpeg;base64,${tiny.toString("base64")}`;
+    } catch {
+      return null;
+    }
+  },
+  ["overview-obscured-avatar"],
+  { revalidate: 24 * 60 * 60 }
+);
+
+/**
+ * Overview's Recent activity. Free members see THAT their profile was viewed, never by whom:
+ * the viewer's code is stripped from the row and only an unrecognisable avatar is sent. Messages,
+ * requests and everything else keep their real titles on every plan.
+ */
+export async function getRecentActivity(userId: bigint, isGold: boolean, limit = 5): Promise<ActivityItem[]> {
   const rows = await prisma.notifications.findMany({
     where: { recipient_user_id: userId },
     orderBy: { created_at: "desc" },
     take: limit,
   });
-  return rows.map((r) => ({
-    id: r.id.toString(),
-    type: r.type,
-    // New notifications carry a real title ("PNF306 sent you a match request"); only fall back
-    // to the generic label for the legacy "Pashtun Nikah" rows.
-    title: !r.title || r.title === "Pashtun Nikah" ? LEGACY_TITLES[r.type] || "Update" : r.title,
-    body: r.body,
-    url: r.url,
-    createdAt: r.created_at.toISOString(),
-  }));
+
+  const viewerIds = [
+    ...new Set(rows.filter((r) => r.type === "profile_view" && r.actor_user_id).map((r) => r.actor_user_id as bigint)),
+  ];
+  const viewers = viewerIds.length
+    ? await prisma.profiles.findMany({
+        where: { user_id: { in: viewerIds }, photo_status: "approved", photo_blur_url: { not: null } },
+        select: { user_id: true, photo_blur_url: true },
+      })
+    : [];
+  const avatars = new Map<string, string | null>();
+  await Promise.all(
+    viewers.map(async (v) => {
+      const url = isGold ? await signedPhotoUrl(v.photo_blur_url) : await obscuredAvatar(v.photo_blur_url as string);
+      avatars.set(v.user_id.toString(), url);
+    })
+  );
+
+  return rows.map((r) => {
+    const kind = activityKind(r.type);
+    const masked = kind === "view" && !isGold;
+    return {
+      id: r.id.toString(),
+      type: r.type,
+      kind,
+      // New notifications carry a real title ("PNF306 sent you a match request"); only fall back
+      // to the generic label for the legacy "Pashtun Nikah" rows.
+      title: masked
+        ? "Viewed your profile"
+        : !r.title || r.title === "Pashtun Nikah"
+          ? LEGACY_TITLES[r.type] || "Update"
+          : r.title,
+      body: masked ? "" : r.body,
+      url: masked ? "/settings/membership" : r.url,
+      createdAt: r.created_at.toISOString(),
+      avatarUrl: kind === "view" && r.actor_user_id ? (avatars.get(r.actor_user_id.toString()) ?? null) : null,
+      avatarObscured: masked,
+    };
+  });
+}
+
+export type ChatsOverview = {
+  /** Accepted matches that haven't been ended. */
+  active: number;
+  /** Blurred pictures of the most recent chat partners (may be fewer than `active`). */
+  avatars: string[];
+};
+
+/** Overview's "Your conversations" card. */
+export async function getChatsOverview(userId: bigint): Promise<ChatsOverview> {
+  const where = { status: "accepted", ended_at: null, OR: [{ sender_id: userId }, { receiver_id: userId }] };
+  const [active, recent] = await Promise.all([
+    prisma.match_requests.count({ where }),
+    prisma.match_requests.findMany({
+      where,
+      orderBy: { updated_at: "desc" },
+      take: 6,
+      select: { sender_id: true, receiver_id: true },
+    }),
+  ]);
+  const peerIds = recent.map((m) => (m.sender_id === userId ? m.receiver_id : m.sender_id));
+  const peers = peerIds.length
+    ? await prisma.profiles.findMany({
+        where: { user_id: { in: peerIds }, photo_status: "approved", photo_blur_url: { not: null } },
+        select: { user_id: true, photo_blur_url: true },
+      })
+    : [];
+  const byId = new Map(peers.map((p) => [p.user_id.toString(), p.photo_blur_url]));
+  const signed = await Promise.all(
+    peerIds
+      .map((id) => byId.get(id.toString()))
+      .filter((u): u is string => Boolean(u))
+      .slice(0, 2)
+      .map((u) => signedPhotoUrl(u))
+  );
+  return { active, avatars: signed.filter((u): u is string => Boolean(u)) };
 }
 
 export async function getUnreadMessageCount(userId: bigint): Promise<number> {
@@ -85,7 +194,7 @@ export type ProfileViewsData = {
   isGold: boolean;
   /** Basic tier: identity is hidden, only aggregate counts are shown. */
   locked: boolean;
-  summary: { total: number; last7d: number; last30d: number } | null;
+  summary: { total: number; last7d: number; last30d: number };
   viewers: ProfileViewItem[];
 };
 
@@ -97,20 +206,17 @@ export async function getProfileViews(userId: bigint, isGold: boolean): Promise<
     take: 60,
   });
 
+  const now = Date.now();
+  const day = 24 * 60 * 60 * 1000;
+  const summary = {
+    total: viewRows.length,
+    last7d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
+    last30d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
+  };
+
   if (!isGold) {
     // Free: reveal that they were viewed and roughly when, never who — full identity is Gold-only.
-    const now = Date.now();
-    const day = 24 * 60 * 60 * 1000;
-    return {
-      isGold: false,
-      locked: true,
-      summary: {
-        total: viewRows.length,
-        last7d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
-        last30d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
-      },
-      viewers: [],
-    };
+    return { isGold: false, locked: true, summary, viewers: [] };
   }
 
   const blocked = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
@@ -139,7 +245,7 @@ export async function getProfileViews(userId: bigint, isGold: boolean): Promise<
     })
     .filter((v): v is ProfileViewItem => v !== null);
 
-  return { isGold: true, locked: false, summary: null, viewers };
+  return { isGold: true, locked: false, summary, viewers };
 }
 
 /** One call for every count the app nav needs (spec §2/§15 — bell and nav badges are separate). */

@@ -42,7 +42,7 @@ export default async function NotificationsPage({
         requestsCount={navCounts.incomingRequests}
         bellUnread={navCounts.bellUnread}
       />
-      <main className="max-w-2xl mx-auto px-4 py-6 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
+      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
         <NotificationsView
           initialTab={initialTab}
           initialActivity={activity}

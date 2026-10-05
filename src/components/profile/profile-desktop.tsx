@@ -290,7 +290,7 @@ export function ProfileDesktop({
                   className="mt-5 block text-center py-3 rounded-full text-white font-semibold text-sm"
                   style={{ background: "linear-gradient(135deg,#aa1945,#d14f82)" }}
                 >
-                  Complete my profile
+                  {profile.completeness >= 100 ? "Edit my profile" : "Complete my profile"}
                 </Link>
               ) : null}
             </div>
