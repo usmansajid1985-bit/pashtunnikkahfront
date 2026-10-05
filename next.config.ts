@@ -5,6 +5,12 @@ const nextConfig: NextConfig = {
   // instead of leaving it as a plain external require can break the binary lookup at runtime on
   // Vercel. Same reason nodemailer is listed here.
   serverExternalPackages: ["nodemailer", "sharp"],
+  // …and the binary itself lives in the optional @img/* packages, which the build's file tracing
+  // doesn't follow from a lazy import("sharp") — without this, sharp fails to load on Vercel
+  // ("Could not load the sharp module using the linux-x64 runtime").
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/sharp/**/*", "./node_modules/@img/**/*"],
+  },
   async headers() {
     return [
       {
