@@ -22,7 +22,7 @@ function showFromPayload(payload) {
   return self.registration.showNotification(title, {
     body: n.body || d.body || "",
     icon: d.icon || "/icons/pn-icon-192.png",
-    badge: d.badge || "/icons/pn-badge-96.png",
+    badge: d.badge || "/icons/pn-badge-v2-96.png",
     tag: d.tag || n.tag || "pashtun-nikah",
     requireInteraction: true,
     data: { url: d.url || "/", type: d.type || "system" },

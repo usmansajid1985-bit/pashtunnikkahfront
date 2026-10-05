@@ -246,7 +246,7 @@ export async function listenForegroundPush(): Promise<() => void> {
       const title = payload.notification?.title || payload.data?.title || "Pashtun Nikah";
       const body = payload.notification?.body || payload.data?.body || "";
       const icon = payload.data?.icon || "/icons/pn-icon-192.png";
-      const badge = payload.data?.badge || "/icons/pn-badge-96.png";
+      const badge = payload.data?.badge || "/icons/pn-badge-v2-96.png";
       const url = payload.data?.url || payload.fcmOptions?.link || "/";
       if (typeof navigator !== "undefined" && navigator.serviceWorker?.ready) {
         void navigator.serviceWorker.ready.then((reg) => {

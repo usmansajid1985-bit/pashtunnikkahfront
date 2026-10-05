@@ -137,7 +137,7 @@ export async function sendPushNotification(
     tag: payload.tag || "",
     type: payload.type,
     icon: (await senderIconUrl(payload.actorUserId)) ?? `${appOrigin()}/icons/pn-icon-192.png`,
-    badge: `${appOrigin()}/icons/pn-badge-96.png`,
+    badge: `${appOrigin()}/icons/pn-badge-v2-96.png`,
   };
 
   const results = await Promise.allSettled(
