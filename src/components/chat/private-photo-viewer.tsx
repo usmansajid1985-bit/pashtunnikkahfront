@@ -87,6 +87,7 @@ export function PrivatePhotoViewer({ photos, secondsRemaining, watermark, onClos
       role="dialog"
       aria-modal="true"
       aria-label="Private photos"
+      data-chat-overlay
       className="fixed inset-0 z-[200] flex items-center justify-center bg-black/85 backdrop-blur-sm px-3 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
     >
       <div className="relative w-full max-w-sm">

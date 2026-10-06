@@ -579,7 +579,11 @@ export function ChatApp({
     if (headerMenu !== "more") setBlockArmed(false);
     if (!headerMenu) return;
     function onDown(e: MouseEvent) {
-      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+      const target = e.target as Element | null;
+      // Dialogs opened from a header dropdown (photo picker, Start Viewing, the viewer) render at
+      // <body>. Closing the dropdown here would unmount them mid-click, so nothing in them worked.
+      if (target?.closest?.("[data-chat-overlay]")) return;
+      if (headerRef.current && !headerRef.current.contains(target)) {
         setHeaderMenu(null);
       }
     }

@@ -31,7 +31,16 @@ const POLL_MS = 4000;
 function Overlay({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  return mounted ? createPortal(children, document.body) : null;
+  // `data-chat-overlay`: the chat header closes its dropdown on any outside click, and this
+  // overlay lives outside it — the marker tells that handler these clicks belong to the dropdown.
+  return mounted
+    ? createPortal(
+        <div data-chat-overlay style={{ display: "contents" }}>
+          {children}
+        </div>,
+        document.body
+      )
+    : null;
 }
 
 /** Counts down locally from the server's remaining seconds so the label ticks smoothly between polls. */
