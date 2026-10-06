@@ -1,3 +1,4 @@
+import { cleanPersonality } from "@/lib/profile-optional";
 import type { profiles, users } from "@/generated/prisma/client";
 import { relocationLabel } from "@/lib/relocation";
 import { displayHeight } from "@/lib/height";
@@ -10,6 +11,9 @@ export type ProfileExtras = {
   openTo?: string[];
   languages?: string[];
   hasPhoto?: boolean;
+  /** Optional Edit Profile extras (see profile-optional.ts). Interests live in `profiles.interests`. */
+  personality?: string[];
+  islamicPractice?: string;
 };
 
 export type ProfileView = {
@@ -33,6 +37,9 @@ export type ProfileView = {
   pashto: string | null;
   dialect: string | null;
   languages: string[];
+  /** Optional extras filled in on Edit Profile only. */
+  personality: string[];
+  islamicPractice: string | null;
   religiousPractice: string | null;
   islamicBackground: string | null;
   salah: string | null;
@@ -179,6 +186,8 @@ export function mapProfileView(
     pashto: profile.pashto_level || profile.pashto_speaker,
     dialect: profile.dialect,
     languages,
+    personality: cleanPersonality(extras.personality),
+    islamicPractice: typeof extras.islamicPractice === "string" && extras.islamicPractice.trim() ? extras.islamicPractice : null,
     religiousPractice: profile.religious_practice,
     islamicBackground: profile.religious_methodology,
     salah: profile.salah_pattern,

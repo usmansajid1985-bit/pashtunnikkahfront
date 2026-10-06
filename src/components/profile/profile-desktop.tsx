@@ -1,3 +1,4 @@
+import { iconFor } from "@/lib/profile-optional";
 import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -344,6 +345,9 @@ export function ProfileDesktop({
                 <DetailRow label="Smoking" value={profile.smoking} />
                 <DetailRow label="Vaping" value={profile.vaping} />
               </div>
+              {profile.islamicPractice ? (
+                <p className="mt-3 text-sm leading-relaxed text-ink-700 whitespace-pre-line">{profile.islamicPractice}</p>
+              ) : null}
             </div>
 
             <div className="card p-6">
@@ -352,9 +356,43 @@ export function ProfileDesktop({
                 <DetailRow label="Employment" value={profile.employment} />
                 <DetailRow label="Profession" value={profile.occupation} />
                 <DetailRow label="Education" value={profile.education} />
-                <DetailRow label="Languages" value={profile.languages.join(", ") || null} />
               </div>
             </div>
+
+            <div className="card p-6">
+              <h2 className="font-bold text-ink-950">Heritage &amp; Languages</h2>
+              <div className="mt-2">
+                <DetailRow label="Ancestral region" value={profile.ancestralRegion} />
+                <DetailRow label="Languages" value={profile.languages.join(", ") || null} />
+                <DetailRow label="Pashto dialect" value={profile.dialect ? `Speaks ${profile.dialect} dialect` : null} />
+              </div>
+            </div>
+
+            {profile.interests.length > 0 ? (
+              <div className="card p-6">
+                <h2 className="font-bold text-ink-950">Interests</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {profile.interests.map((i) => (
+                    <span key={i} className="rounded-full bg-[#f3f1f0] px-3 py-1.5 text-[13px] font-medium text-ink-950">
+                      <span aria-hidden>{iconFor(i)}</span> {i}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {profile.personality.length > 0 ? (
+              <div className="card p-6">
+                <h2 className="font-bold text-ink-950">Personality</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {profile.personality.map((t) => (
+                    <span key={t} className="rounded-full bg-[#f3f1f0] px-3 py-1.5 text-[13px] font-medium text-ink-950">
+                      <span aria-hidden>{iconFor(t)}</span> {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 

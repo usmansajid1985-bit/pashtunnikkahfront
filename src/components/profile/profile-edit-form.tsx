@@ -27,6 +27,16 @@ import { GuardianContactManager } from "@/components/profile/guardian-contact-ma
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
 import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
+import {
+  INTERESTS,
+  ISLAMIC_PRACTICE_MAX,
+  MAX_INTERESTS,
+  PASHTO_DIALECTS,
+  PASHTUN_TRAITS,
+  PERSONALITY_TRAITS,
+  cleanInterests,
+  type Choice,
+} from "@/lib/profile-optional";
 import { CityPicker } from "@/components/location/city-picker";
 import { cityInvalidMessage } from "@/lib/country";
 
@@ -56,6 +66,43 @@ function textBlocksSave(form: { aboutMe: string; lookingFor: string }, initial: 
       [form.lookingFor, initial.lookingFor || ""],
     ] as const
   ).some(([value, before]) => value.trim() !== before.trim() && textQualityIssue(value) !== null);
+}
+
+/** Multi-select chips for the optional interests / personality lists. */
+function ChipPicker({
+  choices,
+  selected,
+  max,
+  onChange,
+}: {
+  choices: Choice[];
+  selected: string[];
+  max?: number;
+  onChange: (next: string[]) => void;
+}) {
+  const full = max != null && selected.length >= max;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {choices.map((c) => {
+        const on = selected.includes(c.label);
+        return (
+          <button
+            key={c.label}
+            type="button"
+            aria-pressed={on}
+            disabled={!on && full}
+            onClick={() => onChange(on ? selected.filter((x) => x !== c.label) : [...selected, c.label])}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:opacity-40 ${
+              on ? "border-rose-600 bg-rose-50 text-rose-800" : "border-[#ece7e6] bg-white text-ink-900 hover:border-rose-200"
+            }`}
+          >
+            <span aria-hidden>{c.icon}</span>
+            {c.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /** P10: comparable form state — Pause saves instantly on its own, so it never counts as unsaved. */
@@ -130,6 +177,10 @@ export function ProfileEditForm({
     smoking: initial.smoking || "",
     vaping: initial.vaping || "",
     languages: initial.languages,
+    dialect: PASHTO_DIALECTS.find((d) => d.toLowerCase() === (initial.dialect || "").toLowerCase()) ?? "",
+    islamicPractice: initial.islamicPractice || "",
+    interests: cleanInterests(initial.interests),
+    personality: initial.personality,
     pashtoLevel: PASHTO_LEVELS.find((l) => l.toLowerCase() === (initial.pashto || "").toLowerCase()) ?? "",
     aboutMe: initial.aboutMe || "",
     lookingFor: initial.lookingFor || "",
@@ -417,6 +468,18 @@ export function ProfileEditForm({
             onChange={(e) => patch("islamicBackground", e.target.value)}
             placeholder="e.g. Sunni — Hanafi"
           />
+          <label htmlFor="edit-islamic-practice" className="block text-xs font-semibold">
+            Describe your Islamic practice <span className="font-normal text-ink-700/55">(optional)</span>
+          </label>
+          <textarea
+            id="edit-islamic-practice"
+            className={`${field} min-h-[110px]`}
+            maxLength={ISLAMIC_PRACTICE_MAX}
+            value={form.islamicPractice}
+            onChange={(e) => patch("islamicPractice", e.target.value)}
+            placeholder="Describe your Islamic practice and how you incorporate Islam into your daily life…"
+          />
+          <p className="text-right text-xs text-ink-700/50">{wordCount(form.islamicPractice)} words</p>
         </section>
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
@@ -537,7 +600,10 @@ export function ProfileEditForm({
                       "languages",
                       on ? form.languages.filter((l) => l !== lang) : [...form.languages, lang]
                     );
-                    if (lang === "Pashto" && on) patch("pashtoLevel", "");
+                    if (lang === "Pashto" && on) {
+                      patch("pashtoLevel", "");
+                      patch("dialect", "");
+                    }
                   }}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium border ${
                     on ? "bg-rose-600 text-white border-rose-600" : "bg-white border-[#ece7e6]"
@@ -549,7 +615,25 @@ export function ProfileEditForm({
             })}
           </div>
           {form.languages.includes("Pashto") ? (
-            <PashtoLevelQuestion compact value={form.pashtoLevel} onChange={(v) => patch("pashtoLevel", v)} />
+            <>
+              <PashtoLevelQuestion compact value={form.pashtoLevel} onChange={(v) => patch("pashtoLevel", v)} />
+              <label htmlFor="edit-dialect" className="block pt-2 text-xs font-semibold">
+                Which Pashto dialect do you speak? <span className="font-normal text-ink-700/55">(optional)</span>
+              </label>
+              <select
+                id="edit-dialect"
+                className={field}
+                value={form.dialect}
+                onChange={(e) => patch("dialect", e.target.value as typeof form.dialect)}
+              >
+                <option value="">Select a dialect</option>
+                {PASHTO_DIALECTS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </>
           ) : null}
         </section>
 
@@ -629,6 +713,39 @@ export function ProfileEditForm({
               />
             ))}
           </ChoiceGrid>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-ink-950">
+                Interests <span className="text-xs font-normal text-ink-700/55">(optional)</span>
+              </h2>
+              <p className="text-xs text-ink-700/60">Pick up to {MAX_INTERESTS} hobbies, activities and topics you enjoy.</p>
+            </div>
+            <p className="shrink-0 text-sm font-semibold text-rose-700 tabular-nums" aria-live="polite">
+              {form.interests.length}/{MAX_INTERESTS} selected
+            </p>
+          </div>
+          <ChipPicker
+            choices={INTERESTS}
+            selected={form.interests}
+            max={MAX_INTERESTS}
+            onChange={(next) => patch("interests", next)}
+          />
+          <p className="text-xs text-ink-700/55">Your interests help others get to know you at a glance.</p>
+        </section>
+
+        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
+          <h2 className="font-bold text-ink-950">
+            Personality traits <span className="text-xs font-normal text-ink-700/55">(optional)</span>
+          </h2>
+          <p className="text-xs font-semibold text-ink-900">Pashtun values</p>
+          <ChipPicker choices={PASHTUN_TRAITS} selected={form.personality} onChange={(next) => patch("personality", next)} />
+          <p className="pt-2 text-xs font-semibold text-ink-900">Other personality traits</p>
+          <p className="text-xs text-ink-700/60">Choose the qualities that describe you best.</p>
+          <ChipPicker choices={PERSONALITY_TRAITS} selected={form.personality} onChange={(next) => patch("personality", next)} />
+          <p className="text-xs text-ink-700/55">Your traits help us show you more compatible matches.</p>
         </section>
 
         <section id="visibility" className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">

@@ -1,3 +1,4 @@
+import { iconFor } from "@/lib/profile-optional";
 import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import type { ProfileView } from "@/lib/profile";
 import type { ReactNode } from "react";
@@ -305,6 +306,7 @@ export function ProfilePreview({
         </Section>
 
         {(profile.islamicBackground ||
+          profile.islamicPractice ||
           profile.religiousPractice ||
           profile.smoking ||
           profile.vaping ||
@@ -330,6 +332,9 @@ export function ProfilePreview({
               ) : null}
               {profile.bornMuslim ? <Pill>{profile.bornMuslim}</Pill> : null}
             </div>
+            {profile.islamicPractice ? (
+              <p className="mt-3 text-[14px] leading-relaxed text-ink-700 whitespace-pre-line">{profile.islamicPractice}</p>
+            ) : null}
           </Section>
         )}
 
@@ -360,7 +365,7 @@ export function ProfilePreview({
               {profile.languages.map((l) => (
                 <Pill key={l}>{l}</Pill>
               ))}
-              {profile.dialect ? <Pill>Dialect: {profile.dialect}</Pill> : null}
+              {profile.dialect ? <Pill>Speaks {profile.dialect} dialect</Pill> : null}
             </div>
           </Section>
         ) : null}
@@ -386,7 +391,21 @@ export function ProfilePreview({
           <Section title="Interests">
             <div className="flex flex-wrap gap-2">
               {profile.interests.map((i) => (
-                <Pill key={i}>{i}</Pill>
+                <Pill key={i}>
+                  <span aria-hidden>{iconFor(i)}</span> {i}
+                </Pill>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+
+        {profile.personality.length > 0 ? (
+          <Section title="Personality">
+            <div className="flex flex-wrap gap-2">
+              {profile.personality.map((t) => (
+                <Pill key={t}>
+                  <span aria-hidden>{iconFor(t)}</span> {t}
+                </Pill>
               ))}
             </div>
           </Section>

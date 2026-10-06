@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
 import { isPashtoLevel, textQualityIssue } from "@/lib/signup";
+import { INTERESTS, ISLAMIC_PRACTICE_MAX, cleanInterests, cleanPersonality, isPashtoDialect } from "@/lib/profile-optional";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
@@ -100,13 +101,44 @@ export async function PATCH(req: Request) {
       extras = {};
     }
 
+    const prevIslamicPractice = String(extras.islamicPractice ?? "").trim();
     extras = {
       ...extras,
       smoking: body.smoking ?? extras.smoking ?? "",
       vaping: body.vaping ?? extras.vaping ?? "",
       employment: body.employment ?? extras.employment ?? "",
       languages: body.languages ?? extras.languages ?? [],
+      // Optional Edit Profile extras — only values from the agreed lists are kept.
+      personality: has("personality") ? cleanPersonality(body.personality) : (extras.personality ?? []),
+      islamicPractice: has("islamicPractice")
+        ? String(body.islamicPractice ?? "").slice(0, ISLAMIC_PRACTICE_MAX)
+        : (extras.islamicPractice ?? ""),
     };
+
+    // Interests are stored in `profiles.interests` (comma-separated — the Browse interests filter
+    // searches it). Picks come from the agreed list; any older free-text values are kept.
+    let nextInterests: string | null | undefined;
+    if (has("interests")) {
+      const picked = cleanInterests(body.interests);
+      const known = new Set(INTERESTS.map((c) => c.label));
+      const legacy = (existing.interests ?? "")
+        .split(/[,|]/)
+        .map((v) => v.trim())
+        .filter((v) => v && !known.has(v));
+      nextInterests = [...picked, ...legacy].join(", ") || null;
+    }
+
+    // Dialect only exists alongside Pashto (like the level); an unknown value leaves it alone.
+    const nextDialect =
+      Array.isArray(body.languages) && !body.languages.includes("Pashto")
+        ? null
+        : has("dialect")
+          ? isPashtoDialect(body.dialect)
+            ? body.dialect
+            : body.dialect === ""
+              ? null
+              : undefined
+          : undefined;
 
     const appearance = Array.isArray(body.appearance)
       ? body.appearance.join(", ")
@@ -153,7 +185,9 @@ export async function PATCH(req: Request) {
       ((sent("occupation") || sent("employment")) && nextOccupation !== existing.occupation) ||
       nextHomeLanguage !== existing.home_language ||
       (sent("aboutMe") && (body.aboutMe || null) !== existing.about_me) ||
-      (sent("lookingFor") && (body.lookingFor || null) !== existing.partner_preferences);
+      (sent("lookingFor") && (body.lookingFor || null) !== existing.partner_preferences) ||
+      // Free text, so it is reviewed like About Me. Interests / traits / dialect are fixed lists.
+      (sent("islamicPractice") && String(body.islamicPractice ?? "").trim() !== prevIslamicPractice);
 
     // F01: an approved member keeps their Approved status when they edit. Content changes are
     // time-stamped for admin re-review instead of pulling the member back into Awaiting Approval.
@@ -185,6 +219,8 @@ export async function PATCH(req: Request) {
         occupation: sent("occupation") || sent("employment") ? nextOccupation : undefined,
         home_language: ifSent("languages", nextHomeLanguage),
         pashto_level: nextPashtoLevel,
+        dialect: nextDialect,
+        interests: nextInterests,
         about_me: ifSent("aboutMe", body.aboutMe || null),
         partner_preferences: ifSent("lookingFor", body.lookingFor || null),
         // Only touch Pause when the caller actually sent it — never un-pause as a side effect.
