@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   assertAcceptedParticipant,
+  chatAccessError,
   assertMatchParticipant,
   createMessage,
   getReactionsForMessages,
@@ -169,7 +170,7 @@ export async function POST(
   const requestId = BigInt(raw);
   const userId = BigInt(session.userId);
   const match = await assertAcceptedParticipant(requestId, userId);
-  if (!match) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+  if (!match) return NextResponse.json({ error: await chatAccessError(userId) }, { status: 404 });
 
   const body = await req.json().catch(() => ({}));
   const text = String(body.body ?? "");

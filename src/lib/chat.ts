@@ -214,6 +214,18 @@ export async function assertAcceptedParticipant(requestId: bigint, userId: bigin
   return req;
 }
 
+/**
+ * Why `assertAcceptedParticipant` said no, in words the member can act on. A profile sent back
+ * for review loses every write action in chat; reporting that as "Chat not found" — while the
+ * chat is open in front of them — reads as a bug.
+ */
+export async function chatAccessError(userId: bigint): Promise<string> {
+  const { isProfileApproved } = await import("@/lib/approval");
+  return (await isProfileApproved(userId))
+    ? "Chat not found"
+    : "Your profile is awaiting approval. You can do this again once the Pashtun Nikah team has approved it.";
+}
+
 /** Read-only access for accepted or ended matches. */
 export async function assertMatchParticipant(requestId: bigint, userId: bigint) {
   await ensureMatchRequestsSchema();

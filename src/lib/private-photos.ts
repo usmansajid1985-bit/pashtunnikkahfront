@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { ensurePrivatePhotosSchema } from "@/lib/ensure-private-photos-schema";
-import { assertAcceptedParticipant, peerUserId } from "@/lib/chat";
+import { assertAcceptedParticipant, chatAccessError, peerUserId } from "@/lib/chat";
 import { profileCodeOf } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/push/server";
 
@@ -130,7 +130,7 @@ export async function createShare(opts: {
 }) {
   await ensurePrivatePhotosSchema();
   const match = await assertAcceptedParticipant(opts.requestId, opts.senderId);
-  if (!match) throw new Error("Chat not found");
+  if (!match) throw new Error(await chatAccessError(opts.senderId));
 
   const photoIds = [...new Set(opts.photoIds)];
   if (photoIds.length < 1 || photoIds.length > MAX_SHARE_PHOTOS) {
@@ -196,7 +196,10 @@ export async function startViewing(shareId: bigint, recipientId: bigint) {
   const share = await loadShareById(shareId);
   if (!share || share.recipient_id !== recipientId) throw new Error("Share not found");
   const match = await assertAcceptedParticipant(share.match_request_id, recipientId);
-  if (!match) throw new Error("This conversation is no longer available.");
+  if (!match) {
+    const why = await chatAccessError(recipientId);
+    throw new Error(why === "Chat not found" ? "This conversation is no longer available." : why);
+  }
 
   if (share.viewing_started_at) {
     // Already started (e.g. opened from Chat, then Profile) — same session, same clock.

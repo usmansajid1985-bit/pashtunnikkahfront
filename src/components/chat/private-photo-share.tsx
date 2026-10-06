@@ -142,7 +142,7 @@ export function PrivatePhotoShare({
         const data = await res.json();
         setOwnPhotos(
           (data.photos || [])
-            .filter((p: OwnPhoto) => p.status === "approved")
+            .filter((p: OwnPhoto) => p.status === "approved" || p.status === "pending")
             .map((p: OwnPhoto) => ({ id: p.id, url: p.url, isMain: p.isMain, status: p.status }))
         );
       }
@@ -332,17 +332,25 @@ export function PrivatePhotoShare({
             <div className="mt-3 grid grid-cols-3 gap-2">
               {(ownPhotos || []).map((p) => {
                 const isSelected = selected.includes(p.id);
+                // Only approved photos can be shared; ones still in review are shown but locked.
+                const inReview = p.status !== "approved";
                 return (
                   <button
                     key={p.id}
                     type="button"
+                    disabled={inReview}
                     onClick={() => toggleSelect(p.id)}
                     className={`relative aspect-square rounded-xl overflow-hidden border-2 ${
                       isSelected ? "border-rose-600" : "border-transparent"
-                    }`}
+                    } ${inReview ? "cursor-not-allowed" : ""}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt="" className="w-full h-full object-cover" />
+                    <img src={p.url} alt="" className={`w-full h-full object-cover ${inReview ? "opacity-40" : ""}`} />
+                    {inReview ? (
+                      <span className="absolute inset-x-0 bottom-0 bg-ink-950/75 px-1 py-1 text-center text-[10px] font-semibold leading-tight text-white">
+                        Awaiting approval
+                      </span>
+                    ) : null}
                     {isSelected ? (
                       <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
                         {selected.indexOf(p.id) + 1}
@@ -351,6 +359,11 @@ export function PrivatePhotoShare({
                   </button>
                 );
               })}
+              {ownPhotos && ownPhotos.some((p) => p.status !== "approved") ? (
+                <p className="col-span-3 text-[11px] text-ink-700/60">
+                  Photos can be shared once the Pashtun Nikah team has approved them.
+                </p>
+              ) : null}
               {ownPhotos && ownPhotos.length === 0 ? (
                 <p className="col-span-3 text-[12px] text-ink-700/55 py-4 text-center">
                   Add an approved photo in Profile → Edit first.
