@@ -1,4 +1,6 @@
-import { iconFor } from "@/lib/profile-optional";
+import "flag-icons/css/flag-icons.min.css";
+import { toCountryCode } from "@/lib/country";
+import { ProfileSections } from "@/components/profile/profile-sections";
 import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import type { ProfileView } from "@/lib/profile";
 import type { ReactNode } from "react";
@@ -28,15 +30,6 @@ function Pill({
       {icon}
       {children}
     </span>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <section className="mt-7">
-      <h2 className="text-[17px] font-bold text-ink-950 mb-3">{title}</h2>
-      {children}
-    </section>
   );
 }
 
@@ -85,6 +78,7 @@ export function ProfilePreview({
   photos?: ProfileSlide[];
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
+  const countryCode = toCountryCode(profile.country);
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const slides: ProfileSlide[] = (
     photos.length > 0
@@ -185,7 +179,7 @@ export function ProfilePreview({
         )}
 
         {presence ? (
-          <div className="absolute top-4 left-4 z-20 pointer-events-none">
+          <div className="absolute top-4 right-4 z-20 pointer-events-none flex flex-col items-end gap-1.5">
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold backdrop-blur-md ${
                 presence.online ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
@@ -195,7 +189,7 @@ export function ProfilePreview({
               {presence.label}
             </span>
             {presence.justJoined ? (
-              <span className="ml-1.5 inline-flex items-center px-2.5 py-1.5 rounded-full text-[12px] font-semibold bg-amber-400/90 text-ink-950 backdrop-blur-md">
+              <span className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[12px] font-semibold bg-amber-400/90 text-ink-950 backdrop-blur-md">
                 ✨ Just Joined
               </span>
             ) : null}
@@ -217,9 +211,15 @@ export function ProfilePreview({
               </svg>
             ) : null}
           </p>
-          <p className="text-[13px] text-white/80 mt-0.5">{location || "—"}</p>
+          <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-white/85">
+            {countryCode ? <span aria-hidden className={`fi fi-${countryCode.toLowerCase()} rounded-[2px]`} /> : null}
+            {location || "—"}
+          </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {[profile.occupation, profile.religiousPractice, profile.country, profile.tribe, profile.ancestralRegion, profile.relocation]
+            {profile.tribe ? (
+              <span className="px-3 py-1 rounded-full bg-rose-600 text-[11.5px] font-semibold text-white">{profile.tribe}</span>
+            ) : null}
+            {[profile.occupation, profile.religiousPractice, profile.ancestralRegion, profile.relocation]
               .filter((v): v is string => Boolean(v))
               .map((v, i) => (
                 <span
@@ -240,11 +240,9 @@ export function ProfilePreview({
       >
         {photoAccessory ? <div className="pt-4 -mx-4">{photoAccessory}</div> : null}
 
-        {profile.maritalStatus || profile.pashto || (profile.plan === "gold" && !profile.hideGoldBadge) ? (
+        {profile.plan === "gold" && !profile.hideGoldBadge ? (
           <div className="pt-4 flex flex-wrap gap-1.5">
-            {profile.maritalStatus ? <Pill tone="rose">{profile.maritalStatus}</Pill> : null}
-            {profile.pashto && profile.pashto !== "None" ? <Pill tone="rose">{profile.pashto} Pashto</Pill> : null}
-            {profile.plan === "gold" && !profile.hideGoldBadge ? <Pill tone="amber">Gold</Pill> : null}
+            <Pill tone="amber">Gold</Pill>
           </div>
         ) : null}
 
@@ -254,162 +252,7 @@ export function ProfilePreview({
           </div>
         ) : null}
 
-        <Section title="About Me">
-          <div className="flex flex-wrap gap-2">
-            {profile.height ? (
-              <Pill
-                icon={
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4" />
-                  </svg>
-                }
-              >
-                {profile.height}
-              </Pill>
-            ) : null}
-            {profile.maritalStatus ? (
-              <Pill
-                icon={
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <circle cx="12" cy="13" r="5" />
-                    <path d="M10 8.5 12 6l2 2.5" />
-                  </svg>
-                }
-              >
-                {profile.maritalStatus}
-              </Pill>
-            ) : null}
-            {profile.hasChildren ? (
-              <Pill
-                icon={
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <circle cx="12" cy="10" r="3.5" />
-                    <path d="M8 18c1-1.5 2.2-2.2 4-2.2s3 0.7 4 2.2" />
-                  </svg>
-                }
-              >
-                {profile.hasChildren}
-              </Pill>
-            ) : null}
-            {profile.willingChildren ? <Pill>Children: {profile.willingChildren}</Pill> : null}
-            {profile.appearance.map((a) => (
-              <Pill key={a} tone="rose">
-                {a}
-              </Pill>
-            ))}
-          </div>
-          {profile.aboutMe ? (
-            <p className="mt-4 text-[14px] leading-relaxed text-ink-700 whitespace-pre-line">{profile.aboutMe}</p>
-          ) : (
-            <p className="mt-3 text-sm text-ink-700/50">No about section yet.</p>
-          )}
-        </Section>
-
-        {(profile.islamicBackground ||
-          profile.islamicPractice ||
-          profile.religiousPractice ||
-          profile.smoking ||
-          profile.vaping ||
-          profile.salah) && (
-          <Section title="Faith & lifestyle">
-            <div className="flex flex-wrap gap-2">
-              {profile.islamicBackground ? (
-                <Pill tone="amber">
-                  <span className="text-amber-500">☪</span> {profile.islamicBackground}
-                </Pill>
-              ) : null}
-              {profile.religiousPractice ? (
-                <Pill tone="amber">
-                  <span className="text-amber-500">☪</span> {profile.religiousPractice}
-                </Pill>
-              ) : null}
-              {profile.smoking ? <Pill>Smoking: {profile.smoking}</Pill> : null}
-              {profile.vaping ? <Pill>Vaping: {profile.vaping}</Pill> : null}
-              {profile.salah ? (
-                <Pill tone="green">
-                  {profile.salah.length > 48 ? `${profile.salah.slice(0, 48)}…` : profile.salah}
-                </Pill>
-              ) : null}
-              {profile.bornMuslim ? <Pill>{profile.bornMuslim}</Pill> : null}
-            </div>
-            {profile.islamicPractice ? (
-              <p className="mt-3 text-[14px] leading-relaxed text-ink-700 whitespace-pre-line">{profile.islamicPractice}</p>
-            ) : null}
-          </Section>
-        )}
-
-        <Section title="Future plans">
-          <div className="flex flex-wrap gap-2">
-            {profile.relocation ? (
-              <Pill>{profile.relocation}</Pill>
-            ) : (
-              <Pill>Relocation not set</Pill>
-            )}
-            {profile.ancestralRegion ? <Pill>Roots: {profile.ancestralRegion}</Pill> : null}
-          </div>
-        </Section>
-
-        {(profile.education || profile.occupation || profile.employment) && (
-          <Section title="Work & education">
-            <div className="flex flex-wrap gap-2">
-              {profile.employment ? <Pill>{profile.employment}</Pill> : null}
-              {profile.occupation ? <Pill>{profile.occupation}</Pill> : null}
-              {profile.education ? <Pill>{profile.education}</Pill> : null}
-            </div>
-          </Section>
-        )}
-
-        {profile.languages.length > 0 ? (
-          <Section title="Languages">
-            <div className="flex flex-wrap gap-2">
-              {profile.languages.map((l) => (
-                <Pill key={l}>{l}</Pill>
-              ))}
-              {profile.dialect ? <Pill>Speaks {profile.dialect} dialect</Pill> : null}
-            </div>
-          </Section>
-        ) : null}
-
-        {profile.lookingFor ? (
-          <Section title="Looking for">
-            <div className="rounded-2xl bg-[#f7f4f2] p-4 text-[14px] leading-relaxed text-ink-700 whitespace-pre-line">
-              {profile.lookingFor}
-            </div>
-            {profile.openTo.length ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {profile.openTo.map((o) => (
-                  <Pill key={o} tone="rose">
-                    Open to {o}
-                  </Pill>
-                ))}
-              </div>
-            ) : null}
-          </Section>
-        ) : null}
-
-        {profile.interests.length > 0 ? (
-          <Section title="Interests">
-            <div className="flex flex-wrap gap-2">
-              {profile.interests.map((i) => (
-                <Pill key={i}>
-                  <span aria-hidden>{iconFor(i)}</span> {i}
-                </Pill>
-              ))}
-            </div>
-          </Section>
-        ) : null}
-
-        {profile.personality.length > 0 ? (
-          <Section title="Personality">
-            <div className="flex flex-wrap gap-2">
-              {profile.personality.map((t) => (
-                <Pill key={t}>
-                  <span aria-hidden>{iconFor(t)}</span> {t}
-                </Pill>
-              ))}
-            </div>
-          </Section>
-        ) : null}
+        <ProfileSections profile={profile} />
 
         {/* Completeness mini — own profile only */}
         {showEditTab ? (

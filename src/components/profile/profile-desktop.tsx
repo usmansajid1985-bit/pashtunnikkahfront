@@ -1,35 +1,9 @@
-import { iconFor } from "@/lib/profile-optional";
+import { ProfileSections } from "@/components/profile/profile-sections";
 import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ProfileView } from "@/lib/profile";
 import { BrowseAppNav } from "@/components/browse/app-nav";
-
-function DetailRow({
-  label,
-  value,
-  iconBg,
-  icon,
-}: {
-  label: string;
-  value: string | null | undefined;
-  iconBg?: string;
-  icon?: ReactNode;
-}) {
-  return (
-    <div className="detail-row">
-      <span className="flex items-center gap-3 text-sm text-ink-900">
-        {icon ? (
-          <span className="icon-badge" style={{ background: iconBg || "#f3f1f0" }}>
-            {icon}
-          </span>
-        ) : null}
-        {label}
-      </span>
-      <span className="text-sm font-medium text-ink-950 text-right max-w-[55%]">{value || "—"}</span>
-    </div>
-  );
-}
 
 export function ProfileDesktop({
   profile,
@@ -204,33 +178,7 @@ export function ProfileDesktop({
 
             {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
 
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950">About Me</h2>
-              <div className="mt-4 space-y-3 text-sm text-ink-700 leading-relaxed whitespace-pre-line">
-                {profile.aboutMe || "No about section yet."}
-              </div>
-            </div>
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950 flex items-center gap-2">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
-                  <path d="M12 21s-7-4.35-9-8.5C1.4 9 3 5.5 6.5 5.5c2 0 3.7 1.2 5.5 3.3 1.8-2.1 3.5-3.3 5.5-3.3 3.5 0 5.1 3.5 3.5 7C19 16.65 12 21 12 21Z" />
-                </svg>
-                I&apos;m Looking For
-              </h2>
-              <div className="mt-4 text-sm leading-relaxed whitespace-pre-line" style={{ color: "#b5651d" }}>
-                {profile.lookingFor || "Preferences not added yet."}
-              </div>
-              {profile.openTo.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {profile.openTo.map((o) => (
-                    <span key={o} className="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold">
-                      Open to {o}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            <ProfileSections profile={profile} card />
           </div>
 
           {/* Right */}
@@ -320,79 +268,6 @@ export function ProfileDesktop({
                 ))}
               </div>
             </div>
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950">Details</h2>
-              <div className="mt-3">
-                <DetailRow label="Age" value={profile.age != null ? `${profile.age} years` : null} />
-                <DetailRow label="Height" value={profile.height} />
-                <DetailRow label="Appearance" value={profile.appearance.join(", ") || null} />
-                <DetailRow label="Children" value={profile.hasChildren} />
-                <DetailRow label="Willing children" value={profile.willingChildren} />
-                <DetailRow label="Tribe / Clan" value={profile.tribe} />
-                <DetailRow label="Country" value={profile.country} />
-                <DetailRow label="City" value={profile.city} />
-              </div>
-            </div>
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950 flex items-center gap-2">Faith</h2>
-              <div className="mt-2">
-                <DetailRow label="Islamic Background" value={profile.islamicBackground} />
-                <DetailRow label="Religious Practice" value={profile.religiousPractice} />
-                {/* B08: members can filter by Salah, so it must be visible on the profile. */}
-                <DetailRow label="Salah" value={profile.salah} />
-                <DetailRow label="Smoking" value={profile.smoking} />
-                <DetailRow label="Vaping" value={profile.vaping} />
-              </div>
-              {profile.islamicPractice ? (
-                <p className="mt-3 text-sm leading-relaxed text-ink-700 whitespace-pre-line">{profile.islamicPractice}</p>
-              ) : null}
-            </div>
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950">Work &amp; Education</h2>
-              <div className="mt-2">
-                <DetailRow label="Employment" value={profile.employment} />
-                <DetailRow label="Profession" value={profile.occupation} />
-                <DetailRow label="Education" value={profile.education} />
-              </div>
-            </div>
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950">Heritage &amp; Languages</h2>
-              <div className="mt-2">
-                <DetailRow label="Ancestral region" value={profile.ancestralRegion} />
-                <DetailRow label="Languages" value={profile.languages.join(", ") || null} />
-                <DetailRow label="Pashto dialect" value={profile.dialect ? `Speaks ${profile.dialect} dialect` : null} />
-              </div>
-            </div>
-
-            {profile.interests.length > 0 ? (
-              <div className="card p-6">
-                <h2 className="font-bold text-ink-950">Interests</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {profile.interests.map((i) => (
-                    <span key={i} className="rounded-full bg-[#f3f1f0] px-3 py-1.5 text-[13px] font-medium text-ink-950">
-                      <span aria-hidden>{iconFor(i)}</span> {i}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {profile.personality.length > 0 ? (
-              <div className="card p-6">
-                <h2 className="font-bold text-ink-950">Personality</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {profile.personality.map((t) => (
-                    <span key={t} className="rounded-full bg-[#f3f1f0] px-3 py-1.5 text-[13px] font-medium text-ink-950">
-                      <span aria-hidden>{iconFor(t)}</span> {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 
