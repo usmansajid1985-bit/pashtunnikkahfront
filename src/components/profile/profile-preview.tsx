@@ -1,5 +1,3 @@
-import "flag-icons/css/flag-icons.min.css";
-import { toCountryCode } from "@/lib/country";
 import { ProfileSections } from "@/components/profile/profile-sections";
 import { CompatibilityPanel, type ViewerCompat } from "@/components/profile/compatibility-panel";
 import type { ProfileView } from "@/lib/profile";
@@ -8,7 +6,8 @@ import { ProfileDesktop } from "@/components/profile/profile-desktop";
 import { MatchActions } from "@/components/matches/match-actions";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import type { MatchRelationStatus } from "@/lib/matches";
-import { ProfilePhotoSlider, type ProfileSlide } from "@/components/profile/profile-photo-slider";
+import type { ProfileSlide } from "@/components/profile/profile-photo-slider";
+import { ProfileHero } from "@/components/profile/profile-hero";
 
 function Pill({
   icon,
@@ -77,8 +76,6 @@ export function ProfilePreview({
   /** Extra profile photos (own preview, or a matched viewer). Main photo first. */
   photos?: ProfileSlide[];
 }) {
-  const location = [profile.city, profile.country].filter(Boolean).join(", ");
-  const countryCode = toCountryCode(profile.country);
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const slides: ProfileSlide[] = (
     photos.length > 0
@@ -107,6 +104,7 @@ export function ProfilePreview({
           unreadCount={unreadCount}
           viewerCompat={viewerCompat}
           presence={presence}
+          slides={slides}
           photoOverrideVisible={photoVisible}
           photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
           footer={
@@ -167,71 +165,14 @@ export function ProfilePreview({
       ) : null}
 
       {/* Photo-led hero */}
-      <div className="relative w-full overflow-hidden bg-ink-900/10" style={{ aspectRatio: "4 / 5" }}>
-        {photoHidden ? (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink-900/10 to-ink-900/5">
-            <p className="text-sm font-semibold text-ink-700/50 px-10 text-center">
-              Photo hidden until you match
-            </p>
-          </div>
-        ) : (
-          <ProfilePhotoSlider slides={slides} showPhoto={showPhoto} fallbackSrc={avatar} />
-        )}
-
-        {presence ? (
-          <div className="absolute top-4 right-4 z-20 pointer-events-none flex flex-col items-end gap-1.5">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold backdrop-blur-md ${
-                presence.online ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${presence.online ? "bg-white" : "bg-white/60"}`} />
-              {presence.label}
-            </span>
-            {presence.justJoined ? (
-              <span className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[12px] font-semibold bg-amber-400/90 text-ink-950 backdrop-blur-md">
-                ✨ Just Joined
-              </span>
-            ) : null}
-          </div>
-        ) : null}
-
-        <div
-          className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none"
-          aria-hidden
-        />
-
-        <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5 text-white pointer-events-none">
-          <p className="text-[22px] font-bold flex items-center gap-1.5 leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
-            {profile.profileCode}
-            {profile.age ? `, ${profile.age}` : ""}
-            {profile.verified ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="#60a5fa" className="shrink-0">
-                <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
-              </svg>
-            ) : null}
-          </p>
-          <p className="mt-0.5 flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-wide text-white/85">
-            {countryCode ? <span aria-hidden className={`fi fi-${countryCode.toLowerCase()} rounded-[2px]`} /> : null}
-            {location || "—"}
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {profile.tribe ? (
-              <span className="px-3 py-1 rounded-full bg-rose-600 text-[11.5px] font-semibold text-white">{profile.tribe}</span>
-            ) : null}
-            {[profile.occupation, profile.religiousPractice, profile.ancestralRegion, profile.relocation]
-              .filter((v): v is string => Boolean(v))
-              .map((v, i) => (
-                <span
-                  key={`${v}-${i}`}
-                  className="px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-md text-[11.5px] font-medium text-white border border-white/20"
-                >
-                  {v}
-                </span>
-              ))}
-          </div>
-        </div>
-      </div>
+      <ProfileHero
+        profile={profile}
+        slides={slides}
+        showPhoto={showPhoto}
+        photoHidden={photoHidden}
+        fallbackSrc={avatar}
+        presence={presence}
+      />
 
       <div
         className={`max-w-lg mx-auto px-4 ${

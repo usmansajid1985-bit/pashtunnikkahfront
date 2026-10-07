@@ -13,10 +13,13 @@ export function ProfilePhotoSlider({
   slides,
   showPhoto,
   fallbackSrc,
+  arrows = false,
 }: {
   slides: ProfileSlide[];
   showPhoto: boolean;
   fallbackSrc: string;
+  /** Previous / next buttons at the sides, for pointer devices (desktop). */
+  arrows?: boolean;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const tap = useRef<{ x: number; y: number } | null>(null);
@@ -74,7 +77,7 @@ export function ProfilePhotoSlider({
               src={slide.url}
               alt=""
               draggable={false}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover object-[50%_20%]"
               style={showPhoto ? undefined : { filter: "blur(18px) saturate(0.85)" }}
             />
           </div>
@@ -95,6 +98,28 @@ export function ProfilePhotoSlider({
           ))}
         </div>
       ) : null}
+
+      {many && arrows
+        ? ([-1, 1] as const).map((dir) => {
+            const disabled = dir === -1 ? index === 0 : index === images.length - 1;
+            return (
+              <button
+                key={dir}
+                type="button"
+                onClick={() => goTo(index + dir)}
+                disabled={disabled}
+                aria-label={dir === -1 ? "Previous photo" : "Next photo"}
+                className={`absolute top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/65 disabled:opacity-0 ${
+                  dir === -1 ? "left-4" : "right-4"
+                }`}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                  <path d={dir === -1 ? "m15 18-6-6 6-6" : "m9 18 6-6-6-6"} />
+                </svg>
+              </button>
+            );
+          })
+        : null}
 
       {current?.status === "pending" ? (
         <span className="absolute top-3 right-3 z-20 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">

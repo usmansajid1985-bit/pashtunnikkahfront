@@ -4,6 +4,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { ProfileView } from "@/lib/profile";
 import { BrowseAppNav } from "@/components/browse/app-nav";
+import { ProfileHero } from "@/components/profile/profile-hero";
+import type { ProfileSlide } from "@/components/profile/profile-photo-slider";
 
 export function ProfileDesktop({
   profile,
@@ -19,6 +21,7 @@ export function ProfileDesktop({
   photoOverrideVisible,
   viewerCompat,
   presence,
+  slides,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -38,15 +41,19 @@ export function ProfileDesktop({
   viewerCompat?: ViewerCompat | null;
   /** Real presence for the member being viewed — one source of truth with Browse. */
   presence?: { online: boolean; label: string; justJoined?: boolean } | null;
+  /** All photos this viewer may see, main first. Defaults to the single profile photo. */
+  slides?: ProfileSlide[];
 }) {
   const isOwn = showEditTab;
-  const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const avatarSrc =
     photoOverrideUrl !== undefined ? photoOverrideUrl : profile.photoUrl;
   const avatar = avatarSrc || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const photoVisible =
     photoOverrideVisible !== undefined ? photoOverrideVisible : true;
   const photoHidden = photoOverrideVisible === false && !avatarSrc;
+  const heroSlides: ProfileSlide[] =
+    slides && slides.length > 0 ? slides : avatarSrc ? [{ id: "main", url: avatarSrc }] : [];
+  const outstanding = profile.checklist.filter((c) => !c.done);
 
   return (
     <div className={embedded ? "text-ink-900" : `min-h-screen bg-[#faf8f7] text-ink-900 ${hideNav ? "" : "lg:pl-60"}`}>
@@ -58,135 +65,73 @@ export function ProfileDesktop({
         />
       )}
 
+      {/* Same photo-led design as the phone, scaled up: one centred column. */}
       <main
         className={
           embedded
-            ? "px-4 sm:px-6 py-6"
-            : "max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]"
+            ? "px-4 sm:px-6 py-5"
+            : "max-w-4xl mx-auto px-5 sm:px-8 py-6 pb-[var(--pn-bottom-nav-h)]"
         }
       >
-        {showEditTab ? (
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div className="flex gap-8 text-[15px]">
-              <span className="pb-2 font-bold text-ink-950 border-b-[3px] border-rose-600">Preview</span>
-              <Link href="/profile/edit" className="pb-2 font-medium text-ink-700/50 hover:text-ink-900">
-                Edit
-              </Link>
-            </div>
+        {embedded ? null : (
+          <div className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <Link
-              href="/profile/edit"
-              className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700"
+              href={backHref}
+              className="justify-self-start inline-flex items-center gap-2 text-sm font-medium text-ink-700/70 hover:text-ink-950"
             >
-              Edit profile
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                <path d="M19 12H5M12 19l-7-7 7-7" />
+              </svg>
+              {backLabel}
             </Link>
-          </div>
-        ) : (
-          <div className="mb-6">
-            <p className="text-xs font-semibold uppercase tracking-widest text-rose-600">Member profile</p>
-            <h1 className="mt-1 text-2xl font-bold text-ink-950">{profile.profileCode}</h1>
+            {showEditTab ? (
+              <div className="flex gap-10 text-[15px]">
+                <span className="pb-2 font-bold text-ink-950 border-b-[3px] border-ink-950">Preview</span>
+                <Link href="/profile/edit" className="pb-2 font-medium text-ink-700/50 hover:text-ink-900">
+                  Edit
+                </Link>
+              </div>
+            ) : (
+              <span />
+            )}
+            <span />
           </div>
         )}
 
-        <div className={embedded ? "space-y-6" : "grid lg:grid-cols-2 gap-6 items-start"}>
-          {/* Left */}
-          <div className="space-y-6">
-            <div className="card p-6" style={{ background: "linear-gradient(180deg,#fdf6f3,#ffffff)" }}>
-              <div className="flex items-start gap-5">
-                <div className="shrink-0 w-24">
-                  {photoHidden ? (
-                    <div className="w-24 h-24 rounded-2xl bg-ink-900/5 flex items-center justify-center text-center text-[10px] font-semibold text-ink-700/50 px-2">
-                      Photo hidden until you match
-                    </div>
-                  ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={avatar}
-                      alt=""
-                      className="w-24 h-24 rounded-2xl object-cover"
-                      style={photoVisible ? undefined : { filter: "blur(8px) saturate(0.85)" }}
-                    />
-                  )}
-                  {!isOwn && presence ? (
-                    <div className="mt-2 flex flex-col gap-0.5">
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-medium leading-tight ${
-                          presence.online ? "text-green-600" : "text-ink-700/55"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 shrink-0 rounded-full ${
-                            presence.online ? "bg-green-500" : "bg-ink-700/35"
-                          }`}
-                        />
-                        {presence.label}
-                      </span>
-                      {presence.justJoined ? (
-                        <span className="text-[10px] font-medium leading-tight text-amber-700">
-                          ✨ Just Joined
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="pt-1 min-w-0">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <h1 className="text-xl font-bold text-ink-950">{profile.profileCode}</h1>
-                    {profile.verified ? (
-                      <svg width="17" height="17" viewBox="0 0 24 24" fill="#2563eb">
-                        <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
-                      </svg>
-                    ) : null}
-                  </div>
-                  <p className="mt-0.5 text-sm font-medium text-ink-950">{profile.fullName}</p>
-                  <p className="mt-1 text-sm text-ink-700">
-                    {[profile.age ? `${profile.age} years` : null, location].filter(Boolean).join(" · ") || "—"}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {profile.maritalStatus ? (
-                      <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold">
-                        {profile.maritalStatus}
-                      </span>
-                    ) : null}
-                    {profile.pashto && profile.pashto !== "None" ? (
-                      <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold">
-                        {profile.pashto} Pashto
-                      </span>
-                    ) : null}
-                    {profile.plan === "gold" && !profile.hideGoldBadge ? (
-                      <span className="px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-semibold">
-                        Gold
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
+        <ProfileHero
+          profile={profile}
+          slides={heroSlides}
+          showPhoto={photoVisible}
+          photoHidden={photoHidden}
+          fallbackSrc={avatar}
+          presence={isOwn ? null : presence}
+          size={embedded ? "panel" : "wide"}
+        />
 
-              <div className="mt-6 grid grid-cols-4 rounded-2xl bg-white border border-ink-900/8 divide-x divide-ink-900/8 overflow-hidden">
-                {[
-                  { label: "Height", value: profile.height },
-                  { label: "Weight", value: profile.weight },
-                  { label: "Build", value: profile.build },
-                  { label: "Marital", value: profile.maritalStatus },
-                ].map((s) => (
-                  <div key={s.label} className="p-3 text-center">
-                    <p className="text-[11px] text-ink-700/60">{s.label}</p>
-                    <p className="text-sm font-semibold text-ink-950 mt-1 line-clamp-2">{s.value || "—"}</p>
-                  </div>
-                ))}
-              </div>
+        <div className="mt-4 space-y-4">
+          {profile.plan === "gold" && !profile.hideGoldBadge ? (
+            <div>
+              <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 text-[13px] font-medium">
+                Gold
+              </span>
             </div>
+          ) : null}
 
-            {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
+          {!isOwn && footer ? (
+            <div className="card p-6">
+              <h2 className="text-lg font-bold text-ink-950 mb-3">Connect</h2>
+              {footer}
+            </div>
+          ) : null}
 
-            <ProfileSections profile={profile} card />
-          </div>
+          {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
 
-          {/* Right */}
-          <div className="space-y-6">
-            {isOwn ? (
+          <ProfileSections profile={profile} card />
+
+          {isOwn ? (
             <div className="card p-6">
               <div className="flex items-center justify-between">
-                <h2 className="font-bold text-ink-950">Profile Completeness</h2>
+                <h2 className="text-lg font-bold text-ink-950">Profile completeness</h2>
                 <span className="text-rose-600 font-bold">{profile.completeness}%</span>
               </div>
               <div className="mt-3 h-1.5 rounded-full bg-ink-900/8 overflow-hidden">
@@ -198,108 +143,44 @@ export function ProfileDesktop({
                   }}
                 />
               </div>
-              <div className="mt-5 space-y-0.5">
-                {profile.checklist.map((c) => (
-                  <div key={c.label} className="detail-row">
-                    <span className="flex items-center gap-2.5 text-sm text-ink-900">
-                      {c.done ? (
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.2">
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                      ) : (
+              {outstanding.length > 0 ? (
+                <div className="mt-4 space-y-0.5">
+                  {outstanding.map((c) => (
+                    <div key={c.label} className="detail-row">
+                      <span className="flex items-center gap-2.5 text-sm text-ink-900">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2">
                           <circle cx="12" cy="12" r="9" />
                         </svg>
-                      )}
-                      {c.label}
-                    </span>
-                    {!c.done && showEditTab && c.action === "edit" ? (
-                      <Link href="/profile/edit" className="text-xs font-semibold" style={{ color: "#c8952b" }}>
-                        Complete
-                      </Link>
-                    ) : null}
-                    {!c.done && c.action === "review" ? (
-                      <span className="text-xs font-semibold text-ink-700/50">Pending review</span>
-                    ) : null}
-                    {c.done && c.action === "review" ? (
-                      <span className="text-xs font-semibold text-emerald-700">Verified</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+                        {c.label}
+                      </span>
+                      {c.action === "edit" ? (
+                        <Link href="/profile/edit" className="text-xs font-semibold" style={{ color: "#c8952b" }}>
+                          Complete
+                        </Link>
+                      ) : null}
+                      {c.action === "review" ? (
+                        <span className="text-xs font-semibold text-ink-700/50">Pending review</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {!profile.culturalVerified ? (
                 <p className="mt-4 text-[12px] text-ink-700/60 leading-relaxed">
                   Cultural verification is confirmed by the PN team (Pashtun / community authenticity). Filling
                   your profile does not flip this automatically — it does not reduce your completeness %.
                 </p>
               ) : null}
-              {showEditTab ? (
-                <Link
-                  href="/profile/edit"
-                  className="mt-5 block text-center py-3 rounded-full text-white font-semibold text-sm"
-                  style={{ background: "linear-gradient(135deg,#aa1945,#d14f82)" }}
-                >
-                  {profile.completeness >= 100 ? "Edit my profile" : "Complete my profile"}
-                </Link>
-              ) : null}
+              <Link
+                href="/profile/edit"
+                className="mt-5 block text-center py-3 rounded-full text-white font-semibold text-sm"
+                style={{ background: "linear-gradient(135deg,#aa1945,#d14f82)" }}
+              >
+                {profile.completeness >= 100 ? "Edit my profile" : "Complete my profile"}
+              </Link>
             </div>
-            ) : footer ? (
-              <div className="card p-6">
-                <h2 className="font-bold text-ink-950 mb-3">Connect</h2>
-                {footer}
-              </div>
-            ) : null}
-
-            <div className="card p-6">
-              <h2 className="font-bold text-ink-950 mb-1">Quick Facts</h2>
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                {[
-                  { label: "Religious Practice", value: profile.religiousPractice },
-                  { label: "Pashto Ability", value: profile.pashto },
-                  { label: "Ancestral Region", value: profile.ancestralRegion },
-                  { label: "Tribe", value: profile.tribe },
-                  { label: "Relocation", value: profile.relocation },
-                  { label: "Location", value: location },
-                ].map((f) => (
-                  <div key={f.label} className="rounded-xl bg-[#faf8f7] border border-ink-900/6 px-3 py-3">
-                    <p className="text-[11px] text-ink-700/55 font-semibold uppercase tracking-wide">{f.label}</p>
-                    <p className="mt-1 text-sm font-semibold text-ink-950">{f.value || "—"}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          ) : null}
         </div>
-
-        {embedded ? null : (
-          <div className="mt-6 card p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="flex items-center gap-2.5 text-sm text-ink-700 text-center sm:text-left">
-              <svg className="shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
-                <rect x="4" y="10" width="16" height="10" rx="2" />
-                <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-              </svg>
-              <span>
-                {isOwn ? (
-                  <>
-                    <strong className="text-ink-950">Your contact information is never shared publicly.</strong> It is
-                    kept secure and only used for verification.
-                  </>
-                ) : (
-                  <>
-                    <strong className="text-ink-950">Contact details stay private.</strong> Send a match request to start
-                    a conversation.
-                  </>
-                )}
-              </span>
-            </p>
-            <Link
-              href={backHref}
-              className="shrink-0 px-5 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold hover:border-rose-300"
-            >
-              {backLabel}
-            </Link>
-          </div>
-        )}
       </main>
     </div>
   );
