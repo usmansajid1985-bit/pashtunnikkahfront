@@ -1,5 +1,5 @@
 import { runRequestLifecycleJobs } from "@/lib/request-lifecycle";
-import { processWaliReminders } from "@/lib/wali-reminders";
+import { processFamilyReminders } from "@/lib/family-flow";
 import { processUnreadMessageReminders } from "@/lib/notification-email";
 import { NextResponse } from "next/server";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 /**
- * Cron endpoint: request expiry + refunds, request reminders, wali reminders, email backups.
+ * Cron endpoint: request expiry + refunds, request reminders, Involve Family reminders, email backups.
  * Vercel Cron calls it with GET and `Authorization: Bearer $CRON_SECRET`; INTERNAL_API_SECRET
  * is accepted too so it can be triggered by hand or by another scheduler.
  */
@@ -19,13 +19,16 @@ async function run(req: Request) {
   }
 
   const requests = await runRequestLifecycleJobs();
-  const wali = await processWaliReminders();
+  const family = await processFamilyReminders().catch((err) => {
+    console.error("[family] reminders failed", err);
+    return { checked: 0, advanced: 0 };
+  });
   const messageReminders = await processUnreadMessageReminders().catch(() => ({ sent: 0 }));
 
   return NextResponse.json({
     ok: true,
     requests,
-    wali,
+    family,
     messageReminders,
     ranAt: new Date().toISOString(),
   });

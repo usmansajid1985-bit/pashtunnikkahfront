@@ -12,14 +12,23 @@ import {
   useTransition,
 } from "react";
 import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
-import { FamilyStageBar } from "@/components/chat/family-stage-bar";
+import {
+  FamilyIcon,
+  FamilyModal,
+  FamilyPromptCard,
+  FamilyStatusLine,
+  WaliContactCard,
+  familyEvents,
+  useFamilyFlow,
+  type FamilyEvent,
+  type FamilyModalState,
+} from "@/components/chat/family-involvement";
 import { outboxAdd, outboxAll, outboxFor, outboxRemove, readDrafts, saveDraft } from "@/lib/chat-outbox";
 import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } from "@/lib/chat";
 import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
-import { WaliHandoverPanel } from "@/components/chat/wali-handover-panel";
 import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
@@ -173,8 +182,13 @@ function MessageBubble({
   onCopy,
   onReport,
   onRetry,
+  waliContacted,
+  onWaliAction,
 }: {
   onRetry?: (m: ChatMessageDTO) => void;
+  /** Wali contact card only: he has confirmed contacting her wali. */
+  waliContacted?: boolean;
+  onWaliAction?: () => void;
   msg: ChatMessageDTO;
   mine: boolean;
   peerName: string;
@@ -293,26 +307,8 @@ function MessageBubble({
         }}
       >
         {msg.type === "contact_card" && msg.card ? (
-          <div className="rounded-[18px] rounded-br-md sm:min-w-[220px] bg-white border border-indigo-100 shadow-sm px-4 py-3.5">
-            <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-indigo-600">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="5" width="18" height="14" rx="2" />
-                <circle cx="9" cy="10" r="2" />
-              </svg>
-              Wali Contact Card
-            </p>
-            <p className="mt-1.5 font-bold text-ink-950">{msg.card.name}</p>
-            {msg.card.contact ? (
-              <a
-                href={`https://wa.me/${msg.card.contact.replace(/[^\d]/g, "")}`}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 inline-block text-rose-600 font-semibold text-sm"
-              >
-                {msg.card.contact}
-              </a>
-            ) : null}
-            {msg.card.email ? <p className="mt-0.5 text-xs text-ink-700/55">{msg.card.email}</p> : null}
+          <div className="w-[min(280px,74vw)]">
+            <WaliContactCard wali={msg.card} contacted={waliContacted} onAction={mine ? undefined : onWaliAction} />
             {mine ? (
               <span className="float-right mt-1">
                 <DoubleCheck read={msg.isRead} />
@@ -471,7 +467,6 @@ export function ChatApp({
   const [photoVisible, setPhotoVisible] = useState(false);
   const [canSharePhoto, setCanSharePhoto] = useState(false);
   const [isFemaleViewer, setIsFemaleViewer] = useState(false);
-  const [contactCardBusy, setContactCardBusy] = useState(false);
   const [peerProfile, setPeerProfile] = useState<ProfileView | null>(null);
   const [photoOnceStatus, setPhotoOnceStatus] = useState<PhotoOnceStatus>("none");
   const [canSendPhotoOnce, setCanSendPhotoOnce] = useState(false);
@@ -483,13 +478,9 @@ export function ChatApp({
     "none" | "shared" | "active" | "expired"
   >("none");
   const [commMode, setCommMode] = useState<string>("standard");
-  const [wali, setWali] = useState<{
-    name: string;
-    contact: string | null;
-    email: string | null;
-  } | null>(null);
   const [shareConfirm, setShareConfirm] = useState(false);
-  const [headerMenu, setHeaderMenu] = useState<"wali" | "photo" | "more" | null>(null);
+  const [headerMenu, setHeaderMenu] = useState<"photo" | "more" | null>(null);
+  const [familyModal, setFamilyModal] = useState<FamilyModalState>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const [blockArmed, setBlockArmed] = useState(false);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -600,7 +591,6 @@ export function ChatApp({
     emitTyping,
     markRead,
     toggleReaction,
-    sendContactCard,
     on,
   } = useChatSocket(true, userId);
 
@@ -733,9 +723,9 @@ export function ChatApp({
         setCanSharePhoto(Boolean(data.canSharePhoto));
         setIsFemaleViewer(Boolean(data.isFemaleViewer));
         setCommMode(data.communicationMode || "standard");
-        setWali(data.wali || null);
         setShareConfirm(false);
         setHeaderMenu(null);
+        setFamilyModal(null);
         setPeerProfile(data.peerProfile || null);
         setPhotoOnceStatus(data.photoOnceStatus || "none");
         setCanSendPhotoOnce(Boolean(data.canSendPhotoOnce));
@@ -966,10 +956,29 @@ export function ChatApp({
     };
   }, [activeId, leaveThread]);
 
+  const { family, busy: familyBusy, act: familyAct } = useFamilyFlow(activeId, !matchEnded);
+  const noteWaliAction = useCallback(() => void familyAct("contact_action"), [familyAct]);
+
   const grouped = useMemo(() => {
-    const items: { type: "day" | "msg" | "unread"; key: string; iso?: string; msg?: ChatMessageDTO }[] = [];
+    const items: {
+      type: "day" | "msg" | "unread" | "family";
+      key: string;
+      iso?: string;
+      msg?: ChatMessageDTO;
+      event?: FamilyEvent;
+    }[] = [];
+    // Family status lines sit in the conversation at the time they happened. Anything older than
+    // the loaded page waits until those messages are scrolled into view.
+    const firstAt = messages[0] ? new Date(messages[0].createdAt).getTime() : 0;
+    const events = familyEvents(matchEnded ? null : family)
+      .filter((e) => !hasMoreOlder || new Date(e.at).getTime() >= firstAt)
+      .sort((a, b) => a.at.localeCompare(b.at));
     let lastDay = "";
     for (const msg of messages) {
+      while (events.length && events[0].at <= msg.createdAt) {
+        const event = events.shift()!;
+        items.push({ type: "family", key: event.key, event });
+      }
       // Group by the member's LOCAL calendar day (C07), not the UTC date.
       const day = new Date(msg.createdAt).toDateString();
       if (day !== lastDay) {
@@ -979,8 +988,15 @@ export function ChatApp({
       if (unreadMarker && msg.id === unreadMarker.id) items.push({ type: "unread", key: `u-${msg.id}` });
       items.push({ type: "msg", key: msg.id, msg });
     }
+    for (const event of events) items.push({ type: "family", key: event.key, event });
     return items;
-  }, [messages, unreadMarker]);
+  }, [messages, unreadMarker, family, matchEnded, hasMoreOlder]);
+
+  // A new status line or prompt at the foot of the chat shouldn't land below the fold.
+  const familyMark = `${family?.card ?? ""}|${family?.request.state ?? ""}|${family?.contacted ?? ""}`;
+  useEffect(() => {
+    if (atBottomRef.current) scrollToBottom(true);
+  }, [familyMark, scrollToBottom]);
 
 
   // Message-list scroll management, run before paint on every messages change:
@@ -1360,34 +1376,6 @@ export function ChatApp({
     toastTimer.current = setTimeout(() => setToast(null), 2200);
   }
 
-  async function sendContactCardHandler() {
-    if (!activeId || contactCardBusy) return;
-    setContactCardBusy(true);
-    try {
-      const viaSocket = await sendContactCard(activeId);
-      if (viaSocket.message) {
-        // The server also broadcasts this over "message:new" to everyone in the thread room,
-        // including us — let that (deduped by id in onNew) add it, so we don't double-add here.
-        scrollToBottom(true);
-        return;
-      }
-      if (viaSocket.error && viaSocket.error !== "offline") {
-        showToast(viaSocket.error);
-        return;
-      }
-      const res = await fetch(`/api/chats/${activeId}/contact-card`, { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) {
-        showToast(data.error || "Could not send contact card");
-        return;
-      }
-      setMessages((prev) => [...prev, data.message]);
-      scrollToBottom(true);
-    } finally {
-      setContactCardBusy(false);
-    }
-  }
-
   // A reaction on the newest message makes it taller — stay pinned so the reaction isn't cut off.
   const lastReactionCount = messages[messages.length - 1]?.reactions?.length ?? 0;
   useEffect(() => {
@@ -1648,16 +1636,21 @@ export function ChatApp({
                     {!matchEnded ? (
                       <button
                         type="button"
-                        onClick={() => setHeaderMenu((m) => (m === "wali" ? null : "wali"))}
-                        className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
-                          headerMenu === "wali" ? "bg-indigo-50 text-indigo-700" : "text-ink-700"
+                        onClick={() => {
+                          setHeaderMenu(null);
+                          setFamilyModal({ step: "main", via: "manual" });
+                        }}
+                        disabled={!family}
+                        className={`relative w-10 h-10 flex items-center justify-center rounded-full transition disabled:opacity-40 ${
+                          family?.shared ? "bg-emerald-50 text-emerald-700" : "text-ink-950 hover:bg-ink-900/5"
                         }`}
-                        aria-label="Wali handover"
-                        title="Wali"
+                        aria-label="Involve family"
+                        title="Involve family"
                       >
-                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 3 4 6v6c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6l-8-3Z" />
-                        </svg>
+                        <FamilyIcon />
+                        {family && !family.shared && family.request.state === "pending" ? (
+                          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E12D72] ring-2 ring-white" />
+                        ) : null}
                       </button>
                     ) : null}
                     {!matchEnded ? (
@@ -1729,7 +1722,7 @@ export function ChatApp({
                     />
                   ) : null}
 
-                  {/* Wali / Photo actions live here as popovers to keep the composer uncluttered */}
+                  {/* Photo / More actions live here as popovers to keep the composer uncluttered */}
                   {headerMenu ? (
                     <div
                       role={headerMenu === "more" ? "menu" : undefined}
@@ -1819,18 +1812,6 @@ export function ChatApp({
                             )}
                           </div>
                         ) : null}
-                        {headerMenu === "wali" ? (
-                          <div className="max-h-[70vh] overflow-y-auto p-1.5">
-                            <WaliHandoverPanel
-                              requestId={activeId}
-                              isFemaleViewer={isFemaleViewer}
-                              wali={wali}
-                              onShareContactCard={async () => {
-                                await sendContactCardHandler();
-                              }}
-                            />
-                          </div>
-                        ) : null}
                         {headerMenu === "photo" && activeId ? (
                           <PrivatePhotoShare
                             requestId={activeId}
@@ -1844,18 +1825,6 @@ export function ChatApp({
                     </div>
                   ) : null}
                 </div>
-
-                {/* W10: family readiness stage — visible to both members, live. */}
-                {!matchEnded && activeId ? (
-                  <FamilyStageBar
-                    key={activeId}
-                    requestId={activeId}
-                    peerCode={displayName}
-                    isFemaleViewer={isFemaleViewer}
-                    onOpenWaliPanel={() => setHeaderMenu("wali")}
-                    onEndMatch={() => setShowEndConfirm(true)}
-                  />
-                ) : null}
 
                 {/* C11/C12: both panes stay mounted on a finger-tracking track — switching never
                     reloads the chat, loses the draft or resets the scroll position. */}
@@ -1927,6 +1896,8 @@ export function ChatApp({
                               </span>
                               <span className="h-px flex-1 bg-rose-200" />
                             </div>
+                          ) : item.type === "family" && item.event ? (
+                            <FamilyStatusLine key={item.key} kind={item.event.kind} peerCode={displayName} />
                           ) : item.msg ? (
                             <MessageBubble
                               key={item.key}
@@ -1942,6 +1913,8 @@ export function ChatApp({
                               onCopy={(m) => void copyMessage(m)}
                               onReport={(m) => reportMessage(m)}
                               onRetry={(m) => void retryMessage(m)}
+                              waliContacted={Boolean(family?.contacted)}
+                              onWaliAction={noteWaliAction}
                             />
                           ) : null
                         )}
@@ -2030,6 +2003,16 @@ export function ChatApp({
                             </div>
                           ) : null}
 
+                          {family?.card && !familyModal ? (
+                            <FamilyPromptCard
+                              family={family}
+                              busy={familyBusy}
+                              act={familyAct}
+                              onShare={(via) => setFamilyModal({ step: "confirm", via })}
+                              onInvolve={() => setFamilyModal({ step: "main", via: "auto" })}
+                            />
+                          ) : null}
+
                           {chatWarning ? (
                             <p className="mb-2 text-[13px] font-semibold text-red-600 leading-snug">
                               {chatWarning}
@@ -2108,6 +2091,17 @@ export function ChatApp({
                       )}
                     </div>
 
+                    {familyModal && family && !matchEnded ? (
+                      <FamilyModal
+                        family={family}
+                        state={familyModal}
+                        busy={familyBusy}
+                        act={familyAct}
+                        onStep={setFamilyModal}
+                        onClose={() => setFamilyModal(null)}
+                        onWaliAction={noteWaliAction}
+                      />
+                    ) : null}
                     {showEndConfirm ? (
                       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
                         <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">

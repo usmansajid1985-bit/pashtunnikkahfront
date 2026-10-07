@@ -232,15 +232,6 @@ export function useChatSocket(enabled = true, userId?: string) {
     []
   );
 
-  const sendContactCard = useCallback(async (requestId: string) => {
-    try {
-      const { ok, data } = await postJson(`/api/chats/${requestId}/contact-card`);
-      return ok && data?.message ? { message: data.message as ChatMessageDTO } : { error: data?.error };
-    } catch {
-      return { error: "offline" };
-    }
-  }, []);
-
   const on = useCallback((event: string, handler: (payload: never) => void) => {
     return realtimeManager.on(event, handler as EventHandler);
   }, []);
@@ -254,7 +245,6 @@ export function useChatSocket(enabled = true, userId?: string) {
     emitTyping,
     markRead,
     toggleReaction,
-    sendContactCard,
     on,
   };
 }

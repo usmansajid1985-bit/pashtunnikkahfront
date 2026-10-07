@@ -14,7 +14,6 @@ import {
   threadMetaFor,
 } from "@/lib/chat";
 import { ChatBlockedError } from "@/lib/moderation";
-import { processWaliReminders } from "@/lib/wali-reminders";
 import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 import { threadTopic } from "@/lib/realtime-topics";
 import { signedPhotoUrl, saveBlurredVariantFromUrl } from "@/lib/photos";
@@ -100,10 +99,15 @@ export async function GET(
     const meta = await threadMetaFor(req, userId);
     if (!meta.privateChat) return NextResponse.json({ messages: [], hasMore: false });
     const page = await loadMessagePage(requestId, before, limit);
+    if (matchEnded) {
+      page.messages = page.messages.map((m) =>
+        m.type === "contact_card" && m.card && m.senderId !== session.userId
+          ? { ...m, card: { ...m.card, contact: null, email: null } }
+          : m
+      );
+    }
     return NextResponse.json(page);
   }
-
-  void processWaliReminders(5).catch(() => undefined);
 
   const peerId = await peerUserId(req, userId);
   const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
@@ -143,6 +147,16 @@ export async function GET(
       }
     : null;
 
+  // Once a match has ended, the other member no longer gets the wali's phone / email from the
+  // card left in the history — only the fact that it was shared.
+  const visibleMessages = matchEnded
+    ? messages.map((m) =>
+        m.type === "contact_card" && m.card && m.senderId !== session.userId
+          ? { ...m, card: { ...m.card, contact: null, email: null } }
+          : m
+      )
+    : messages;
+
   return NextResponse.json({
     hasMore,
     requestId: requestId.toString(),
@@ -150,7 +164,7 @@ export async function GET(
     realtimeTopic: threadTopic(requestId.toString()),
     peer,
     peerProfile: peerProfileSafe,
-    messages,
+    messages: visibleMessages,
     matchStatus: req.status,
     matchEnded,
     endedAt: req.ended_at?.toISOString() ?? null,

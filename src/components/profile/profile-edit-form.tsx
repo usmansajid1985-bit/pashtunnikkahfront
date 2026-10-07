@@ -19,7 +19,7 @@ import {
   textQualityIssue,
   wordCount,
 } from "@/lib/signup";
-import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I } from "@/components/signup/choice-tile";
+import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
@@ -692,7 +692,7 @@ export function ProfileEditForm({
                 key={v}
                 label={v}
                 tone={(["mint", "peach", "rose"] as const)[i]}
-                icon={[I.ban, I.clock, I.waves][i]}
+                icon={LIFESTYLE_ICONS.smoking[i]}
                 showCheck
                 selected={form.smoking === v}
                 onClick={() => patch("smoking", v)}
@@ -706,7 +706,7 @@ export function ProfileEditForm({
                 key={v}
                 label={v}
                 tone={(["mint", "peach", "rose"] as const)[i]}
-                icon={[I.ban, I.clock, I.waves][i]}
+                icon={LIFESTYLE_ICONS.vaping[i]}
                 showCheck
                 selected={form.vaping === v}
                 onClick={() => patch("vaping", v)}

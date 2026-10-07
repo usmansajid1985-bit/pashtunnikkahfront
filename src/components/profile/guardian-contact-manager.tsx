@@ -6,6 +6,7 @@ export function GuardianContactManager() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [email, setEmail] = useState("");
+  const [relation, setRelation] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -19,6 +20,7 @@ export function GuardianContactManager() {
           setName(d.guardian.name || "");
           setContact(d.guardian.contact || "");
           setEmail(d.guardian.email || "");
+          setRelation(d.guardian.relation || "");
         }
       })
       .finally(() => setLoading(false));
@@ -32,7 +34,12 @@ export function GuardianContactManager() {
       const res = await fetch("/api/profile/guardian", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), contact: contact.trim(), email: email.trim() }),
+        body: JSON.stringify({
+          name: name.trim(),
+          contact: contact.trim(),
+          email: email.trim(),
+          relation: relation.trim(),
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -83,7 +90,17 @@ export function GuardianContactManager() {
             type="tel"
           />
         </div>
-        <div className="sm:col-span-2">
+        <div>
+          <label className="block text-xs font-semibold mb-1">Relationship to you (optional)</label>
+          <input
+            className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
+            value={relation}
+            onChange={(e) => setRelation(e.target.value)}
+            placeholder="e.g. Father"
+            maxLength={64}
+          />
+        </div>
+        <div>
           <label className="block text-xs font-semibold mb-1">Email (optional)</label>
           <input
             className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"

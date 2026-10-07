@@ -1,4 +1,5 @@
 import { closePendingWithRefund } from "@/lib/matches";
+import { cancelFamilyFlow } from "@/lib/family-flow";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
   // K06 / Q12: both sides' open chats and request lists update immediately.
   const userRooms = [`user:${me.toString()}`, `user:${peerUserId.toString()}`];
   for (const chat of liveChats) {
+    await cancelFamilyFlow(chat.id);
     broadcastChat("match:closed", [`thread:${chat.id.toString()}`, ...userRooms], {
       requestId: chat.id.toString(),
       byUserId: session.userId,

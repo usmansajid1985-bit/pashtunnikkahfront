@@ -148,5 +148,9 @@ export async function endMatchRequest(opts: {
     },
   });
 
+  // Pending family request, automatic reminders and wali-contact prompts all stop with the match.
+  const { cancelFamilyFlow } = await import("@/lib/family-flow");
+  await cancelFamilyFlow(opts.requestId);
+
   return { endedAt: now, reason: opts.reason };
 }

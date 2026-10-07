@@ -28,7 +28,7 @@ import {
   salahShortLabel,
   type SignupData,
 } from "@/lib/signup";
-import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile, I } from "@/components/signup/choice-tile";
+import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
@@ -850,9 +850,9 @@ export function SignupWizard() {
                 <ChoiceGrid count={3}>
                   {(
                     [
-                      { v: "Never", tone: "mint" as const, icon: I.ban },
-                      { v: "Occasionally", tone: "peach" as const, icon: I.clock },
-                      { v: "Regularly", tone: "rose" as const, icon: I.waves },
+                      { v: "Never", tone: "mint" as const, icon: LIFESTYLE_ICONS.smoking[0] },
+                      { v: "Occasionally", tone: "peach" as const, icon: LIFESTYLE_ICONS.smoking[1] },
+                      { v: "Regularly", tone: "rose" as const, icon: LIFESTYLE_ICONS.smoking[2] },
                     ] as const
                   ).map((o) => (
                     <ChoiceTile
@@ -869,9 +869,9 @@ export function SignupWizard() {
                 <ChoiceGrid count={3}>
                   {(
                     [
-                      { v: "Never", tone: "mint" as const, icon: I.ban },
-                      { v: "Occasionally", tone: "peach" as const, icon: I.clock },
-                      { v: "Regularly", tone: "rose" as const, icon: I.waves },
+                      { v: "Never", tone: "mint" as const, icon: LIFESTYLE_ICONS.vaping[0] },
+                      { v: "Occasionally", tone: "peach" as const, icon: LIFESTYLE_ICONS.vaping[1] },
+                      { v: "Regularly", tone: "rose" as const, icon: LIFESTYLE_ICONS.vaping[2] },
                     ] as const
                   ).map((o) => (
                     <ChoiceTile

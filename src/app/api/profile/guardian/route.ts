@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { ensureFamilySchema } from "@/lib/family-flow";
 
 export const dynamic = "force-dynamic";
+
+async function relationOf(profileId: bigint): Promise<string | null> {
+  await ensureFamilySchema();
+  const rows = await prisma
+    .$queryRawUnsafe<{ relation: string | null }[]>(
+      `SELECT relation FROM profile_guardians WHERE profile_id = $1`,
+      profileId
+    )
+    .catch(() => []);
+  return rows[0]?.relation ?? null;
+}
 
 function serialize(g: {
   name: string | null;
@@ -10,10 +22,11 @@ function serialize(g: {
   email: string | null;
   notes: string | null;
   updated_at: Date;
-} | null) {
+} | null, relation: string | null = null) {
   if (!g) return null;
   return {
     name: g.name,
+    relation,
     contact: g.contact,
     email: g.email,
     notes: g.notes,
@@ -36,7 +49,7 @@ export async function GET() {
   if (!profile) return NextResponse.json({ guardian: null });
 
   const guardian = await prisma.profile_guardians.findUnique({ where: { profile_id: profile.id } });
-  return NextResponse.json({ guardian: serialize(guardian) });
+  return NextResponse.json({ guardian: serialize(guardian, await relationOf(profile.id)) });
 }
 
 export async function POST(req: Request) {
@@ -56,6 +69,7 @@ export async function POST(req: Request) {
   const name = String(body.name ?? "").trim().slice(0, 255) || null;
   const contact = String(body.contact ?? "").trim().slice(0, 128) || null;
   const email = String(body.email ?? "").trim().slice(0, 255) || null;
+  const relation = String(body.relation ?? "").trim().slice(0, 64) || null;
   if (!name) return NextResponse.json({ error: "Enter the wali's name." }, { status: 400 });
   if (!contact) return NextResponse.json({ error: "Enter a contact phone number." }, { status: 400 });
 
@@ -73,5 +87,12 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ guardian: serialize(guardian) });
+  await ensureFamilySchema();
+  await prisma.$executeRawUnsafe(
+    `UPDATE profile_guardians SET relation = $1 WHERE profile_id = $2`,
+    relation,
+    profile.id
+  );
+
+  return NextResponse.json({ guardian: serialize(guardian, relation) });
 }

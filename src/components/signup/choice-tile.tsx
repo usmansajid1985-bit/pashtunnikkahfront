@@ -223,6 +223,27 @@ const babyFace = (
   </>
 );
 
+function LifestyleIcon({ name }: { name: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={`/icons/lifestyle/${name}.webp`} alt="" width={28} height={28} className="block" />
+  );
+}
+
+/** Health & lifestyle tiles (signup + Edit Profile): Never / Occasionally / Regularly. */
+export const LIFESTYLE_ICONS = {
+  smoking: [
+    <LifestyleIcon key="n" name="smoking-never" />,
+    <LifestyleIcon key="o" name="occasionally" />,
+    <LifestyleIcon key="r" name="smoking-regularly" />,
+  ],
+  vaping: [
+    <LifestyleIcon key="n" name="vaping-never" />,
+    <LifestyleIcon key="o" name="occasionally" />,
+    <LifestyleIcon key="r" name="vaping-regularly" />,
+  ],
+};
+
 export const I = {
   /* —— Marital status —— */
   neverMarried: (

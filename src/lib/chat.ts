@@ -23,6 +23,7 @@ export type MessageType = "text" | "contact_card";
 
 export type ContactCardData = {
   name: string;
+  relation?: string | null;
   contact: string | null;
   email: string | null;
 };
@@ -591,14 +592,17 @@ export async function createMessage(opts: {
   return serializeMessage(created, replyTo, clientId ?? undefined);
 }
 
+/**
+ * The wali contact card that lands in the chat when she shares her wali's details. Only called
+ * by the Involve Family flow (lib/family-flow.ts), which owns who may share and when, and sends
+ * its own notification.
+ */
 export async function createContactCardMessage(opts: {
   requestId: bigint;
   senderId: bigint;
   receiverId: bigint;
+  wali: { name: string; relation: string | null; contact: string | null; email: string | null };
 }) {
-  const match = await prisma.match_requests.findUnique({ where: { id: opts.requestId } });
-  if (!match || match.status !== "accepted") throw new Error("Chat not found");
-
   const { isBlockedBetween } = await import("@/lib/blocking");
   if (await isBlockedBetween(opts.senderId, opts.receiverId)) {
     throw new Error("This conversation is no longer available.");
@@ -606,21 +610,18 @@ export async function createContactCardMessage(opts: {
 
   const senderProfile = await prisma.profiles.findUnique({
     where: { user_id: opts.senderId },
-    select: { gender: true, status: true },
+    select: { status: true },
   });
   if (senderProfile?.status !== "approved") {
     throw new Error("Your profile must be approved before you can do this.");
   }
-  if (!(senderProfile?.gender || "").toLowerCase().startsWith("f")) {
-    throw new Error("Only the sister can send a wali contact card.");
-  }
 
-  const wali = await loadWaliContact(opts.senderId);
-  if (!wali?.contact) {
-    throw new Error("Add your wali's phone number in Profile → Edit before sending a contact card.");
-  }
-
-  const card: ContactCardData = { name: wali.name, contact: wali.contact, email: wali.email };
+  const card: ContactCardData = {
+    name: opts.wali.name,
+    relation: opts.wali.relation,
+    contact: opts.wali.contact,
+    email: opts.wali.email,
+  };
   const id = await nextMessageId();
   const created = await prisma.messages.create({
     data: {
@@ -628,33 +629,13 @@ export async function createContactCardMessage(opts: {
       request_id: opts.requestId,
       sender_id: opts.senderId,
       receiver_id: opts.receiverId,
-      body: `📇 Wali contact card: ${wali.name}`,
+      body: "Wali contact shared",
       is_read: false,
       message_type: "contact_card",
       metadata: card,
       created_at: new Date(),
     },
   });
-
-  await prisma.match_requests.update({
-    where: { id: opts.requestId },
-    data: { updated_at: new Date() },
-  });
-
-  const { profileCodeOf: codeOf } = await import("@/lib/notifications");
-  const cardSenderCode = await codeOf(opts.senderId);
-  void sendPushNotification(opts.receiverId, {
-    title: `${cardSenderCode} sent you a message`,
-    body: "1 unread message",
-    url: `/chats/${opts.requestId}`,
-    tag: `message-${opts.requestId}`,
-    type: "message",
-    actorUserId: opts.senderId,
-    relatedRequestId: opts.requestId,
-    groupKey: `message:${opts.requestId}`,
-    groupedTitle: (n) => `${cardSenderCode} sent you ${n} messages`,
-    groupedBody: (n) => `${n} unread messages`,
-  }).catch((err) => console.error("[push] contact-card notification failed", err));
 
   return serializeMessage(created, null, undefined, []);
 }
