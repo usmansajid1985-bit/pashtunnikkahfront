@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { ProfileView } from "@/lib/profile";
 import { iconFor } from "@/lib/profile-optional";
+import { TribePill } from "@/components/tribe/tribe-pill";
+import { tribeLabel } from "@/lib/tribes";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
@@ -50,7 +52,7 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
     profile.islamicBackground || profile.religiousPractice || profile.salah || smoking || vaping || profile.bornMuslim || profile.islamicPractice;
   const livesIn = [profile.city, profile.country].filter(Boolean).join(", ");
   const hasHeritage =
-    profile.languages.length > 0 || profile.dialect || pashtoLevel || profile.tribe || profile.ancestralRegion || livesIn || profile.relocation;
+    profile.languages.length > 0 || profile.dialect || pashtoLevel || tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation;
 
   return (
     <>
@@ -132,7 +134,7 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
                 Pashto proficiency: {pashtoLevel}
               </Chip>
             ) : null}
-            {profile.tribe ? <Chip tone="solid">{profile.tribe}</Chip> : null}
+            <TribePill tribe={profile.tribe} />
             {profile.ancestralRegion ? (
               <Chip tone="dark" icon="⛰️">
                 {profile.ancestralRegion}

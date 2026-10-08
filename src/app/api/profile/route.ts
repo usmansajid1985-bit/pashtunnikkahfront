@@ -13,6 +13,7 @@ import { mapProfileView } from "@/lib/profile";
 import { normalizeRelocation } from "@/lib/relocation";
 import { toCountryCode, countryLabel } from "@/lib/country";
 import { parseHeightCm } from "@/lib/height";
+import { standardTribe } from "@/lib/tribes";
 
 export async function GET() {
   const session = await getSession();
@@ -29,7 +30,6 @@ export async function GET() {
 const TEXT_LIMITS: [field: string, label: string, max: number][] = [
   ["fullName", "Name", 120],
   ["city", "City", 128],
-  ["tribe", "Tribe", 128],
   ["education", "Education", 128],
   ["occupation", "Profession", 100],
   ["employment", "Profession", 100],
@@ -92,6 +92,13 @@ export async function PATCH(req: Request) {
         return NextResponse.json({ error: cityInvalidMessage(countryAfter), field: "city" }, { status: 400 });
       }
       verifiedPlaceId = verdict.placeId;
+    }
+
+    // Tribe comes from the Confederacy → Tribe selector only. A blank value leaves the stored
+    // tribe alone (it can't be cleared — "Unsure" is the way to say you don't know).
+    const nextTribe = body.tribe ? standardTribe(body.tribe) : undefined;
+    if (nextTribe === null) {
+      return NextResponse.json({ error: "Please select your tribe from the list.", field: "tribe" }, { status: 400 });
     }
 
     let extras: Record<string, unknown> = {};
@@ -173,7 +180,6 @@ export async function PATCH(req: Request) {
       (sent("city") && (body.city || null) !== existing.city) ||
       (sent("country") && nextCountryCode !== existing.country_code) ||
       (sent("maritalStatus") && (body.maritalStatus || null) !== existing.marital_status) ||
-      (sent("tribe") && (body.tribe || null) !== existing.tribe) ||
       (sent("ancestralRegion") && (body.ancestralRegion || null) !== existing.ancestral_village) ||
       (sent("relocation") && nextRelocation !== existing.willing_to_relocate) ||
       (sent("religiousPractice") && (body.religiousPractice || null) !== existing.religious_practice) ||
@@ -186,7 +192,7 @@ export async function PATCH(req: Request) {
       nextHomeLanguage !== existing.home_language ||
       (sent("aboutMe") && (body.aboutMe || null) !== existing.about_me) ||
       (sent("lookingFor") && (body.lookingFor || null) !== existing.partner_preferences) ||
-      // Free text, so it is reviewed like About Me. Interests / traits / dialect are fixed lists.
+      // Free text, so it is reviewed like About Me. Interests / traits / dialect / tribe are fixed lists.
       (sent("islamicPractice") && String(body.islamicPractice ?? "").trim() !== prevIslamicPractice);
 
     // F01: an approved member keeps their Approved status when they edit. Content changes are
@@ -204,7 +210,7 @@ export async function PATCH(req: Request) {
         country_code: ifSent("country", nextCountryCode),
         country: ifSent("country", countryLabel(nextCountryCode) ?? (body.country || null)),
         marital_status: ifSent("maritalStatus", body.maritalStatus || null),
-        tribe: ifSent("tribe", body.tribe || null),
+        tribe: nextTribe,
         ancestral_village: ifSent("ancestralRegion", body.ancestralRegion || null),
         // One canonical relocation value; legacy `relocate` column no longer written.
         willing_to_relocate: ifSent("relocation", nextRelocation),

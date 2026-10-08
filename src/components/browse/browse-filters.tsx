@@ -14,6 +14,8 @@ import { FilterPresets } from "@/components/browse/filter-presets";
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
+import { TribePicker } from "@/components/tribe/tribe-picker";
+import { formatTribeList, parseTribeList } from "@/lib/tribes";
 
 export type FilterOptions = {
   countries: string[];
@@ -21,7 +23,6 @@ export type FilterOptions = {
   marital: string[];
   sects: string[];
   practices: string[];
-  tribes: string[];
   relocate: string[];
   appearances: string[];
   educations: string[];
@@ -126,9 +127,11 @@ export function BrowseFiltersBar({
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [locationOpen, setLocationOpen] = useState(false);
+  const [tribeOpen, setTribeOpen] = useState(false);
   const [draft, setDraft] = useState<BrowseFilters>(filters);
   const locked = !isGold;
   const activeCount = countActiveFilters(filters, isGold);
+  const draftTribes = parseTribeList(draft.tribe);
 
   function navigate(next: BrowseFilters) {
     // A Basic viewer can never submit Gold-only filters — strip them so the URL and the
@@ -280,6 +283,7 @@ export function BrowseFiltersBar({
             aria-label="Close filters"
             onClick={() => {
               setLocationOpen(false);
+              setTribeOpen(false);
               setOpen(false);
             }}
           />
@@ -296,6 +300,46 @@ export function BrowseFiltersBar({
                   navigate({ ...filters, near: false });
                 }}
               />
+            ) : tribeOpen ? (
+              <>
+                <div className="px-5 py-4 border-b border-ink-900/8 flex items-center justify-between">
+                  <div>
+                    <h2 className="font-semibold text-ink-950 text-lg">Select tribe(s)</h2>
+                    <p className="text-xs text-ink-700/60 mt-0.5">Choose as many as you&apos;re open to.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setTribeOpen(false)}
+                    aria-label="Back to filters"
+                    className="w-9 h-9 rounded-full border border-ink-900/10 flex items-center justify-center"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-5 py-5">
+                  <TribePicker
+                    multiple
+                    selected={draftTribes}
+                    onChange={(next) => setDraft((d) => ({ ...d, tribe: formatTribeList(next) }))}
+                  />
+                </div>
+                <div className="p-4 border-t border-ink-900/8 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDraft((d) => ({ ...d, tribe: "" }))}
+                    className="flex-1 py-3 rounded-full border border-ink-900/12 text-sm font-semibold"
+                  >
+                    Any tribe
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTribeOpen(false)}
+                    className="flex-1 py-3 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700"
+                  >
+                    Done
+                  </button>
+                </div>
+              </>
             ) : (
               <>
             <div className="px-5 py-4 border-b border-ink-900/8 flex items-center justify-between">
@@ -438,7 +482,7 @@ export function BrowseFiltersBar({
               </fieldset>
 
               <section className="space-y-3">
-                <h3 className="text-sm font-bold text-ink-950">Location &amp; tribe</h3>
+                <h3 className="text-sm font-bold text-ink-950">Location</h3>
                 <Field label="City" gold locked={locked}>
                   <select
                     className={selectClass}
@@ -464,20 +508,6 @@ export function BrowseFiltersBar({
                       <path d="m9 18 6-6-6-6" />
                     </svg>
                   </button>
-                </Field>
-                <Field label="Tribe" gold locked={locked}>
-                  <select
-                    className={selectClass}
-                    value={draft.tribe}
-                    onChange={(e) => setDraft({ ...draft, tribe: e.target.value })}
-                  >
-                    <option value="">Any tribe</option>
-                    {options.tribes.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
-                  </select>
                 </Field>
                 <Field label="Ancestral region" gold locked={locked}>
                   <select
@@ -559,6 +589,24 @@ export function BrowseFiltersBar({
 
               <section className="space-y-3">
                 <h3 className="text-sm font-bold text-ink-950">About them</h3>
+                <Field label="Tribe" gold locked={locked}>
+                  <button
+                    type="button"
+                    onClick={() => setTribeOpen(true)}
+                    className={`${selectClass} text-left flex items-center justify-between gap-3`}
+                  >
+                    <span className="truncate">
+                      {draftTribes.length === 0
+                        ? "Any"
+                        : draftTribes.length <= 2
+                          ? draftTribes.join(", ")
+                          : `${draftTribes.length} tribes`}
+                    </span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                      <path d="m9 18 6-6-6-6" />
+                    </svg>
+                  </button>
+                </Field>
                 <Field label="Minimum height" gold locked={locked}>
                   <select
                     className={selectClass}

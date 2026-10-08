@@ -39,6 +39,8 @@ import {
 } from "@/lib/profile-optional";
 import { CityPicker } from "@/components/location/city-picker";
 import { cityInvalidMessage } from "@/lib/country";
+import { TribePicker } from "@/components/tribe/tribe-picker";
+import { matchTribe } from "@/lib/tribes";
 
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
@@ -162,7 +164,7 @@ export function ProfileEditForm({
       return match ? `${match.flag} ${match.name}` : raw;
     })(),
     maritalStatus: initial.maritalStatus || "",
-    tribe: initial.tribe || "",
+    tribe: matchTribe(initial.tribe) ?? "",
     ancestralRegion: initial.ancestralRegion || "",
     relocation: initial.relocation || "",
     religiousPractice: initial.religiousPractice || "",
@@ -413,8 +415,6 @@ export function ProfileEditForm({
               </option>
             ))}
           </select>
-          <label className="block text-xs font-semibold">Tribe</label>
-          <input className={field} value={form.tribe} onChange={(e) => patch("tribe", e.target.value)} />
           <p className="text-xs font-semibold pt-1">Relocation</p>
           <ChoiceGrid count={3}>
             {RELOCATION_OPTIONS.map((o) => (
@@ -635,6 +635,12 @@ export function ProfileEditForm({
               </select>
             </>
           ) : null}
+        </section>
+
+        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
+          <h2 className="font-bold text-ink-950">Tribe</h2>
+          <p className="text-xs font-semibold">What is your tribe?</p>
+          <TribePicker selected={form.tribe ? [form.tribe] : []} onChange={([tribe]) => patch("tribe", tribe ?? "")} />
         </section>
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">

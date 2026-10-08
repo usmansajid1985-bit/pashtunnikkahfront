@@ -34,6 +34,7 @@ import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
 import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
 import { PasswordField } from "@/components/signup/password-field";
+import { TribePicker } from "@/components/tribe/tribe-picker";
 import {
   PASSWORD_HINT,
   PASSWORD_MAX,
@@ -183,6 +184,11 @@ export function SignupWizard() {
           if (languagesIndex >= 0 && resumeAt > languagesIndex && !isStepValid("languages", restored)) {
             resumeAt = languagesIndex;
           }
+          // Drafts saved before the tribe question existed.
+          const tribeIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "tribe");
+          if (tribeIndex >= 0 && resumeAt > tribeIndex && !isStepValid("tribe", restored)) {
+            resumeAt = tribeIndex;
+          }
           // Drafts saved before numbers were validated per country: fix the number before the
           // account step rather than failing at "Create account".
           const phoneIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "phone");
@@ -254,6 +260,15 @@ export function SignupWizard() {
           setError(
             "An account with this email already exists. Use a different email, or log in instead."
           );
+          return;
+        }
+        if (json.code === "TRIBE_INVALID") {
+          const tribeIndex = steps.findIndex((s) => s.id === "tribe");
+          if (tribeIndex >= 0) {
+            setDir(-1);
+            setStepIndex(tribeIndex);
+          }
+          setError(json.error || "Please select your tribe.");
           return;
         }
         if (json.code === "CITY_INVALID") {
@@ -575,6 +590,10 @@ export function SignupWizard() {
                   <PashtoLevelQuestion value={data.pashtoLevel} onChange={(v) => patch({ pashtoLevel: v })} />
                 ) : null}
               </>
+            )}
+
+            {step.id === "tribe" && (
+              <TribePicker selected={data.tribe ? [data.tribe] : []} onChange={([tribe]) => patch({ tribe: tribe ?? "" })} />
             )}
 
             {step.id === "openTo" && (

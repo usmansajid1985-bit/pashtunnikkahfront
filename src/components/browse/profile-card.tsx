@@ -1,4 +1,6 @@
 import { compatLabel } from "@/lib/compat-engine";
+import { TribePill } from "@/components/tribe/tribe-pill";
+import { tribeLabel } from "@/lib/tribes";
 
 export type ProfileCardData = {
   id: string;
@@ -100,10 +102,10 @@ export function ProfileCard({
                 {p.height}
               </Detail>
             ) : null}
-            {p.tribe ? (
+            {tribeLabel(p.tribe) ? (
               <Detail>
                 <IconFlag />
-                {p.tribe}
+                <TribePill tribe={p.tribe} className="px-2 py-0.5 text-[11.5px]" />
               </Detail>
             ) : null}
             {p.country ? (

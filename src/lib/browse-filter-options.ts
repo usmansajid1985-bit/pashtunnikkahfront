@@ -41,7 +41,6 @@ export const getBrowseFilterOptions = unstable_cache(
       marital,
       sects,
       practices,
-      tribes,
       appearances,
       educations,
       dialects,
@@ -54,7 +53,6 @@ export const getBrowseFilterOptions = unstable_cache(
       distinctStrings("marital_status"),
       distinctStrings("religious_methodology"),
       distinctStrings("religious_practice"),
-      distinctStrings("tribe"),
       distinctStrings("appearance"),
       distinctStrings("education"),
       distinctStrings("dialect"),
@@ -68,7 +66,6 @@ export const getBrowseFilterOptions = unstable_cache(
       marital,
       sects,
       practices,
-      tribes,
       // Fixed canonical set — never derived from raw stored values (PN-BROWSE-009).
       relocate: [...RELOCATION_VALUES],
       appearances,

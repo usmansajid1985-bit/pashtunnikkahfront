@@ -314,7 +314,8 @@ function childrenCheck(me: CompatSide, them: CompatSide): CompatItem {
 /* ------------------------------------ Heritage ------------------------------------ */
 function heritageCheck(me: CompatSide, them: CompatSide): CompatItem | null {
   const topic = "Heritage";
-  const sameTribe = has(me.tribe) && norm(me.tribe) === norm(them.tribe);
+  // Two members who both answered "Unsure" don't share a tribe.
+  const sameTribe = has(me.tribe) && norm(me.tribe) !== "unsure" && norm(me.tribe) === norm(them.tribe);
   const sameRegion = has(me.ancestralRegion) && norm(me.ancestralRegion) === norm(them.ancestralRegion);
   if (sameTribe && sameRegion) return { topic, status: "aligned", text: `Same tribe (${them.tribe}) and ancestral region (${them.ancestralRegion}).` };
   if (sameTribe) return { topic, status: "aligned", text: `Same tribe: ${them.tribe}.` };

@@ -1,6 +1,7 @@
 import "flag-icons/css/flag-icons.min.css";
 import { toCountryCode } from "@/lib/country";
 import type { ProfileView } from "@/lib/profile";
+import { TribePill } from "@/components/tribe/tribe-pill";
 import { ProfilePhotoSlider, type ProfileSlide } from "@/components/profile/profile-photo-slider";
 
 /**
@@ -92,11 +93,6 @@ export function ProfileHero({
           {location || "—"}
         </p>
         <div className={`flex flex-wrap ${wide ? "mt-4 gap-2" : "mt-3 gap-1.5"}`}>
-          {profile.tribe ? (
-            <span className={`rounded-full bg-rose-600 font-semibold text-white ${wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[11.5px]"}`}>
-              {profile.tribe}
-            </span>
-          ) : null}
           {[profile.occupation, profile.religiousPractice, profile.ancestralRegion, profile.relocation]
             .filter((v): v is string => Boolean(v))
             .map((v, i) => (
@@ -109,6 +105,7 @@ export function ProfileHero({
                 {v}
               </span>
             ))}
+          <TribePill tribe={profile.tribe} className={wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[11.5px]"} />
         </div>
       </div>
     </div>

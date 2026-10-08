@@ -107,7 +107,7 @@ export function compatScore(me: CompatProfile | null, peer: CompatProfile | null
   if (same(me.religious_practice, peer.religious_practice)) score += 12;
   if (same(me.religious_methodology, peer.religious_methodology)) score += 6;
   if (same(me.ancestral_village, peer.ancestral_village)) score += 8;
-  if (same(me.tribe, peer.tribe)) score += 7;
+  if (same(me.tribe, peer.tribe) && (me.tribe ?? "").trim().toLowerCase() !== "unsure") score += 7;
   if (same(me.education, peer.education)) score += 4;
   if (same(me.dialect, peer.dialect)) score += 3;
   if (same(me.willing_to_relocate, peer.willing_to_relocate)) score += 2;

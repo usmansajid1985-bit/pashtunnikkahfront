@@ -1,4 +1,5 @@
 import { checkPassword } from "@/lib/password-strength";
+import { isTribeChoice } from "@/lib/tribes";
 
 export type SignupGender = "Brother" | "Sister";
 
@@ -17,6 +18,8 @@ export type SignupData = {
   ancestralRegion: string;
   relocation: string;
   languages: string[];
+  /** Standard tribe name from the Confederacy → Tribe selector, or "Unsure". */
+  tribe: string;
   openTo: string[];
   hasChildren: string;
   willingChildren: string;
@@ -57,6 +60,7 @@ export const emptySignupData = (): SignupData => ({
   ancestralRegion: "",
   relocation: "",
   languages: [],
+  tribe: "",
   openTo: [],
   hasChildren: "",
   willingChildren: "",
@@ -90,6 +94,7 @@ export type StepId =
   | "location"
   | "roots"
   | "languages"
+  | "tribe"
   | "openTo"
   | "family"
   | "faith"
@@ -127,6 +132,11 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       id: "languages",
       title: "Which languages do you speak?",
       subtitle: "Select all that apply. If you speak Pashto, tell us your level too.",
+    },
+    {
+      id: "tribe",
+      title: "What is your tribe?",
+      subtitle: "Open a confederacy to find your tribe, or search for it. Choose Unsure if you don't know.",
     },
     { id: "openTo", title: "Who are you open to?", subtitle: "Select all that apply." },
     { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },
@@ -495,6 +505,8 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "languages":
       // The Pashto level is only asked (and only required) when Pashto is one of the languages.
       return data.languages.length > 0 && (!data.languages.includes("Pashto") || isPashtoLevel(data.pashtoLevel));
+    case "tribe":
+      return isTribeChoice(data.tribe);
     case "openTo":
       return data.openTo.length > 0;
     case "family":

@@ -4,6 +4,7 @@ import { ServiceWorkerRegistrar } from "@/components/notifications/service-worke
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { LiveUpdates } from "@/components/notifications/live-updates";
 import { MemberWarningGate } from "@/components/notifications/member-warning-gate";
+import { TribeConfirmGate } from "@/components/tribe/tribe-confirm-gate";
 import "./globals.css";
 
 const inter = Inter({
@@ -54,6 +55,7 @@ export default function RootLayout({
         <PresenceHeartbeat />
         <LiveUpdates />
         <MemberWarningGate />
+        <TribeConfirmGate />
         {children}
       </body>
     </html>

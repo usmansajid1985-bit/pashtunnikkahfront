@@ -3,6 +3,7 @@ import { oppositeGenderLabels, type BrowseFilters } from "@/lib/browse-filters-s
 import { JUST_JOINED_DAYS } from "@/lib/presence";
 import { normalizeRelocation } from "@/lib/relocation";
 import { countryByCode, toCountryCode } from "@/lib/country";
+import { parseTribeList, tribeSpellings } from "@/lib/tribes";
 
 export {
   BROWSE_PAGE_SIZE,
@@ -130,7 +131,12 @@ export function buildProfileWhere(
   eq("city", f.city);
 
   eq("religious_methodology", f.sect);
-  eq("tribe", f.tribe);
+  // Tribe: one or more listed tribes. Known V1 spellings are matched too, so members who
+  // haven't confirmed their tribe yet still appear under the right one.
+  const tribes = parseTribeList(f.tribe).flatMap(tribeSpellings);
+  if (tribes.length) {
+    and.push({ OR: tribes.map((t) => ({ tribe: { equals: t, mode: "insensitive" as const } })) });
+  }
   eq("appearance", f.appearance);
   eq("education", f.education);
   eq("dialect", f.dialect);

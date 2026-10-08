@@ -24,6 +24,7 @@ import {
 import { normalizeRelocation } from "@/lib/relocation";
 import { toCountryCode, countryLabel } from "@/lib/country";
 import { parseHeightCm } from "@/lib/height";
+import { standardTribe } from "@/lib/tribes";
 
 
 async function nextProfileCode(gender: string) {
@@ -88,6 +89,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please tell us how well you speak Pashto." }, { status: 400 });
     }
     const pashtoLevel = speaksPashto ? String(body.pashtoLevel) : null;
+
+    // Tribe: one from the Confederacy → Tribe selector (or "Unsure") — never free text.
+    const tribe = standardTribe(body.tribe);
+    if (!tribe) {
+      return NextResponse.json({ error: "Please select your tribe.", code: "TRIBE_INVALID" }, { status: 400 });
+    }
 
     // Career: workers say what they do, students what they study; nobody else is asked.
     const careerIssue = occupationIssue(String(body.employment ?? ""), String(body.occupation ?? ""));
@@ -219,6 +226,7 @@ export async function POST(req: Request) {
       location_country_only: false,
       marital_status: body.maritalStatus || null,
       ancestral_village: body.ancestralRegion || null,
+      tribe,
       willing_to_relocate: normalizeRelocation(body.relocation),
       relocate: null,
       home_language: (body.languages ?? []).join(", ") || null,

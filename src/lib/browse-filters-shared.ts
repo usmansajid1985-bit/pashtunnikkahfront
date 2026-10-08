@@ -22,6 +22,7 @@ export type BrowseFilters = {
   marital: string;
   sect: string;
   practice: string;
+  /** Comma-separated standard tribe names (see `parseTribeList`). */
   tribe: string;
   relocate: string;
   salah: string;
