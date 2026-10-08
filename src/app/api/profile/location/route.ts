@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { signedPhotoUrl } from "@/lib/photos";
+import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { isValidLatLng, isValidRadiusMiles, roundCoord, DEFAULT_RADIUS_MILES } from "@/lib/geo";
 
 export async function GET() {
@@ -27,7 +28,26 @@ export async function GET() {
   });
   if (!profile) return NextResponse.json({ error: "No profile" }, { status: 404 });
 
+  // Where the member lives (profile location) — the map's starting point. Read-only here: the
+  // filter only ever writes the search area (`location_*`), never the profile location.
+  await ensureBrowseAndWaliSchema();
+  const homeRows = await prisma.$queryRaw<{ home_lat: number | null; home_lng: number | null; country_code: string | null }[]>`
+    SELECT home_lat, home_lng, country_code FROM profiles WHERE user_id = ${userId} LIMIT 1
+  `.catch(() => []);
+  const homeRow = homeRows[0];
+  const home =
+    homeRow?.home_lat != null && homeRow?.home_lng != null
+      ? {
+          lat: homeRow.home_lat,
+          lng: homeRow.home_lng,
+          city: profile.city,
+          country: profile.country,
+          countryCode: homeRow.country_code,
+        }
+      : null;
+
   return NextResponse.json({
+    home,
     // Own-account endpoint only — coordinates are already rounded to ~1.1km at write time
     // (never exact address-level), and this value is never exposed through the public
     // browse/profile APIs, only back to the user who owns it.

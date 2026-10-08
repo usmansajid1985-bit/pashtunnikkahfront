@@ -7,6 +7,7 @@ import type { ProfileView } from "@/lib/profile";
 import {
   ANCESTRAL_REGIONS,
   COUNTRIES,
+  EDUCATION_OPTIONS,
   HEIGHTS,
   MEN_APPEARANCE,
   WOMEN_DRESS_STYLE,
@@ -118,7 +119,7 @@ function optionsWithCurrent(options: string[], current: string) {
   return [current, ...options];
 }
 
-const EDUCATION = ["GCSEs", "A Levels", "Diploma", "Bachelor's", "Master's", "PhD", "Islamic Studies", "Other"];
+const EDUCATION: string[] = [...EDUCATION_OPTIONS];
 const MARITAL = ["Never Married", "Divorced", "Annulled", "Widowed"];
 const EMPLOYMENT = [
   { v: "Employed", tone: "sky" as const, icon: I.briefcase },

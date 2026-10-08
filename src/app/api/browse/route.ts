@@ -7,7 +7,7 @@ import {
   parseBrowseFilters,
   stripGoldFilters,
 } from "@/lib/browse-filters";
-import { locationRadiusIds } from "@/lib/browse-location";
+import { savedLocationFilter } from "@/lib/browse-location";
 import {
   BEST_MATCH_POOL,
   BROWSE_PROFILE_SELECT,
@@ -68,21 +68,7 @@ export async function GET(req: Request) {
   // with a `needsLocation` flag rather than silently falling through to an unfiltered grid
   // (PN-BROWSE-006).
   const wantsDistance = filters.near;
-  const hasPin = me?.location_lat != null && me?.location_lng != null;
-  const hasRadius = me?.location_radius_miles != null && me.location_radius_miles > 0;
-  const needsLocation = wantsDistance && (!hasPin || !hasRadius);
-
-  const radiusIds =
-    wantsDistance && hasPin && hasRadius
-      ? await locationRadiusIds({
-          lat: me!.location_lat!,
-          lng: me!.location_lng!,
-          radiusMiles: me!.location_radius_miles!,
-          countryOnly: me!.location_country_only ?? false,
-          country: me!.location_country,
-          countryCode: me!.location_country_code,
-        })
-      : [];
+  const { ids: radiusIds, needsLocation } = await savedLocationFilter(me, wantsDistance);
 
   const whereFor = (f: typeof filters, useDistance: boolean) =>
     buildProfileWhere(f, {

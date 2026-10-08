@@ -234,6 +234,9 @@ export const LANGUAGES_ORDERED = [
   "Other",
 ] as const;
 
+/** Highest qualification — signup, Edit Profile and the Browse filter all offer these. */
+export const EDUCATION_OPTIONS = ["GCSEs", "A Levels", "Diploma", "Bachelor's", "Master's", "PhD", "Islamic Studies", "Other"] as const;
+
 export const ANCESTRAL_REGIONS = [
   // Pakhtunkhwa (user-facing label — never "KP", see signup-wizard "Select region" option)
   "Peshawar",

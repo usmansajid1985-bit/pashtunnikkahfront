@@ -2,7 +2,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { countryByCode, toCountryCode } from "@/lib/country";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
-import { geocodeCityCountry, roundCoord } from "@/lib/geo";
+import { ANY_RADIUS_MILES, geocodeCityCountry, roundCoord } from "@/lib/geo";
 
 /**
  * B07: a member's HOME coordinates (where they live), used when OTHER members search by
@@ -41,7 +41,8 @@ export async function refreshHomeCoords(userId: bigint, city: string | null, cou
 export async function locationRadiusIds(opts: {
   lat: number;
   lng: number;
-  radiusMiles: number;
+  /** null = any distance: only the country restriction applies. */
+  radiusMiles: number | null;
   countryOnly: boolean;
   country?: string | null;
   countryCode?: string | null;
@@ -73,10 +74,48 @@ export async function locationRadiusIds(opts: {
     SELECT id FROM profiles
     WHERE status = 'approved'
       AND is_hidden = false
-      AND home_lat IS NOT NULL
-      AND home_lng IS NOT NULL
       ${countryClause}
-      AND ${haversine} <= ${opts.radiusMiles}
+      ${
+        opts.radiusMiles == null
+          ? Prisma.empty
+          : Prisma.sql`AND home_lat IS NOT NULL AND home_lng IS NOT NULL AND ${haversine} <= ${opts.radiusMiles}`
+      }
   `);
   return rows.map((r) => r.id);
+}
+
+/**
+ * The Browse location filter for a member whose `near` filter is on, from their saved search
+ * area (`location_*` — where they are searching, never their profile location).
+ *  - `ids: undefined` → no location restriction (any distance, country switch off).
+ *  - `needsLocation` → the filter is on but no search area was ever saved; show nothing and ask.
+ */
+export async function savedLocationFilter(
+  me: {
+    location_lat: number | null;
+    location_lng: number | null;
+    location_radius_miles: number | null;
+    location_country_only: boolean | null;
+    location_country: string | null;
+    location_country_code: string | null;
+  } | null,
+  wantsDistance: boolean
+): Promise<{ ids: bigint[] | undefined; needsLocation: boolean }> {
+  if (!wantsDistance) return { ids: undefined, needsLocation: false };
+  const radius = me?.location_radius_miles;
+  if (!me || me.location_lat == null || me.location_lng == null || radius == null) {
+    return { ids: [], needsLocation: true };
+  }
+  const anyDistance = radius === ANY_RADIUS_MILES;
+  const countryOnly = me.location_country_only ?? false;
+  if (anyDistance && !countryOnly) return { ids: undefined, needsLocation: false };
+  const ids = await locationRadiusIds({
+    lat: me.location_lat,
+    lng: me.location_lng,
+    radiusMiles: anyDistance ? null : radius,
+    countryOnly,
+    country: me.location_country,
+    countryCode: me.location_country_code,
+  });
+  return { ids, needsLocation: false };
 }

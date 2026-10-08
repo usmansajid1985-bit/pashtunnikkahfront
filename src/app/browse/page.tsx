@@ -9,7 +9,7 @@ import {
   type BrowseSearchParams,
 } from "@/lib/browse-filters";
 import { isFemaleGender, isMaleGender } from "@/lib/browse-filters-shared";
-import { locationRadiusIds } from "@/lib/browse-location";
+import { savedLocationFilter } from "@/lib/browse-location";
 import { blockedUserIds } from "@/lib/blocking";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
@@ -137,24 +137,7 @@ export default async function BrowsePage({
 
   const blockedIds = await blockedUserIds(userId);
 
-  const wantsDistance = filters.near;
-  const hasPin = me?.location_lat != null && me?.location_lng != null;
-  const hasRadius = me?.location_radius_miles != null && me.location_radius_miles > 0;
-  const needsLocation = wantsDistance && (!hasPin || !hasRadius);
-
-  const locationIds =
-    wantsDistance && hasPin && hasRadius
-      ? await locationRadiusIds({
-          lat: me!.location_lat!,
-          lng: me!.location_lng!,
-          radiusMiles: me!.location_radius_miles!,
-          countryOnly: me!.location_country_only ?? false,
-          country: me!.location_country,
-          countryCode: me!.location_country_code,
-        })
-      : needsLocation
-        ? []
-        : undefined;
+  const { ids: locationIds, needsLocation } = await savedLocationFilter(me, filters.near);
 
   const where = buildProfileWhere(filters, {
     excludeUserId: userId,
@@ -245,6 +228,7 @@ export default async function BrowsePage({
         <BrowseFiltersBar
           filters={filters}
           isGold={isGold}
+          rememberKey={session.userId}
           targetGender={
             isMaleGender(me?.gender) ? "female" : isFemaleGender(me?.gender) ? "male" : null
           }
@@ -253,6 +237,7 @@ export default async function BrowsePage({
             country: me?.location_country || me?.country || null,
             countryCode: me?.location_country_code || null,
             radiusMiles: me?.location_radius_miles ?? 50,
+            countryOnly: me?.location_country_only ?? false,
             hasPin: me?.location_lat != null && me?.location_lng != null,
           }}
           options={filterOptions}
@@ -269,7 +254,14 @@ export default async function BrowsePage({
         ) : null}
 
         <BrowseInfiniteGrid
-          key={JSON.stringify({ ...filters, page: 1 })}
+          // The saved search area is part of the result set too — a new area must reset the grid.
+          key={JSON.stringify({
+            ...filters,
+            page: 1,
+            area: filters.near
+              ? [me?.location_lat, me?.location_lng, me?.location_radius_miles, me?.location_country_only]
+              : null,
+          })}
           initialItems={initialItems}
           initialHasMore={initialHasMore}
           initialNextStage={initialHasMore ? null : firstExpansionStage(filters)}

@@ -4,6 +4,7 @@ import { JUST_JOINED_DAYS } from "@/lib/presence";
 import { normalizeRelocation } from "@/lib/relocation";
 import { countryByCode, toCountryCode } from "@/lib/country";
 import { parseTribeList, tribeSpellings } from "@/lib/tribes";
+import { professionGroup } from "@/lib/professions";
 
 export {
   BROWSE_PAGE_SIZE,
@@ -137,8 +138,22 @@ export function buildProfileWhere(
   if (tribes.length) {
     and.push({ OR: tribes.map((t) => ({ tribe: { equals: t, mode: "insensitive" as const } })) });
   }
-  eq("appearance", f.appearance);
-  eq("education", f.education);
+  // Education: profiles from before the current options hold older wording.
+  const OLDER_EDUCATION: Record<string, string[]> = {
+    "bachelor's": ["Bachelors"],
+    "master's": ["Masters"],
+    "a levels": ["College / A-Levels"],
+    gcses: ["Secondary School"],
+    diploma: ["Vocational / Trade"],
+  };
+  const education = (f.education ?? "").trim();
+  if (education) {
+    and.push({
+      OR: [education, ...(OLDER_EDUCATION[education.toLowerCase()] ?? [])].map((v) => ({
+        education: { equals: v, mode: "insensitive" as const },
+      })),
+    });
+  }
   eq("dialect", f.dialect);
   eq("ancestral_village", f.ancestral);
 
@@ -154,8 +169,13 @@ export function buildProfileWhere(
     and.push({ salah_pattern: { contains: salah, mode: "insensitive" } });
   }
 
+  // Profession: a group from the filter's dropdown matches any of its words (professions are
+  // free text on profiles); anything else is matched as typed (older links / saved presets).
   const occupation = kw(f.occupation);
-  if (occupation) {
+  const group = professionGroup(occupation);
+  if (group) {
+    and.push({ OR: group.keywords.map((w) => ({ occupation: { contains: w, mode: "insensitive" as const } })) });
+  } else if (occupation) {
     and.push({ occupation: { contains: occupation, mode: "insensitive" } });
   }
 
@@ -169,9 +189,22 @@ export function buildProfileWhere(
     });
   }
 
-  const dress = kw(f.dress);
-  if (dress) {
-    and.push({ appearance: { contains: dress, mode: "insensitive" } });
+  // Appearance is stored as one comma-joined value (head covering + dress styles, or a beard
+  // style). `dress` is the head covering / beard choice, `appearance` the dress style.
+  // Profiles from before the current options hold older wording ("Hijab", "No Hijab",
+  // "Trimmed Beard", "Full Beard") — each choice also matches its older equivalent.
+  const has = (text: string): Prisma.profilesWhereInput => ({ appearance: { contains: text, mode: "insensitive" } });
+  const noHijab = [has("no hijab"), has("does not wear hijab")];
+  const LOOKS: Record<string, Prisma.profilesWhereInput> = {
+    "does not wear hijab": { OR: noHijab },
+    "wears hijab": { AND: [has("hijab"), { NOT: noHijab }] },
+    "wears niqab": has("niqab"),
+    "short beard": { OR: [has("short beard"), has("trimmed beard")] },
+    "long beard": { OR: [has("long beard"), has("full beard")] },
+    "abaya / jilbab": { OR: [has("abaya"), has("jilbab")] },
+  };
+  for (const choice of [kw(f.dress), kw(f.appearance)]) {
+    if (choice) and.push(LOOKS[choice.toLowerCase()] ?? has(choice));
   }
 
   const interests = kw(f.interests);

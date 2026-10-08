@@ -26,6 +26,7 @@ export type BrowseFilters = {
   tribe: string;
   relocate: string;
   salah: string;
+  /** Dress style (sisters), e.g. "Abaya / Jilbab". */
   appearance: string;
   education: string;
   dialect: string;
@@ -33,6 +34,7 @@ export type BrowseFilters = {
   height: string;
   occupation: string;
   language: string;
+  /** Head covering (sisters) or beard style (brothers). */
   dress: string;
   interests: string;
   goldOnly: boolean;

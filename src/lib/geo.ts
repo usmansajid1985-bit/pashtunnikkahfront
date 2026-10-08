@@ -1,4 +1,10 @@
-export const LOCATION_RADIUS_STEPS = [10, 25, 50, 75, 100, 150, 250] as const;
+export const LOCATION_RADIUS_STEPS = [5, 10, 25, 50, 100] as const;
+
+/** Stored radius meaning "Any distance" — no radius limit (the country-only switch may still apply). */
+export const ANY_RADIUS_MILES = 0;
+
+/** Largest radius accepted — older saved searches used steps up to 250 miles. */
+const MAX_RADIUS_MILES = 250;
 
 export const DEFAULT_RADIUS_MILES = 50;
 
@@ -8,16 +14,16 @@ export function isRadiusStep(n: unknown): n is number {
 }
 
 /**
- * Any radius the app will accept — the slider steps plus any positive value up to the largest
- * step. This lets a legacy non-standard saved radius round-trip without being force-snapped
- * (PN-BROWSE-006).
+ * Any radius the app will accept — "Any distance", the slider steps, plus any positive value up
+ * to the maximum. This lets a legacy non-standard saved radius round-trip without being
+ * force-snapped (PN-BROWSE-006).
  */
 export function isValidRadiusMiles(n: unknown): n is number {
   return (
     typeof n === "number" &&
     Number.isFinite(n) &&
-    n > 0 &&
-    n <= LOCATION_RADIUS_STEPS[LOCATION_RADIUS_STEPS.length - 1]
+    n >= 0 &&
+    n <= MAX_RADIUS_MILES
   );
 }
 

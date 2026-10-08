@@ -651,3 +651,50 @@ body {
     transform: scale(1);
   }
 }
+
+/* Single-thumb slider with a filled track (set --pn-fill to the filled percentage). */
+.pn-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 9999px;
+  background: linear-gradient(to right, #c2185b var(--pn-fill, 0%), #e7e2e0 var(--pn-fill, 0%));
+  outline-offset: 6px;
+}
+.pn-range::-webkit-slider-thumb,
+.pn-dual input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #c2185b;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(32, 26, 29, 0.3);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.pn-range::-moz-range-thumb,
+.pn-dual input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: #c2185b;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 4px rgba(32, 26, 29, 0.3);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* Two-thumb slider: two range inputs stacked on one track; only the thumbs take clicks. */
+.pn-dual input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+}
