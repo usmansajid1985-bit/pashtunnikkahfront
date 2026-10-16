@@ -22,6 +22,9 @@ type AccountEvent = { status: string };
 
 const BANNER_MS = 5000;
 const AUTH_CHANNEL = "pn-auth";
+/** Fired (and broadcast to other tabs) when the "In-app notification banners" setting is saved. */
+export const IN_APP_BANNERS_EVENT = "pn:in-app-banners";
+const PREFS_CHANNEL = "pn-prefs";
 /** Pages whose server-rendered data depends on request/match state. */
 const REFRESH_PREFIXES = ["/requests", "/p/", "/dashboard"];
 
@@ -38,9 +41,32 @@ function preview(text: string) {
  */
 export function LiveUpdates() {
   const router = useRouter();
-  const [me, setMe] = useState<{ userId: string; inAppBanners: boolean } | null>(null);
+  const [me, setMe] = useState<{ userId: string } | null>(null);
   const [banner, setBanner] = useState<Banner | null>(null);
   const hideTimer = useRef<number | null>(null);
+  // N10: read when a banner is about to show, so turning the setting off applies immediately.
+  const bannersOn = useRef(true);
+
+  const applyBannerPref = (on: boolean) => {
+    bannersOn.current = on;
+    // PH09: lets the foreground push listener skip an OS notification the banner already covers.
+    document.documentElement.dataset.pnInAppBanners = on ? "1" : "0";
+    if (!on) setBanner(null);
+  };
+
+  // The setting changed in Settings — in this tab (event) or another one (broadcast).
+  useEffect(() => {
+    const onPref = (e: Event) => applyBannerPref((e as CustomEvent<{ on: boolean }>).detail?.on !== false);
+    window.addEventListener(IN_APP_BANNERS_EVENT, onPref);
+    const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(PREFS_CHANNEL) : null;
+    if (channel) channel.onmessage = (e: MessageEvent<{ inAppBanners?: boolean }>) => {
+      if (typeof e.data?.inAppBanners === "boolean") applyBannerPref(e.data.inAppBanners);
+    };
+    return () => {
+      window.removeEventListener(IN_APP_BANNERS_EVENT, onPref);
+      channel?.close();
+    };
+  }, []);
   const { joinUser, on } = useChatSocket(Boolean(me));
 
   useEffect(() => {
@@ -67,12 +93,12 @@ export function LiveUpdates() {
         window.dispatchEvent(new CustomEvent("pn:account-status", { detail: { status } }));
       }
       shownStatus = status;
+      // Re-read every time the tab comes back, so a change made on another device applies too.
+      if (userId) applyBannerPref(d?.inAppBanners !== false);
       if (shownUserId === undefined) {
         shownUserId = userId;
         if (d?.userTopic) {
-          setMe({ userId: String(d.userId), inAppBanners: d.inAppBanners !== false });
-          // PH09: lets the foreground push listener skip an OS notification the banner already covers.
-          document.documentElement.dataset.pnInAppBanners = d.inAppBanners !== false ? "1" : "0";
+          setMe({ userId: String(d.userId) });
           void joinUser(d.userTopic);
         }
       }
@@ -100,7 +126,7 @@ export function LiveUpdates() {
     if (!me) return;
 
     const show = (b: Banner) => {
-      if (!me.inAppBanners) return;
+      if (!bannersOn.current) return;
       setBanner(b);
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
       hideTimer.current = window.setTimeout(() => setBanner(null), BANNER_MS);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IN_APP_BANNERS_EVENT } from "@/components/notifications/live-updates";
 
 type Key =
   | "notify_requests"
@@ -48,12 +49,26 @@ export function NotificationCategoryToggles() {
     const next = !prefs[key];
     setPrefs({ ...prefs, [key]: next });
     setSaving(key);
-    await fetch("/api/push/preferences", {
+    const res = await fetch("/api/push/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ [key]: next }),
-    }).catch(() => {});
+    }).catch(() => null);
     setSaving(null);
+    if (!res?.ok) {
+      // Not saved — show the switch as it really is.
+      setPrefs((p) => (p ? { ...p, [key]: !next } : p));
+      return;
+    }
+    if (key === "in_app_banners") {
+      // N10: open pages stop (or start) showing banners straight away, in every tab.
+      window.dispatchEvent(new CustomEvent(IN_APP_BANNERS_EVENT, { detail: { on: next } }));
+      if (typeof BroadcastChannel !== "undefined") {
+        const channel = new BroadcastChannel("pn-prefs");
+        channel.postMessage({ inAppBanners: next });
+        channel.close();
+      }
+    }
   }
 
   return (
