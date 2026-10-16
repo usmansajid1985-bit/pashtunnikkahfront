@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { inBackground } from "@/lib/background";
 import { ensurePrivatePhotosSchema } from "@/lib/ensure-private-photos-schema";
 import { assertAcceptedParticipant, chatAccessError, peerUserId } from "@/lib/chat";
 import { profileCodeOf } from "@/lib/notifications";
@@ -167,12 +168,12 @@ export async function createShare(opts: {
   await log(created.id, "shared", opts.senderId);
 
   const senderCode = await profileCodeOf(opts.senderId);
-  void import("@/lib/wali-activity")
+  inBackground("wali activity", () => import("@/lib/wali-activity")
     .then(({ notifyWalisOfActivity }) =>
       notifyWalisOfActivity({ requestId: opts.requestId, participantIds: [opts.senderId, recipientId], kind: "photo_shared" })
     )
-    .catch(() => {});
-  void sendPushNotification(recipientId, {
+    .catch(() => {}));
+  inBackground("push", () => sendPushNotification(recipientId, {
     title: `${senderCode} shared private photos with you`,
     body: "You have one 60-second session to view them.",
     url: `/chats/${opts.requestId.toString()}`,
@@ -180,7 +181,7 @@ export async function createShare(opts: {
     type: "photo",
     actorUserId: opts.senderId,
     relatedRequestId: opts.requestId,
-  }).catch((err) => console.error("[push] private-photo-share notification failed", err));
+  }).catch((err) => console.error("[push] private-photo-share notification failed", err)));
 
   return created;
 }

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { inBackground } from "@/lib/background";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { isBlockedBetween, blockedUserIds } from "@/lib/blocking";
@@ -549,11 +550,11 @@ export async function createMessage(opts: {
   });
 
   // N09: walis in "Oversight + notifications" mode get a (throttled, content-free) email.
-  void import("@/lib/wali-activity")
+  inBackground("wali activity", () => import("@/lib/wali-activity")
     .then(({ notifyWalisOfActivity }) =>
       notifyWalisOfActivity({ requestId: opts.requestId, participantIds: [opts.senderId, opts.receiverId], kind: "message" })
     )
-    .catch(() => {});
+    .catch(() => {}));
 
   // The push shows a short preview of the message (as saved, i.e. after the safety filter); the
   // bell row and emails stay content-free. Repeat messages from the same sender fold into one
@@ -562,7 +563,7 @@ export async function createMessage(opts: {
   const { profileCodeOf } = await import("@/lib/notifications");
   const senderCode = await profileCodeOf(opts.senderId);
   const preview = created.body.replace(/\s+/g, " ").trim();
-  void sendPushNotification(opts.receiverId, {
+  inBackground("push", () => sendPushNotification(opts.receiverId, {
     title: `${senderCode} sent you a message`,
     body: preview ? (preview.length > 120 ? `${preview.slice(0, 117)}…` : preview) : "1 unread message",
     inApp: { title: `${senderCode} sent you a message`, body: "1 unread message" },
@@ -587,7 +588,7 @@ export async function createMessage(opts: {
         ctaUrl: `/chats/${opts.requestId}`,
         groupKey: `message:${opts.requestId}`,
       });
-    });
+    }));
 
   return serializeMessage(created, replyTo, clientId ?? undefined);
 }

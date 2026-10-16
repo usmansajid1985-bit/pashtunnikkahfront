@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { inBackground } from "@/lib/background";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { isBlockedBetween } from "@/lib/blocking";
@@ -421,7 +422,7 @@ export async function requestFamilyInvolvement(requestId: bigint, userId: bigint
   const maleCode = pair.codes.get(userId.toString()) || "Your match";
   announce(row);
   // Lock-screen wording stays discreet; the bell row and the chat carry the real context.
-  void sendPushNotification(femaleId, {
+  inBackground("push", () => sendPushNotification(femaleId, {
     title: "Pashtun Nikah",
     body: `${maleCode} wants to take the next step ❤️`,
     url: `/chats/${requestId}`,
@@ -433,7 +434,7 @@ export async function requestFamilyInvolvement(requestId: bigint, userId: bigint
       title: `${maleCode} wants to involve family`,
       body: "He's asked if you're comfortable sharing your wali's contact details.",
     },
-  }).catch((err) => console.error("[family] request push failed", err));
+  }).catch((err) => console.error("[family] request push failed", err)));
 }
 
 /** Sister answers "Not now" to his actual request: it closes, and he gets a cooldown. */
@@ -515,7 +516,7 @@ export async function shareWaliDetails(requestId: bigint, userId: bigint, via: V
     fromCode: femaleCode,
   });
   announce(row);
-  void sendPushNotification(maleId, {
+  inBackground("push", () => sendPushNotification(maleId, {
     title: "Pashtun Nikah",
     body: `${femaleCode} has involved her wali ❤️`,
     url: `/chats/${requestId}`,
@@ -527,7 +528,7 @@ export async function shareWaliDetails(requestId: bigint, userId: bigint, via: V
       title: `${femaleCode} has involved her wali ❤️`,
       body: "Her wali's contact details are now in your chat.",
     },
-  }).catch((err) => console.error("[family] share push failed", err));
+  }).catch((err) => console.error("[family] share push failed", err)));
 }
 
 /** Brother pressed WhatsApp / Email / Copy on the wali card — lets the contact prompt come sooner. */

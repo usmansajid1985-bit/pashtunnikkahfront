@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { inBackground } from "@/lib/background";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests } from "@/lib/matches";
@@ -97,15 +98,15 @@ export async function POST(
 
     const accepterCode = await profileCodeOf(match.receiver_id);
     notifyRequestChange(match, "accepted", accepterCode);
-    void maybeSendActivityEmail({
+    inBackground("activity email", () => maybeSendActivityEmail({
       userId: match.sender_id,
       kind: "request_accepted",
       heading: `${accepterCode} accepted your match request`,
       lines: ["You can now start a conversation on Pashtun Nikah."],
       ctaLabel: "Open conversation",
       ctaUrl: `/chats/${id}`,
-    });
-    void import("@/lib/wali-activity")
+    }));
+    inBackground("wali activity", () => import("@/lib/wali-activity")
       .then(({ notifyWalisOfActivity }) =>
         notifyWalisOfActivity({
           requestId: match.id,
@@ -113,8 +114,8 @@ export async function POST(
           kind: "match_accepted",
         })
       )
-      .catch(() => {});
-    void sendPushNotification(match.sender_id, {
+      .catch(() => {}));
+    inBackground("push", () => sendPushNotification(match.sender_id, {
       title: `${accepterCode} accepted your match request`,
       body: "You can now begin your conversation.",
       url: `/chats/${id}`,
@@ -122,7 +123,7 @@ export async function POST(
       type: "request_accepted",
       actorUserId: match.receiver_id,
       relatedRequestId: id,
-    }).catch((err) => console.error("[push] match-accepted notification failed", err));
+    }).catch((err) => console.error("[push] match-accepted notification failed", err)));
 
     if (!allowsPrivateChat(mode)) {
       // Identify female for wali contact

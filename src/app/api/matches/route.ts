@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { inBackground } from "@/lib/background";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests, findRelation, nextMatchRequestId } from "@/lib/matches";
@@ -102,20 +103,20 @@ export async function POST(req: Request) {
       fromUserId: receiverId.toString(),
       fromCode: accepterCode,
     });
-    void maybeSendActivityEmail({
+    inBackground("activity email", () => maybeSendActivityEmail({
       userId: senderId,
       kind: "request_accepted",
       heading: `${accepterCode} accepted your match request`,
       lines: ["You can now start a conversation on Pashtun Nikah."],
       ctaLabel: "Open conversation",
       ctaUrl: `/chats/${matchId}`,
-    });
-    void import("@/lib/wali-activity")
+    }));
+    inBackground("wali activity", () => import("@/lib/wali-activity")
       .then(({ notifyWalisOfActivity }) =>
         notifyWalisOfActivity({ requestId: matchId, participantIds: [senderId, receiverId], kind: "match_accepted" })
       )
-      .catch(() => {});
-    void sendPushNotification(senderId, {
+      .catch(() => {}));
+    inBackground("push", () => sendPushNotification(senderId, {
       title: `${accepterCode} accepted your match request`,
       body: "You can now begin your conversation.",
       url: `/chats/${matchId}`,
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
       type: "request_accepted",
       actorUserId: receiverId,
       relatedRequestId: matchId,
-    }).catch((err) => console.error("[push] match-accepted notification failed", err));
+    }).catch((err) => console.error("[push] match-accepted notification failed", err)));
 
     return {
       ok: true as const,
@@ -289,21 +290,21 @@ export async function POST(req: Request) {
   // Privacy-safe: no intro text in the payload — it can surface on a locked phone. The profile
   // code is fine (that's what the recipient sees in-app too).
   const senderCode = await profileCodeOf(me);
-  void maybeSendActivityEmail({
+  inBackground("activity email", () => maybeSendActivityEmail({
     userId: peerUserId,
     kind: "new_request",
     heading: `${senderCode} sent you a match request`,
     lines: ["Open Pashtun Nikah to view their profile and respond."],
     ctaLabel: "View request",
     ctaUrl: "/requests?tab=incoming",
-  });
+  }));
   broadcastChat("request:update", [`user:${peerUserId.toString()}`], {
     requestId: created.id.toString(),
     status: "pending",
     fromUserId: session.userId,
     fromCode: senderCode,
   });
-  void sendPushNotification(peerUserId, {
+  inBackground("push", () => sendPushNotification(peerUserId, {
     title: `${senderCode} sent you a match request`,
     body: "Open Requests to respond.",
     url: "/requests?tab=incoming",
@@ -311,7 +312,7 @@ export async function POST(req: Request) {
     type: "match",
     actorUserId: me,
     relatedRequestId: created.id,
-  }).catch((err) => console.error("[push] introduction-request notification failed", err));
+  }).catch((err) => console.error("[push] introduction-request notification failed", err)));
 
   return NextResponse.json({
     ok: true,
