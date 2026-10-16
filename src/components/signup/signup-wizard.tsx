@@ -35,6 +35,7 @@ import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
 import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
 import { PasswordField } from "@/components/signup/password-field";
 import { TribePicker } from "@/components/tribe/tribe-picker";
+import { CareerPicker } from "@/components/profile/career-picker";
 import {
   PASSWORD_HINT,
   PASSWORD_MAX,
@@ -831,8 +832,14 @@ export function SignupWizard() {
                       icon={o.icon}
                       selected={data.employment === o.v}
                       onClick={() =>
-                        // Homemaker / Unemployed aren't asked — drop any answer typed earlier.
-                        patch({ employment: o.v, ...(occupationPrompt(o.v) ? {} : { occupation: "" }) })
+                        // Homemaker / Unemployed aren't asked; a profession doesn't carry over to
+                        // studying (or back) — drop the earlier answer.
+                        patch({
+                          employment: o.v,
+                          ...(occupationPrompt(o.v) && (o.v === "Student") === (data.employment === "Student")
+                            ? {}
+                            : { occupation: "" }),
+                        })
                       }
                     />
                   ))}
@@ -842,20 +849,12 @@ export function SignupWizard() {
                   if (!prompt) return null;
                   return (
                     <>
-                      <label
-                        htmlFor="signup-occupation"
-                        className="block pt-3 text-xs font-semibold text-ink-900 mb-1.5"
-                      >
-                        {prompt.label}
-                      </label>
-                      <input
-                        id="signup-occupation"
+                      <p className="block pt-3 text-xs font-semibold text-ink-900 mb-1.5">{prompt.label}</p>
+                      <CareerPicker
                         className="field"
-                        placeholder={prompt.placeholder}
-                        maxLength={100}
-                        required
+                        employment={data.employment}
                         value={data.occupation}
-                        onChange={(e) => patch({ occupation: e.target.value })}
+                        onChange={(v) => patch({ occupation: v })}
                       />
                     </>
                   );

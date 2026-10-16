@@ -174,7 +174,18 @@ export function buildProfileWhere(
   const occupation = kw(f.occupation);
   const group = professionGroup(occupation);
   if (group) {
-    and.push({ OR: group.keywords.map((w) => ({ occupation: { contains: w, mode: "insensitive" as const } })) });
+    // Students' "profession" is their subject ("Medicine") — they're found by employment status
+    // and kept out of the work groups. Employment lives in the `traits` JSON.
+    const isStudent: Prisma.profilesWhereInput = { traits: { contains: '"employment":"Student"' } };
+    and.push({
+      OR: [
+        ...(group.id === "student" ? [isStudent] : []),
+        ...(group.titles?.length ? [{ occupation: { in: [...group.titles] } }] : []),
+        ...group.keywords.map((w) => ({ occupation: { contains: w, mode: "insensitive" as const } })),
+      ],
+    });
+    // (A profile with no traits at all isn't a student — NOT on a NULL column would drop it.)
+    if (group.id !== "student") and.push({ OR: [{ traits: null }, { NOT: isStudent }] });
   } else if (occupation) {
     and.push({ occupation: { contains: occupation, mode: "insensitive" } });
   }

@@ -30,7 +30,14 @@ function Spinner() {
   );
 }
 
-export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
+export function PhotoGallery({
+  initialPhotos,
+  profileApproved = false,
+}: {
+  initialPhotos: Photo[];
+  /** After approval, photo changes are live straight away (no review). */
+  profileApproved?: boolean;
+}) {
   const router = useRouter();
   const [photos, setPhotos] = useState<Photo[]>(initialPhotos);
   const [busy, setBusy] = useState(false);
@@ -81,8 +88,10 @@ export function PhotoGallery({ initialPhotos }: { initialPhotos: Photo[] }) {
     <section className="bg-white rounded-2xl border border-ink-900/8 p-5 lg:col-span-2">
       <h2 className="font-bold text-ink-950">Profile photos</h2>
       <p className="mt-1 text-sm text-ink-700/70">
-        Add up to {MAX}. Choose one as your main photo. Every photo is manually reviewed before it
-        goes live.
+        Add up to {MAX}. Choose one as your main photo.
+        {profileApproved
+          ? " Changes show on your profile straight away."
+          : " Your photos are reviewed together with your profile."}
       </p>
 
       <div className="mt-4 grid grid-cols-3 gap-3 max-w-md">

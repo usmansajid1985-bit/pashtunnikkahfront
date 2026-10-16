@@ -1,5 +1,6 @@
 import { checkPassword } from "@/lib/password-strength";
 import { isTribeChoice } from "@/lib/tribes";
+import { isCareerOption } from "@/lib/professions";
 
 export type SignupGender = "Brother" | "Sister";
 
@@ -477,7 +478,8 @@ export function occupationPrompt(employment: string): { label: string; placehold
 export function occupationIssue(employment: string, occupation: string): string | null {
   const prompt = occupationPrompt(employment);
   if (!prompt) return null;
-  return occupation.trim().length >= 2 ? null : `Please answer "${prompt.label}"`;
+  if (!occupation.trim()) return `Please answer "${prompt.label}"`;
+  return isCareerOption(employment, occupation.trim()) ? null : `"${prompt.label}": please choose from the list.`;
 }
 
 export function calcAge(dob: string): number | null {

@@ -14,6 +14,7 @@ import { normalizeRelocation } from "@/lib/relocation";
 import { toCountryCode, countryLabel } from "@/lib/country";
 import { parseHeightCm } from "@/lib/height";
 import { standardTribe } from "@/lib/tribes";
+import { occupationIssue } from "@/lib/signup";
 
 export async function GET() {
   const session = await getSession();
@@ -99,6 +100,16 @@ export async function PATCH(req: Request) {
     const nextTribe = body.tribe ? standardTribe(body.tribe) : undefined;
     if (nextTribe === null) {
       return NextResponse.json({ error: "Please select your tribe from the list.", field: "tribe" }, { status: 400 });
+    }
+
+    // Profession comes from the list. An older typed-in value may be kept as it is, but a new or
+    // changed one must be a listed option (with a field-specific message, P05).
+    if (has("occupation") && String(body.occupation ?? "").trim() !== (existing.occupation ?? "").trim()) {
+      const employmentAfter = String(body.employment ?? "");
+      const issue = occupationIssue(employmentAfter, String(body.occupation ?? ""));
+      if (issue && String(body.occupation ?? "").trim()) {
+        return NextResponse.json({ error: issue, field: "occupation" }, { status: 400 });
+      }
     }
 
     let extras: Record<string, unknown> = {};

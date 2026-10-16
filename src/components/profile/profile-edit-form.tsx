@@ -41,6 +41,7 @@ import {
 import { CityPicker } from "@/components/location/city-picker";
 import { cityInvalidMessage } from "@/lib/country";
 import { TribePicker } from "@/components/tribe/tribe-picker";
+import { CareerPicker } from "@/components/profile/career-picker";
 import { matchTribe } from "@/lib/tribes";
 
 const field =
@@ -323,7 +324,7 @@ export function ProfileEditForm({
           </div>
         </div>
 
-        <PhotoGallery initialPhotos={photos} />
+        <PhotoGallery initialPhotos={photos} profileApproved={(initial.status || "").toLowerCase() === "approved"} />
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <h2 className="font-bold text-ink-950">About me &amp; looking for</h2>
@@ -656,8 +657,11 @@ export function ProfileEditForm({
                 icon={o.icon}
                 selected={form.employment === o.v}
                 onClick={() => {
+                  // A profession doesn't carry over to studying (or back) — choose again.
+                  if (o.v !== form.employment && (o.v === "Student" || form.employment === "Student" || !occupationPrompt(o.v))) {
+                    patch("occupation", "");
+                  }
                   patch("employment", o.v);
-                  if (!occupationPrompt(o.v)) patch("occupation", "");
                 }}
               />
             ))}
@@ -677,13 +681,12 @@ export function ProfileEditForm({
             if (!prompt) return null;
             return (
               <>
-                <label className="block text-xs font-semibold">{prompt.label}</label>
-                <input
+                <p className="block text-xs font-semibold">{prompt.label}</p>
+                <CareerPicker
                   className={field}
-                  placeholder={prompt.placeholder}
-                  maxLength={100}
+                  employment={form.employment}
                   value={form.occupation}
-                  onChange={(e) => patch("occupation", e.target.value)}
+                  onChange={(v) => patch("occupation", v)}
                 />
               </>
             );
