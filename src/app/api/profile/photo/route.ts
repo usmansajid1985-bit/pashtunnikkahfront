@@ -31,8 +31,8 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         url: add.photo.url,
-        photoStatus: "pending",
-        message: "Photo uploaded — awaiting moderation.",
+        photoStatus: add.photo.status,
+        message: add.photo.status === "approved" ? "Photo added." : "Photo uploaded — it will be reviewed with your profile.",
       });
     }
 

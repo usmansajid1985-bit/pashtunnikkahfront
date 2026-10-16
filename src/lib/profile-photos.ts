@@ -46,17 +46,35 @@ function pickMain(list: Row[]): Row | null {
 }
 
 /**
+ * Photos go through admin review only with the profile itself (signup). Once a profile is
+ * approved, its photos are live as soon as they're uploaded — and changing photos never touches
+ * the profile's own approval status. Admins can still reject or remove a photo afterwards.
+ */
+async function isProfileApproved(userId: bigint): Promise<boolean> {
+  const profile = await prisma.profiles.findUnique({ where: { user_id: userId }, select: { status: true } });
+  return (profile?.status ?? "").toLowerCase() === "approved";
+}
+
+/**
  * Keep `profiles.photo_url` / `photo_status` pointed at the current main photo so every
  * existing display path (browse, profile, chat, photo-access) keeps working unchanged.
  */
 async function syncMainPhoto(userId: bigint): Promise<void> {
-  const list = await rows(userId);
-  const main = pickMain(list);
   const profile = await prisma.profiles.findUnique({
     where: { user_id: userId },
     select: { photo_url: true, photo_blur_url: true, photo_status: true, photo_version: true, status: true },
   });
   if (!profile) return;
+  // An approved profile has no photos waiting for review: anything still "pending" was uploaded
+  // after approval (or before this rule existed), so it goes live. Rejected photos stay rejected.
+  if ((profile.status ?? "").toLowerCase() === "approved") {
+    await prisma.$executeRaw`
+      UPDATE profile_photos SET status = 'approved', updated_at = NOW()
+      WHERE user_id = ${userId} AND status = 'pending'
+    `;
+  }
+  const list = await rows(userId);
+  const main = pickMain(list);
 
   if (!main) {
     await prisma.profiles.update({
@@ -79,27 +97,21 @@ async function syncMainPhoto(userId: bigint): Promise<void> {
   }
 
   const urlChanged = profile.photo_url !== main.url;
-  // On a new main photo, reset moderation. If the URL is unchanged, keep whatever admin decided
-  // and mirror it back onto the photo row.
+  // On a new main photo, the profile's photo status follows that photo's own review status.
+  // The profile's approval status is never changed here. If the URL is unchanged, keep whatever
+  // admin decided and mirror it back onto the photo row.
   if (urlChanged) {
-    await prisma.$transaction([
-      prisma.profiles.update({
-        where: { user_id: userId },
-        data: {
-          photo_url: main.url,
-          photo_blur_url: blurUrl,
-          photo_verification_url: main.url,
-          photo_status: "pending",
-          photo_version: (profile.photo_version ?? 0) + 1,
-          status: profile.status === "approved" ? "pending" : profile.status,
-          updated_at: new Date(),
-        },
-      }),
-      prisma.$executeRaw`
-        UPDATE profile_photos SET status = 'pending', updated_at = NOW()
-        WHERE user_id = ${userId} AND id = ${main.id} AND status <> 'pending'
-      `,
-    ]);
+    await prisma.profiles.update({
+      where: { user_id: userId },
+      data: {
+        photo_url: main.url,
+        photo_blur_url: blurUrl,
+        photo_verification_url: main.url,
+        photo_status: main.status,
+        photo_version: (profile.photo_version ?? 0) + 1,
+        updated_at: new Date(),
+      },
+    });
   } else {
     if (profile.photo_blur_url !== blurUrl) {
       await prisma.profiles.update({
@@ -169,9 +181,11 @@ export async function addProfilePhoto(
 
   const isFirst = existing.length === 0;
   const nextOrder = existing.length;
+  // After approval a new photo is live straight away; before it, it's reviewed with the profile.
+  const status = (await isProfileApproved(userId)) ? "approved" : "pending";
   const created = await prisma.$queryRaw<Row[]>`
     INSERT INTO profile_photos (user_id, url, blur_url, is_main, status, sort_order, created_at, updated_at)
-    VALUES (${userId}, ${saved.url}, ${saved.blurUrl}, ${isFirst}, 'pending', ${nextOrder}, NOW(), NOW())
+    VALUES (${userId}, ${saved.url}, ${saved.blurUrl}, ${isFirst}, ${status}, ${nextOrder}, NOW(), NOW())
     RETURNING id, url, blur_url, is_main, status, sort_order
   `;
   await syncMainPhoto(userId);

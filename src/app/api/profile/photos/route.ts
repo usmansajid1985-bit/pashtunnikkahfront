@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     ok: true,
     photo: result.photo,
     photos: await listProfilePhotos(userId),
-    message: "Photo uploaded — awaiting moderation.",
+    message: result.photo.status === "approved" ? "Photo added." : "Photo uploaded — it will be reviewed with your profile.",
   });
 }
 
