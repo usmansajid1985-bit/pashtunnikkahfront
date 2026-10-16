@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { refreshNavCounts } from "@/components/browse/nav-notifications";
 
-type Banner = { key: string; title: string; body: string; href: string };
+type Banner = {
+  key: string;
+  title: string;
+  body: string;
+  href: string;
+  /** Member the banner is about — their blurred photo is shown instead of the PN logo. */
+  fromUserId?: string;
+};
 
 type InboxEvent = { requestId: string; lastMessage: string; fromUserId: string; fromCode?: string | null };
 type RequestEvent = {
@@ -39,6 +46,24 @@ function preview(text: string) {
  * happens — instead of waiting for the 45s poll. One shared system for message, request and
  * accepted-match banners (N01/N02); respects the "In-app notification banners" setting (N10).
  */
+/** The sender's blurred photo (same picture as their push notification), else the PN logo. */
+function BannerPicture({ fromUserId }: { fromUserId?: string }) {
+  const [failed, setFailed] = useState(false);
+  if (!fromUserId || failed) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src="/icons/pn-icon-180.png" alt="" className="h-9 w-9 shrink-0 rounded-xl" />;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/api/notifications/avatar/${encodeURIComponent(fromUserId)}`}
+      alt=""
+      onError={() => setFailed(true)}
+      className="h-10 w-10 shrink-0 rounded-full bg-ink-900/5 object-cover"
+    />
+  );
+}
+
 export function LiveUpdates() {
   const router = useRouter();
   const [me, setMe] = useState<{ userId: string } | null>(null);
@@ -149,6 +174,7 @@ export function LiveUpdates() {
         title: e.fromCode || "New message",
         body: preview(e.lastMessage || "Sent you a message"),
         href: `/chats/${e.requestId}`,
+        fromUserId: e.fromUserId,
       });
     };
 
@@ -171,6 +197,7 @@ export function LiveUpdates() {
           title: "New Match Request",
           body: `${e.fromCode || "A member"} sent you a Match Request.`,
           href: "/requests?tab=incoming",
+          fromUserId: e.fromUserId,
         });
       } else if (e.status === "accepted") {
         show({
@@ -178,6 +205,7 @@ export function LiveUpdates() {
           title: "Match accepted",
           body: `${e.fromCode || "A member"} accepted your Match Request.`,
           href: `/chats/${e.requestId}`,
+          fromUserId: e.fromUserId,
         });
       }
     };
@@ -198,6 +226,7 @@ export function LiveUpdates() {
         title: `${e.fromCode || "Your match"} shared private photos`,
         body: "Tap to view — one 60-second session.",
         href: `/chats/${e.requestId}?photos=1`,
+        fromUserId: e.fromUserId,
       });
     };
 
@@ -264,8 +293,7 @@ export function LiveUpdates() {
           }}
           className="flex flex-1 min-w-0 items-center gap-3 text-left"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/pn-icon-180.png" alt="" className="h-9 w-9 shrink-0 rounded-xl" />
+          <BannerPicture fromUserId={banner.fromUserId} />
           <span className="min-w-0">
             <span className="block text-[13px] font-bold text-ink-950 truncate">{banner.title}</span>
             <span className="block text-[13px] text-ink-700/80 truncate">{banner.body}</span>
