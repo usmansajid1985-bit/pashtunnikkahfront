@@ -44,7 +44,7 @@ import {
   checkPassword,
   isBreachedPassword,
 } from "@/lib/password-strength";
-import { PHONE_INVALID_MESSAGE, phonePlaceholder, sanitizePhoneInput, toE164 } from "@/lib/phone";
+import { phonePlaceholder, phoneRules, sanitizePhoneInput, toE164 } from "@/lib/phone";
 
 const STORAGE_KEY = "pn_signup_draft_v2";
 
@@ -1060,7 +1060,7 @@ export function SignupWizard() {
                   maxLength={24}
                   aria-label="Phone number"
                   aria-invalid={phoneError}
-                  aria-describedby={phoneError ? "signup-phone-error" : undefined}
+                  aria-describedby={phoneError ? "signup-phone-error" : "signup-phone-hint"}
                   placeholder={phonePlaceholder(data.phoneIso)}
                   value={data.phone}
                   onChange={(e) => patch({ phone: sanitizePhoneInput(e.target.value) })}
@@ -1069,9 +1069,13 @@ export function SignupWizard() {
               </div>
               {phoneError ? (
                 <p id="signup-phone-error" role="alert" className="text-xs text-rose-700">
-                  {PHONE_INVALID_MESSAGE}
+                  {phoneRules(data.phoneIso).error}
                 </p>
-              ) : null}
+              ) : (
+                <p id="signup-phone-hint" className="text-xs text-ink-700/60">
+                  {phoneRules(data.phoneIso).hint}
+                </p>
+              )}
               </>
             )}
 

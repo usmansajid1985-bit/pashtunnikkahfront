@@ -4,7 +4,7 @@ import { cityInvalidMessage } from "@/lib/country";
 import { isPashtoLevel, occupationIssue, textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { getPhoneCountryCodes } from "@/lib/phone-codes";
-import { PHONE_INVALID_MESSAGE, toE164 } from "@/lib/phone";
+import { PHONE_INVALID_MESSAGE, phoneRules, toE164 } from "@/lib/phone";
 import { PASSWORD_WEAK_MESSAGE, isBreachedPassword, passwordIssue } from "@/lib/password-strength";
 import { prisma } from "@/lib/prisma";
 import {
@@ -113,7 +113,10 @@ export async function POST(req: Request) {
       phoneE164 = toE164(iso, String(body.phone ?? ""));
       if (phoneE164) break;
     }
-    if (!phoneE164) return NextResponse.json({ error: PHONE_INVALID_MESSAGE }, { status: 400 });
+    if (!phoneE164) {
+      const error = phoneIsos.length === 1 ? phoneRules(phoneIsos[0]).error : PHONE_INVALID_MESSAGE;
+      return NextResponse.json({ error }, { status: 400 });
+    }
 
     // R04: the city must be a real town/city in the chosen country (the form only offers those —
     // this stops a hand-crafted request). If the lookup is down, don't block the signup.
