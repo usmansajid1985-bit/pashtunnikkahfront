@@ -295,7 +295,10 @@ export function LiveUpdates() {
         >
           <BannerPicture fromUserId={banner.fromUserId} />
           <span className="min-w-0">
-            <span className="block text-[13px] font-bold text-ink-950 truncate">{banner.title}</span>
+            <span className="flex items-baseline gap-1 min-w-0 text-[13px]">
+              <span className="font-bold text-ink-950 truncate">{banner.title}</span>
+              <span className="shrink-0 text-ink-700/60">• now</span>
+            </span>
             <span className="block text-[13px] text-ink-700/80 truncate">{banner.body}</span>
           </span>
         </button>
