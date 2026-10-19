@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { hasChatConsent } from "@/lib/chat-consent";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
@@ -113,7 +114,10 @@ export async function GET(
   const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
   if (!peer) return NextResponse.json({ error: "Peer not found" }, { status: 404 });
 
-  const meta = await threadMetaFor(req, userId, { withWaliContact: true });
+  const [meta, chatConsent] = await Promise.all([
+    threadMetaFor(req, userId, { withWaliContact: true }),
+    hasChatConsent(req, userId),
+  ]);
 
   const { messages, hasMore } = meta.privateChat
     ? await loadMessagePage(requestId, null, limit)
@@ -169,6 +173,7 @@ export async function GET(
     matchEnded,
     endedAt: req.ended_at?.toISOString() ?? null,
     endReason: req.end_reason ?? null,
+    chatConsent,
     ...meta,
   });
 }

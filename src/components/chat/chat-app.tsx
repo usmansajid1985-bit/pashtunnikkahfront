@@ -515,7 +515,8 @@ export function ChatApp({
   const [endReason, setEndReason] = useState<string | null>(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [endBusy, setEndBusy] = useState(false);
-  const [chatConsent, setChatConsent] = useState(true);
+  // null = not known yet for this chat (no prompt, no sending) until the server says.
+  const [chatConsent, setChatConsent] = useState<boolean | null>(null);
   const [, startTransition] = useTransition();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
@@ -705,6 +706,8 @@ export function ChatApp({
       if (!opts?.soft) setLoadingThread(true);
       // K08/C12: restore this conversation's unsent draft when switching to it.
       if (requestId !== activeIdRef.current) setText(readDrafts()[requestId] ?? "");
+      // Guidelines prompt: known on this device → instant; otherwise wait for the server's answer.
+      setChatConsent(localStorage.getItem(`chat-consent-${requestId}`) === "1" ? true : null);
       setTab("chat");
       setReplyTo(null);
       setPeerTyping(false);
@@ -761,6 +764,15 @@ export function ChatApp({
         setRevealedAvatarSeed(null);
         setIncomingPrivatePhotoStatus("none");
         setMatchEnded(Boolean(data.matchEnded));
+        // N39: the acknowledgement is stored per member on the server, so a new device or
+        // incognito tab doesn't ask again. An "I understand" saved only on this device before the
+        // server kept it is sent up once.
+        {
+          const local = localStorage.getItem(`chat-consent-${requestId}`) === "1";
+          if (data.chatConsent) localStorage.setItem(`chat-consent-${requestId}`, "1");
+          else if (local) void fetch(`/api/chats/${requestId}/consent`, { method: "POST" }).catch(() => {});
+          setChatConsent(Boolean(data.chatConsent) || local);
+        }
         setEndReason(data.endReason ?? null);
         setShowEndConfirm(false);
         setThreads((prev) =>
@@ -778,11 +790,6 @@ export function ChatApp({
   );
 
   // Re-join active thread after reconnect
-  useEffect(() => {
-    if (!activeId || typeof window === "undefined") return;
-    setChatConsent(localStorage.getItem(`chat-consent-${activeId}`) === "1");
-  }, [activeId]);
-
   useEffect(() => {
     if (!connected || !activeId) return;
     void joinThread(activeId);
@@ -2186,7 +2193,7 @@ export function ChatApp({
                             </p>
                           ) : null}
 
-                          {!chatConsent ? (
+                          {chatConsent === false ? (
                             <div className="@container mb-3">
                             <div className="rounded-2xl border border-rose-100 bg-rose-50/60 px-3.5 py-3.5 @xl:px-4 flex flex-col @xl:flex-row @xl:items-center gap-3 @xl:gap-4">
                               <div className="flex gap-3 min-w-0 flex-1">
@@ -2214,7 +2221,10 @@ export function ChatApp({
                               <button
                                 type="button"
                                 onClick={() => {
-                                  if (activeId) localStorage.setItem(`chat-consent-${activeId}`, "1");
+                                  if (activeId) {
+                                    localStorage.setItem(`chat-consent-${activeId}`, "1");
+                                    void fetch(`/api/chats/${activeId}/consent`, { method: "POST" }).catch(() => {});
+                                  }
                                   setChatConsent(true);
                                 }}
                                 className="shrink-0 self-stretch @xl:self-center px-6 h-11 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white text-[14px] font-semibold shadow-sm transition"
