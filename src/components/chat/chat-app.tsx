@@ -34,6 +34,8 @@ import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-statu
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
+import type { HubCard } from "@/lib/requests-hub-shared";
+import { RequestChatPane, RequestListRow, type RequestSub } from "@/components/requests/request-chat-pane";
 
 type Peer = {
   userId: string;
@@ -428,6 +430,9 @@ export function ChatApp({
   initialRequestId = null,
   unreadCount = 0,
   userRealtimeTopic,
+  initialInboxTab = "chats",
+  initialRequestSub = "received",
+  initialOpenRequestId = null,
 }: {
   initialThreads: ChatThreadDTO[];
   userId: string;
@@ -435,8 +440,25 @@ export function ChatApp({
   initialRequestId?: string | null;
   unreadCount?: number;
   userRealtimeTopic: string;
+  /** Chats → Requests tab (opened from the Requests page's introduction message). */
+  initialInboxTab?: "chats" | "requests";
+  initialRequestSub?: RequestSub;
+  initialOpenRequestId?: string | null;
 }) {
   const [threads, setThreads] = useState(initialThreads);
+  const [inboxTab, setInboxTab] = useState<"chats" | "requests">(initialInboxTab);
+  const [requestSub, setRequestSub] = useState<RequestSub>(initialRequestSub);
+  const [requestLists, setRequestLists] = useState<{ received: HubCard[]; sent: HubCard[] } | null>(null);
+  const [openRequestId, setOpenRequestId] = useState<string | null>(initialOpenRequestId);
+  const loadRequests = useCallback(async () => {
+    const res = await fetch("/api/requests", { cache: "no-store" }).catch(() => null);
+    if (!res?.ok) return;
+    const data = await res.json().catch(() => null);
+    if (data) setRequestLists({ received: data.received ?? [], sent: data.sent ?? [] });
+  }, []);
+  useEffect(() => {
+    void loadRequests();
+  }, [loadRequests]);
   const [activeId, setActiveId] = useState<string | null>(initialRequestId);
   const [messages, setMessages] = useState<ChatMessageDTO[]>([]);
   const [peer, setPeer] = useState<Peer | null>(null);
@@ -597,6 +619,8 @@ export function ChatApp({
   useEffect(() => {
     void joinUser(userRealtimeTopic);
   }, [joinUser, userRealtimeTopic]);
+  // A request was sent / answered / withdrawn / expired elsewhere — keep the Requests tab current.
+  useEffect(() => on("request:update", () => void loadRequests()), [on, loadRequests]);
 
   const isNearBottom = useCallback((el: HTMLElement, threshold = 80) => {
     return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
@@ -1410,6 +1434,43 @@ export function ChatApp({
   }, []);
 
   const activeThread = threads.find((t) => t.requestId === activeId) || null;
+  const requestRows = requestLists ? requestLists[requestSub] : [];
+  const openRequest =
+    openRequestId && requestLists
+      ? [...requestLists.received, ...requestLists.sent].find((c) => c.requestId === openRequestId) ?? null
+      : null;
+  const openRequestSub: RequestSub =
+    openRequest && requestLists?.sent.some((c) => c.requestId === openRequest.requestId) ? "sent" : "received";
+  const receivedCount = requestLists?.received.length ?? 0;
+  // Either a conversation or a request fills the right pane (the whole screen on mobile).
+  const paneOpen = Boolean(activeId || openRequest);
+
+  const requestsUrl = (sub: RequestSub, requestId?: string | null) =>
+    `/chats?tab=requests&sub=${sub}${requestId ? `&request=${requestId}` : ""}`;
+
+  function showInbox(next: "chats" | "requests") {
+    setInboxTab(next);
+    if (next === "chats") {
+      setOpenRequestId(null);
+      if (!activeId) window.history.replaceState(null, "", "/chats");
+    } else {
+      window.history.replaceState(null, "", requestsUrl(requestSub, openRequestId));
+    }
+  }
+
+  function openRequestPane(requestId: string) {
+    if (activeId) {
+      leaveThread(activeId);
+      setActiveId(null);
+    }
+    setOpenRequestId(requestId);
+    window.history.replaceState(null, "", requestsUrl(requestSub, requestId));
+  }
+
+  function closeRequestPane() {
+    setOpenRequestId(null);
+    window.history.replaceState(null, "", requestsUrl(requestSub));
+  }
   // C01/C03: the chat identifies members by profile ID, never by name.
   const displayName = peer?.code || activeThread?.peerCode || "Chat";
   const seed = peer?.avatarSeed ?? activeThread?.peerAvatarSeed ?? 1;
@@ -1437,7 +1498,7 @@ export function ChatApp({
           {/* Inbox */}
           <aside
             className={`${
-              activeId ? "hidden lg:flex" : "flex"
+              paneOpen ? "hidden lg:flex" : "flex"
             } flex-col min-h-screen lg:min-h-0 lg:bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
             <div className="sticky top-0 z-20 bg-[#faf8f7] lg:bg-white border-b border-ink-900/6 px-4 h-14 flex items-center justify-between lg:rounded-t-2xl">
@@ -1458,10 +1519,81 @@ export function ChatApp({
 
             {/* Only shown over the inbox list — an open thread needs the full mobile viewport
                 for its composer, not a persistent tab bar competing for space. */}
-            {!activeId ? <MobileBottomNavGate active="messages" unreadCount={unreadCount} /> : null}
+            {!paneOpen ? <MobileBottomNavGate active="messages" unreadCount={unreadCount} /> : null}
+
+            <div className="px-4 pt-3 pb-2 bg-[#faf8f7] lg:bg-white">
+              <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
+                {(["chats", "requests"] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={inboxTab === t}
+                    onClick={() => showInbox(t)}
+                    className={`h-9 rounded-full flex items-center justify-center gap-1.5 text-[14px] transition ${
+                      inboxTab === t
+                        ? "bg-white text-ink-950 font-bold shadow-[0_1px_4px_rgba(15,13,14,0.08)]"
+                        : "text-ink-700/60 font-medium hover:text-ink-900"
+                    }`}
+                  >
+                    {t === "chats" ? "Chats" : "Requests"}
+                    {t === "requests" && receivedCount > 0 ? (
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-bold flex items-center justify-center">
+                        {receivedCount}
+                      </span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+              {inboxTab === "requests" ? (
+                <div className="mt-2.5 flex gap-1.5">
+                  {(["received", "sent"] as const).map((sub) => (
+                    <button
+                      key={sub}
+                      type="button"
+                      onClick={() => {
+                        setRequestSub(sub);
+                        setOpenRequestId(null);
+                        window.history.replaceState(null, "", requestsUrl(sub));
+                      }}
+                      className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition ${
+                        requestSub === sub ? "bg-ink-950 text-white" : "bg-white border border-ink-900/10 text-ink-700 hover:border-ink-900/20"
+                      }`}
+                    >
+                      {sub === "received" ? "Received" : "Sent"}
+                      {sub === "received" && receivedCount > 0 ? <span className="ml-1.5 opacity-70">{receivedCount}</span> : null}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             <div className="flex-1 overflow-y-auto pb-[var(--pn-bottom-nav-h)]">
-              {threads.length === 0 ? (
+              {inboxTab === "requests" ? (
+                !requestLists ? (
+                  <p className="px-6 py-10 text-center text-sm text-ink-700/55">Loading requests…</p>
+                ) : requestRows.length === 0 ? (
+                  <div className="px-6 py-14 text-center">
+                    <p className="font-bold text-ink-950">
+                      {requestSub === "received" ? "No requests waiting" : "No pending requests"}
+                    </p>
+                    <p className="mt-2 text-sm text-ink-700/65">
+                      {requestSub === "received"
+                        ? "When someone sends you a Match Request, it shows up here."
+                        : "Requests you send stay here until they're answered."}
+                    </p>
+                  </div>
+                ) : (
+                  requestRows.map((card) => (
+                    <RequestListRow
+                      key={card.id}
+                      card={card}
+                      active={card.requestId === openRequestId}
+                      onOpen={() => openRequestPane(card.requestId!)}
+                    />
+                  ))
+                )
+              ) : threads.length === 0 ? (
                 <div className="px-6 py-16 text-center">
                   <p className="font-bold text-ink-950">No conversations yet</p>
                   <p className="mt-2 text-sm text-ink-700/65">
@@ -1482,6 +1614,7 @@ export function ChatApp({
                       key={t.requestId}
                       type="button"
                       onClick={() => {
+                        setOpenRequestId(null);
                         startTransition(() => {
                           void openThread(t.requestId);
                           window.history.replaceState(null, "", `/chats/${t.requestId}`);
@@ -1547,6 +1680,31 @@ export function ChatApp({
             </div>
           </aside>
 
+          {/* Open request (Chats → Requests) */}
+          {openRequest ? (
+            <section className="flex flex-col max-lg:fixed max-lg:inset-0 max-lg:z-30 max-lg:h-[100dvh] lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden">
+              <RequestChatPane
+                key={openRequest.id}
+                card={openRequest}
+                sub={openRequestSub}
+                onBack={closeRequestPane}
+                onDone={(action) => {
+                  if (action === "accept") return; // the hook opens the new chat
+                  setRequestLists((prev) =>
+                    prev
+                      ? {
+                          received: prev.received.filter((c) => c.requestId !== openRequest.requestId),
+                          sent: prev.sent.filter((c) => c.requestId !== openRequest.requestId),
+                        }
+                      : prev
+                  );
+                  closeRequestPane();
+                  showToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "Member blocked");
+                }}
+              />
+            </section>
+          ) : null}
+
           {/* Thread */}
           <section
             onTouchStart={onPaneTouchStart}
@@ -1554,14 +1712,20 @@ export function ChatApp({
             onTouchEnd={onPaneTouchEnd}
             onTouchCancel={onPaneTouchEnd}
             className={`${
-              activeId ? "flex" : "hidden lg:flex"
+              openRequest ? "hidden" : activeId ? "flex" : "hidden lg:flex"
             } flex-col max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:top-[var(--chat-vtop,0px)] max-lg:h-[var(--chat-vh,100dvh)] lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
             {!activeId ? (
               <div className="flex-1 flex items-center justify-center text-center px-6">
                 <div>
-                  <p className="font-bold text-lg text-ink-950">Select a conversation</p>
-                  <p className="mt-1 text-sm text-ink-700/60">Your matches will show on the left.</p>
+                  <p className="font-bold text-lg text-ink-950">
+                    {inboxTab === "requests" ? "Select a request" : "Select a conversation"}
+                  </p>
+                  <p className="mt-1 text-sm text-ink-700/60">
+                    {inboxTab === "requests"
+                      ? "Open a request to read the full introduction message."
+                      : "Your matches will show on the left."}
+                  </p>
                 </div>
               </div>
             ) : (

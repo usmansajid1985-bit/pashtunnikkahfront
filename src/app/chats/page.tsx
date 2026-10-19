@@ -6,9 +6,14 @@ import { ChatApp } from "@/components/chat/chat-app";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatsPage() {
+export default async function ChatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; sub?: string; request?: string }>;
+}) {
   const session = await getSession();
   if (!session) redirect("/login");
+  const { tab, sub, request } = await searchParams;
 
   const threads = await listThreadsForUser(BigInt(session.userId));
   const unreadCount = threads.reduce((sum, t) => sum + t.unread, 0);
@@ -19,6 +24,9 @@ export default async function ChatsPage() {
       profileCode={session.profileCode}
       unreadCount={unreadCount}
       userRealtimeTopic={userTopic(session.userId)}
+      initialInboxTab={tab === "requests" ? "requests" : "chats"}
+      initialRequestSub={sub === "sent" ? "sent" : "received"}
+      initialOpenRequestId={tab === "requests" && request && /^\d+$/.test(request) ? request : null}
     />
   );
 }

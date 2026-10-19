@@ -3,6 +3,8 @@ import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { type HubCard, compatScore } from "@/lib/requests-hub-shared";
 import { blockedUserIds } from "@/lib/blocking";
 import { loadCompatibilityCache, type CachedCompat } from "@/lib/compatibility-cache";
+import { countryLabel, toCountryCode } from "@/lib/country";
+import { signedPhotoUrl } from "@/lib/photos";
 
 export type { HubCard } from "@/lib/requests-hub-shared";
 
@@ -35,6 +37,8 @@ const HUB_PROFILE_SELECT = {
   religious_methodology: true,
   dialect: true,
   willing_to_relocate: true,
+  photo_blur_url: true,
+  photo_status: true,
 } as const;
 
 type HubProfile = {
@@ -54,6 +58,8 @@ type HubProfile = {
   religious_methodology: string | null;
   dialect: string | null;
   willing_to_relocate: string | null;
+  photo_blur_url: string | null;
+  photo_status: string | null;
 };
 
 async function loadProfile(userId: bigint) {
@@ -82,7 +88,8 @@ function toCard(
   extra: Partial<HubCard> & { createdAt: string; id: string },
   compatCache?: Map<string, CachedCompat>
 ): HubCard {
-  const place = [peer.city, peer.country].filter(Boolean).join(", ");
+  const countryCode = toCountryCode(peer.country);
+  const place = [peer.city, countryLabel(countryCode) ?? peer.country].filter(Boolean).join(", ");
   const summaryBits = [peer.age ? `${peer.age} yrs` : null, peer.marital_status, peer.tribe].filter(Boolean);
   // Same rule as Browse / full profile / Smart Matches: show the cached blended score once the
   // AI compat has been computed for the pair, otherwise the heuristic — so one pair reads the
@@ -112,6 +119,8 @@ function toCard(
     photoShared: extra.photoShared,
     communicationMode: extra.communicationMode,
     note: extra.note ?? null,
+    countryCode,
+    photoUrl: extra.photoUrl ?? null,
   };
 }
 
@@ -226,6 +235,16 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
     ].map((s) => BigInt(s))),
   ]);
 
+  // Cards only ever get the server-blurred derivative of an approved photo (bucket is private, so
+  // each one is a short-lived signed URL). Members without one fall back to the placeholder.
+  const photoByUser = new Map<string, string | null>();
+  await Promise.all(
+    [...profileMap.values()].map(async (p) => {
+      const ok = p.photo_blur_url && p.photo_status === "approved";
+      photoByUser.set(p.user_id.toString(), ok ? await signedPhotoUrl(p.photo_blur_url!).catch(() => null) : null);
+    })
+  );
+
   const lastMsgByRequest = new Map(
     lastMsgRows.map((m) => [m.request_id.toString(), m.body])
   );
@@ -280,6 +299,7 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
         introMessage: r.intro_message ?? null,
         expiresAt: r.status === "pending" ? r.expires_at.toISOString() : null,
         tokenRefunded: r.sender_id === userId && refundedIds.has(r.id.toString()),
+        photoUrl: photoByUser.get(peerId.toString()) ?? null,
       },
       compatCache
     );

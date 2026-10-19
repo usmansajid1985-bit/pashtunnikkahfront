@@ -27,7 +27,24 @@ export type HubCard = {
   communicationMode?: string | null;
   note?: string | null;
   introMessage?: string | null;
+  /** ISO country code for the flag, when the stored country is recognised. */
+  countryCode?: string | null;
+  /** Signed URL of the server-blurred photo derivative (never the original); null = placeholder. */
+  photoUrl?: string | null;
 };
+
+/** "today at 14:05" / "yesterday at 09:12" / "on 8 Oct at 15:35" in the member's local time. */
+export function relativeStamp(iso: string, now = new Date()) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
+  if (d.toDateString() === now.toDateString()) return `today at ${time}`;
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return `yesterday at ${time}`;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const date = d.toLocaleDateString("en-GB", { day: "numeric", month: "short", ...(sameYear ? {} : { year: "numeric" }) });
+  return `on ${date} at ${time}`;
+}
 
 export function formatAgeLabel(iso: string) {
   const ms = Date.now() - new Date(iso).getTime();

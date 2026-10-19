@@ -1,13 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { RematchButton } from "@/components/matches/rematch-button";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { expiryCountdown, statusDateLabel } from "@/lib/requests-hub-shared";
-import { compatLabel } from "@/lib/compat-engine";
-import { RequestActions } from "@/components/matches/request-actions";
+import { MatchedCard, PastMatchRow, ReceivedCard, SentCard, StatusLine } from "@/components/requests/request-cards";
 
 type Tab = "incoming" | "sent" | "matched";
 
@@ -27,112 +22,89 @@ type HubData = {
   expired: HubCard[];
 };
 
-function avatarUrl(seed: number) {
-  return `https://i.pravatar.cc/120?img=${(seed % 70) + 1}`;
-}
-
 const TAB_IDS: Tab[] = ["incoming", "sent", "matched"];
 
-/**
- * Q06: request/match cards show when the request was sent or reached its status — never how long
- * ago the other member was online. Rendered after mount so it uses the member's own timezone.
- */
-function StatusDate({ card, className }: { card: HubCard; className?: string }) {
-  const [label, setLabel] = useState("");
-  useEffect(() => setLabel(statusDateLabel(card)), [card]);
-  return <span className={className}>{label}</span>;
+/** `?tab=received` is the new name; `incoming` keeps older links (banners, emails) working. */
+function toTab(raw?: string): Tab | null {
+  if (raw === "received") return "incoming";
+  return TAB_IDS.includes(raw as Tab) ? (raw as Tab) : null;
 }
 
-/**
- * Remaining time on a pending request (7 days from when it was sent). Ticks once a minute and
- * reloads the list when the time runs out, so the expired request leaves on its own.
- */
-function ExpiryCountdown({ expiresAt }: { expiresAt: string }) {
-  const router = useRouter();
-  const [state, setState] = useState<ReturnType<typeof expiryCountdown> | null>(null);
-  useEffect(() => {
-    let refreshed = false;
-    const tick = () => {
-      const next = expiryCountdown(expiresAt);
-      setState(next);
-      if (next.msLeft <= 0 && !refreshed) {
-        refreshed = true;
-        router.refresh();
-      }
-    };
-    tick();
-    const timer = window.setInterval(tick, 60_000);
-    return () => window.clearInterval(timer);
-  }, [expiresAt, router]);
-  if (!state) return null;
+/** Received / Sent / Matched as one segmented control; only Received carries a count badge. */
+function SegmentedTabs({ tab, onChange, received }: { tab: Tab; onChange: (t: Tab) => void; received: number }) {
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "incoming", label: "Received" },
+    { id: "sent", label: "Sent" },
+    { id: "matched", label: "Matched" },
+  ];
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-        state.soon ? "bg-amber-50 text-amber-700" : "bg-ink-900/5 text-ink-700/70"
-      }`}
-    >
-      {state.label}
-    </span>
+    <div role="tablist" className="grid grid-cols-3 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
+      {tabs.map((t) => {
+        const active = tab === t.id;
+        return (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.id)}
+            className={`h-11 rounded-full flex items-center justify-center gap-2 text-[15px] transition ${
+              active ? "bg-white text-ink-950 font-bold shadow-[0_1px_4px_rgba(15,13,14,0.08)]" : "text-ink-700/60 font-medium hover:text-ink-900"
+            }`}
+          >
+            {t.label}
+            {t.id === "incoming" && received > 0 ? (
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[13px] font-bold flex items-center justify-center">
+                {received}
+              </span>
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
-  const [tab, setTab] = useState<Tab>(
-    TAB_IDS.includes(initialTab as Tab) ? (initialTab as Tab) : "incoming"
-  );
+  const [tab, setTab] = useState<Tab>(toTab(initialTab) ?? "incoming");
   const [sort, setSort] = useState<"newest" | "oldest" | "compat">("newest");
 
   useEffect(() => {
-    if (initialTab && TAB_IDS.includes(initialTab as Tab)) setTab(initialTab as Tab);
+    const t = toTab(initialTab);
+    if (t) setTab(t);
   }, [initialTab]);
 
-  const tabs: { id: Tab; label: string; count?: number | null }[] = [
-    { id: "incoming", label: "Incoming", count: data.counts.incoming },
-    { id: "sent", label: "Sent", count: data.counts.sent },
-    { id: "matched", label: "Matched", count: data.counts.matched },
-  ];
+  const changeTab = (t: Tab) => {
+    setTab(t);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", t === "incoming" ? "received" : t);
+    window.history.replaceState(null, "", url);
+  };
 
   const list = useMemo(() => {
-    let rows: HubCard[] = [];
-    if (tab === "incoming") rows = data.incoming;
-    else if (tab === "sent") rows = data.sent;
-    else rows = data.matched;
-
-    const sorted = [...rows];
-    if (sort === "newest") sorted.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    if (sort === "oldest") sorted.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
-    if (sort === "compat") sorted.sort((a, b) => b.compat - a.compat);
-    return sorted;
+    const rows = [...(tab === "incoming" ? data.incoming : tab === "sent" ? data.sent : data.matched)];
+    if (sort === "oldest") rows.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+    else if (sort === "compat" && tab === "matched") rows.sort((a, b) => b.compat - a.compat);
+    else rows.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    return rows;
   }, [tab, sort, data]);
+
+  // The Sent list already shows every request I sent with its status; the history sections
+  // below only cover requests I received.
+  const sentIds = useMemo(() => new Set(data.sent.map((c) => c.id)), [data.sent]);
+  const receivedDeclined = data.declined.filter((c) => !sentIds.has(c.id));
+  const receivedExpired = data.expired.filter((c) => !sentIds.has(c.id));
+  const ended = data.ended ?? [];
 
   return (
     <div>
-      <div className="flex gap-1 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`shrink-0 px-3.5 py-2 rounded-full text-[13px] font-semibold transition ${
-              tab === t.id
-                ? "bg-rose-600 text-white"
-                : "bg-white border border-ink-900/8 text-ink-700 hover:border-rose-200"
-            }`}
-          >
-            {t.label}
-            {t.count != null ? (
-              <span className={`ml-1.5 ${tab === t.id ? "text-white/80" : "text-ink-700/45"}`}>
-                {t.count}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      <SegmentedTabs tab={tab} onChange={changeTab} received={data.counts.incoming} />
 
-      {tab === "incoming" || tab === "matched" ? (
-        <div className="mt-4 flex items-center gap-2">
-          <label className="text-xs font-semibold text-ink-700/60">Sort</label>
+      {tab === "matched" && list.length > 1 ? (
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <label htmlFor="requests-sort" className="text-xs font-semibold text-ink-700/60">Sort</label>
           <select
+            id="requests-sort"
             className="text-sm rounded-full border border-ink-900/10 bg-white px-3 py-1.5"
             value={sort}
             onChange={(e) => setSort(e.target.value as typeof sort)}
@@ -144,187 +116,69 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         </div>
       ) : null}
 
-      <div className="mt-4 space-y-2">
-        {list.length === 0 && !(tab === "matched" && (data.ended?.length ?? 0) > 0) ? (
-          <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-8 text-center">
-            Nothing here yet.
+      <div className="mt-4 space-y-3">
+        {list.length === 0 && !(tab === "matched" && ended.length > 0) ? (
+          <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
+            {tab === "incoming"
+              ? "No requests waiting for you right now."
+              : tab === "sent"
+                ? "You haven't sent any requests yet."
+                : "No matches yet."}
           </p>
         ) : (
-          <>
-          {list.map((card) => (
-            <article
-              key={card.id}
-              className="bg-white rounded-2xl border border-ink-900/6 px-4 py-3.5 flex gap-3 items-start"
-            >
-              <Link href={`/p/${card.code}`} className="shrink-0 relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarUrl(card.avatarSeed)}
-                  alt=""
-                  className="w-14 h-14 rounded-2xl object-cover"
-                  style={
-                    tab === "matched" && card.photoShared
-                      ? undefined
-                      : { filter: "blur(6px) saturate(0.85)" }
-                  }
-                />
-                {tab === "matched" ? (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[9px] font-bold uppercase tracking-wide border border-rose-100">
-                    matched
-                  </span>
-                ) : null}
-              </Link>
-
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <Link href={`/p/${card.code}`} className="font-bold text-ink-950 hover:text-rose-600">
-                      {card.code}
-                    </Link>
-                    <p className="text-[12px] text-ink-700/60 truncate mt-0.5">{card.summary}</p>
-                    {card.place ? (
-                      <p className="text-[11px] text-ink-700/45 truncate">{card.place}</p>
-                    ) : null}
-                    {tab === "incoming" && card.introMessage ? (
-                      <p className="text-[12px] text-ink-700 mt-1 line-clamp-2 italic">
-                        “{card.introMessage}”
-                      </p>
-                    ) : null}
-                    {tab === "matched" && card.lastMessage ? (
-                      <p className="text-[12px] text-ink-700 mt-1 line-clamp-1">“{card.lastMessage}”</p>
-                    ) : null}
-                    <p className="text-[11px] font-semibold text-ink-700/55 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <StatusDate card={card} />
-                      {card.status === "pending" && card.expiresAt ? (
-                        <ExpiryCountdown expiresAt={card.expiresAt} />
-                      ) : null}
-                      {tab === "sent" && card.tokenRefunded ? (
-                        <span className="text-emerald-700">1 Match Token refunded</span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    {/* B27: no percentages — Gold members see a plain label. */}
-                    {data.isGold && compatLabel(card.compat) ? (
-                      <p className="text-[11px] font-semibold text-rose-600">{compatLabel(card.compat)}</p>
-                    ) : null}
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {tab === "incoming" && card.requestId ? (
-                    <RequestActions requestId={card.requestId} mode="incoming" peerUserId={card.peerUserId} />
-                  ) : null}
-                  {tab === "sent" && card.requestId && card.status === "pending" ? (
-                    <RequestActions requestId={card.requestId} mode="sent" />
-                  ) : null}
-                  {tab === "matched" && card.requestId ? (
-                    <>
-                      <Link
-                        href={`/chats/${card.requestId}`}
-                        className="px-3 py-1.5 rounded-full bg-rose-600 text-white text-sm font-semibold"
-                      >
-                        Open chat
-                      </Link>
-                      <Link
-                        href={`/p/${card.code}`}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Profile
-                      </Link>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            </article>
-          ))}
-          {tab === "matched" && (data.ended?.length ?? 0) > 0 ? (
-            <section className="mt-8">
-              <h3 className="text-sm font-bold text-ink-950 mb-2">Past matches</h3>
-              <div className="space-y-2">
-                {data.ended!.map((card) => (
-                  <article
-                    key={card.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white/80 border border-ink-900/6 rounded-2xl px-4 py-3.5"
-                  >
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={avatarUrl(card.avatarSeed)}
-                        alt=""
-                        className="w-11 h-11 rounded-full object-cover shrink-0 opacity-80"
-                      />
-                      <div className="min-w-0">
-                        <p className="font-semibold text-ink-950 truncate">{card.code}</p>
-                        <p className="text-[13px] text-ink-700/55 truncate">
-                          <StatusDate card={card} />
-                          {card.lastMessage ? ` · ${card.lastMessage.slice(0, 48)}` : ""}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 shrink-0">
-                      {card.requestId ? (
-                        <Link
-                          href={`/chats/${card.requestId}`}
-                          className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                        >
-                          View chat
-                        </Link>
-                      ) : null}
-                      <Link
-                        href={`/p/${card.code}`}
-                        className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                      >
-                        Profile
-                      </Link>
-                      <RematchButton profileCode={card.code} />
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          ) : null}
-          </>
+          list.map((card) =>
+            tab === "incoming" ? (
+              <ReceivedCard key={card.id} card={card} />
+            ) : tab === "sent" ? (
+              <SentCard key={card.id} card={card} />
+            ) : (
+              <MatchedCard key={card.id} card={card} />
+            )
+          )
         )}
       </div>
 
-      {(tab === "incoming" || tab === "sent") && (data.declined.length > 0 || data.expired.length > 0) ? (
+      {tab === "matched" && ended.length > 0 ? (
+        <section className="mt-8">
+          <h3 className="text-sm font-bold text-ink-950 mb-2">Past matches</h3>
+          <div className="space-y-2">
+            {ended.map((card) => (
+              <PastMatchRow key={card.id} card={card} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {tab === "incoming" && (receivedDeclined.length > 0 || receivedExpired.length > 0) ? (
         <div className="mt-8 space-y-4">
-          {data.declined.length > 0 ? (
-            <section>
-              <h3 className="text-sm font-bold text-ink-950 mb-2">Recently declined</h3>
-              <div className="space-y-2">
-                {data.declined.slice(0, 5).map((c) => (
-                  <Link
-                    key={c.id}
-                    href={`/p/${c.code}`}
-                    className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm"
-                  >
-                    <span className="font-semibold">{c.code}</span>
-                    <StatusDate card={c} className="text-ink-700/50" />
-                  </Link>
-                ))}
-              </div>
-            </section>
+          {receivedDeclined.length > 0 ? (
+            <HistoryList title="Recently declined" cards={receivedDeclined} />
           ) : null}
-          {data.expired.length > 0 ? (
-            <section>
-              <h3 className="text-sm font-bold text-ink-950 mb-2">Expired</h3>
-              <div className="space-y-2">
-                {data.expired.slice(0, 5).map((c) => (
-                  <div key={c.id} className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm">
-                    <span className="font-semibold">{c.code}</span>
-                    <StatusDate card={c} className="text-ink-700/50" />
-                    {c.tokenRefunded ? (
-                      <span className="ml-auto text-[12px] font-semibold text-emerald-700">1 Match Token refunded</span>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </section>
-          ) : null}
+          {receivedExpired.length > 0 ? <HistoryList title="Expired" cards={receivedExpired} /> : null}
         </div>
       ) : null}
     </div>
+  );
+}
+
+function HistoryList({ title, cards }: { title: string; cards: HubCard[] }) {
+  return (
+    <section>
+      <h3 className="text-sm font-bold text-ink-950 mb-2">{title}</h3>
+      <div className="space-y-2">
+        {cards.slice(0, 5).map((c) => (
+          <a
+            key={c.id}
+            href={`/p/${c.code}`}
+            className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm hover:bg-white"
+          >
+            <span className="font-semibold">{c.code}</span>
+            <span className="text-ink-700/50">
+              <StatusLine card={c} />
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
   );
 }

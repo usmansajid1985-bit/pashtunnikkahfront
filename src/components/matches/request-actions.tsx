@@ -3,22 +3,19 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-export function RequestActions({
-  requestId,
-  mode,
-  peerUserId,
-}: {
-  requestId: string;
-  mode: "incoming" | "sent";
-  /** Needed to block an incoming requester without accepting them first. */
-  peerUserId?: string;
-}) {
+export type RequestAction = "accept" | "decline" | "withdraw";
+
+/**
+ * Accept / decline / withdraw a match request, or block the requester. Shared by the Requests
+ * page cards and the request view inside Chats so both behave the same: accepting opens the new
+ * chat, everything else refreshes the lists (`onDone` runs first, e.g. to close a panel).
+ */
+export function useRequestActions(requestId: string, opts: { onDone?: (action: RequestAction | "block") => void } = {}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [confirmBlock, setConfirmBlock] = useState(false);
 
-  async function act(action: "accept" | "decline" | "withdraw") {
+  function act(action: RequestAction) {
     setError(null);
     startTransition(async () => {
       const res = await fetch(`/api/matches/${requestId}`, {
@@ -26,12 +23,13 @@ export function RequestActions({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error || "Failed");
+        setError(data.error || "Something went wrong — please try again.");
         if (data.code === "stale_request") router.refresh();
         return;
       }
+      opts.onDone?.(action);
       if (action === "accept") {
         router.push(`/chats/${requestId}`);
         return;
@@ -40,8 +38,7 @@ export function RequestActions({
     });
   }
 
-  async function block() {
-    if (!peerUserId) return;
+  function block(peerUserId: string) {
     setError(null);
     startTransition(async () => {
       const res = await fetch("/api/blocks", {
@@ -54,77 +51,10 @@ export function RequestActions({
         setError(data.error || "Could not block");
         return;
       }
-      setConfirmBlock(false);
+      opts.onDone?.("block");
       router.refresh();
     });
   }
 
-  if (mode === "sent") {
-    return (
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => act("withdraw")}
-        className="text-sm font-semibold text-ink-700/70 hover:text-rose-600 disabled:opacity-50"
-      >
-        Withdraw Request
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => act("decline")}
-          className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold disabled:opacity-50"
-        >
-          Decline
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => act("accept")}
-          className="px-3 py-1.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
-        >
-          Accept
-        </button>
-      </div>
-      {peerUserId ? (
-        confirmBlock ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-ink-700/60">Block this member?</span>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => void block()}
-              className="text-xs font-semibold text-rose-700 hover:underline disabled:opacity-50"
-            >
-              Confirm block
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => setConfirmBlock(false)}
-              className="text-xs font-semibold text-ink-700/50 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => setConfirmBlock(true)}
-            className="text-xs font-semibold text-ink-700/40 hover:text-rose-600 disabled:opacity-50"
-          >
-            Block
-          </button>
-        )
-      ) : null}
-      {error ? <p className="text-xs text-rose-700">{error}</p> : null}
-    </div>
-  );
+  return { act, block, pending, error };
 }
