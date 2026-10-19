@@ -771,28 +771,6 @@ export function BrowseFiltersBar({
                           ))}
                         </select>
                       </Field>
-                      <fieldset disabled={locked} className={`space-y-2 pt-1 ${locked ? "opacity-50" : ""}`}>
-                        <legend className="flex items-center gap-2 text-xs font-semibold text-ink-900 mb-1.5">
-                          Activity <GoldTag locked={locked} />
-                        </legend>
-                        {(
-                          [
-                            ["newMembers", "New members (last 7 days)"],
-                            ["recentlyActive", "Recently active (30 days)"],
-                            ["goldOnly", "Gold members only"],
-                          ] as const
-                        ).map(([key, label]) => (
-                          <label key={key} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={draft[key]}
-                              onChange={(e) => setDraft({ ...draft, [key]: e.target.checked })}
-                              className="accent-rose-600"
-                            />
-                            {label}
-                          </label>
-                        ))}
-                      </fieldset>
                     </section>
 
                     <section className="space-y-3 border-t border-ink-900/8 pt-4">

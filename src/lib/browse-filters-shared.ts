@@ -163,9 +163,10 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
     language: firstTrimmed(sp.language),
     dress: firstTrimmed(sp.dress),
     interests: firstTrimmed(sp.interests),
-    goldOnly: first(sp.goldOnly) === "1",
-    newMembers: first(sp.newMembers) === "1",
-    recentlyActive: first(sp.recentlyActive) === "1",
+    // N33: the Discovery checkboxes were removed — ignore them in old links / saved presets.
+    goldOnly: false,
+    newMembers: false,
+    recentlyActive: false,
     near: first(sp.near) === "1",
     sort,
     page: Math.max(1, Number(first(sp.page)) || 1),
