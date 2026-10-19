@@ -22,6 +22,7 @@ export function ProfileDesktop({
   viewerCompat,
   presence,
   slides,
+  photoAction,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -43,6 +44,8 @@ export function ProfileDesktop({
   presence?: { online: boolean; label: string; justJoined?: boolean } | null;
   /** All photos this viewer may see, main first. Defaults to the single profile photo. */
   slides?: ProfileSlide[];
+  /** Passed to the hero: a control centred on the photo. */
+  photoAction?: ReactNode;
 }) {
   const isOwn = showEditTab;
   const avatarSrc =
@@ -106,6 +109,7 @@ export function ProfileDesktop({
           fallbackSrc={avatar}
           presence={isOwn ? null : presence}
           size={embedded ? "panel" : "wide"}
+          photoAction={photoAction}
         />
 
         <div className="mt-4 space-y-4">

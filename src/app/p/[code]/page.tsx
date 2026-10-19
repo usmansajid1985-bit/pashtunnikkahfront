@@ -16,7 +16,6 @@ import { formatLastSeen, isActiveToday, isJustJoined } from "@/lib/presence";
 import { isBlockedBetween } from "@/lib/blocking";
 import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
 import { signedPhotoUrl } from "@/lib/photos";
-import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 
 export const dynamic = "force-dynamic";
@@ -234,16 +233,8 @@ export default async function PublicProfilePage({
       viewerCompat={viewerCompat}
       presence={presence}
       photoVisible={photo.photoVisible}
-      photoAccessory={
-        matchStatus.state === "accepted" ? (
-          <PrivatePhotoShare
-            requestId={matchStatus.requestId}
-            matchEnded={false}
-            peerName={profile.profile_code || "this member"}
-            variant="banner"
-          />
-        ) : null
-      }
+      // N38: private-photo sharing / preview lives only in the chat (Chat + Profile tabs), never on
+      // a profile opened from Browse — the match card's "Open Chat" leads there.
     />
   );
 }

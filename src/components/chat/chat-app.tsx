@@ -29,7 +29,7 @@ import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
-import { PrivatePhotoShare } from "@/components/chat/private-photo-share";
+import { PrivatePhotoShare, openPrivatePhotos } from "@/components/chat/private-photo-share";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
@@ -2339,6 +2339,23 @@ export function ChatApp({
                           hideNav
                           photoOverrideUrl={peerProfile.photoUrl}
                           photoOverrideVisible={photoVisible}
+                          photoAction={
+                            activeId &&
+                            !matchEnded &&
+                            (incomingPrivatePhotoStatus === "shared" || incomingPrivatePhotoStatus === "active") ? (
+                              <button
+                                type="button"
+                                onClick={() => openPrivatePhotos(activeId)}
+                                className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-white/95 text-ink-950 text-[14px] font-semibold shadow-[0_8px_24px_-8px_rgba(15,13,14,0.5)] backdrop-blur hover:bg-white transition"
+                              >
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                  <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                                  <circle cx="12" cy="12" r="3" />
+                                </svg>
+                                View photo here
+                              </button>
+                            ) : null
+                          }
                         />
                       </>
                     )}

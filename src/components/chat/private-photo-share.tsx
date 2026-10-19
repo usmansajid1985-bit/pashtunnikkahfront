@@ -26,6 +26,13 @@ type ViewerData = { secondsRemaining: number; watermark: string; photos: { index
 
 const POLL_MS = 4000;
 
+/** Opens this conversation's photo flow (Start Viewing prompt, or the running viewer) from anywhere
+ * in the chat — e.g. the "View photo here" button on the Profile tab's photo. */
+export const OPEN_PRIVATE_PHOTOS_EVENT = "pn:open-private-photos";
+export function openPrivatePhotos(requestId: string) {
+  window.dispatchEvent(new CustomEvent(OPEN_PRIVATE_PHOTOS_EVENT, { detail: { requestId } }));
+}
+
 /** Overlays render at <body> — the chat panes are CSS-transformed for the swipe gesture, which
  * would otherwise trap `position: fixed` modals inside the pane (clipped under the header). */
 function Overlay({ children }: { children: ReactNode }) {
@@ -125,6 +132,17 @@ export function PrivatePhotoShare({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summary, variant]);
 
+  // Same flow when another control in this chat asks for it (banner instance only, so it opens once).
+  const tapRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (variant !== "banner") return;
+    const onOpen = (e: Event) => {
+      if ((e as CustomEvent<{ requestId: string }>).detail?.requestId === requestId) tapRef.current();
+    };
+    window.addEventListener(OPEN_PRIVATE_PHOTOS_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PRIVATE_PHOTOS_EVENT, onOpen);
+  }, [variant, requestId]);
+
   useEffect(() => {
     if (matchEnded) return;
     void refresh();
@@ -203,6 +221,7 @@ export function PrivatePhotoShare({
     setViewerData(data);
   }
 
+  tapRef.current = () => onTapIncoming();
   function onTapIncoming() {
     if (!summary || summary.incoming.status === "none") return;
     if (summary.incoming.status === "shared") {

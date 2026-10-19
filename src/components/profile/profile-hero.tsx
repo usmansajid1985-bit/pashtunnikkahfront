@@ -1,4 +1,5 @@
 import "flag-icons/css/flag-icons.min.css";
+import type { ReactNode } from "react";
 import { toCountryCode } from "@/lib/country";
 import type { ProfileView } from "@/lib/profile";
 import { TribePill } from "@/components/tribe/tribe-pill";
@@ -17,6 +18,7 @@ export function ProfileHero({
   fallbackSrc,
   presence,
   size = "phone",
+  photoAction,
 }: {
   profile: ProfileView;
   slides: ProfileSlide[];
@@ -26,6 +28,8 @@ export function ProfileHero({
   fallbackSrc: string;
   presence?: { online: boolean; label: string; justJoined?: boolean } | null;
   size?: "phone" | "wide" | "panel";
+  /** A control centred on the photo — e.g. chat's "View photo here" when private photos are shared. */
+  photoAction?: ReactNode;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const countryCode = toCountryCode(profile.country);
@@ -46,6 +50,10 @@ export function ProfileHero({
       ) : (
         <ProfilePhotoSlider slides={slides} showPhoto={showPhoto} fallbackSrc={fallbackSrc} arrows={size !== "phone"} />
       )}
+
+      {photoAction ? (
+        <div className="absolute inset-x-0 top-[28%] -translate-y-1/2 z-20 flex justify-center px-4">{photoAction}</div>
+      ) : null}
 
       {presence ? (
         <div className="absolute top-4 right-4 z-20 pointer-events-none flex flex-col items-end gap-1.5">
