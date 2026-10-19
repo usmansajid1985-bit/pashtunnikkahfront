@@ -174,8 +174,8 @@ export async function createShare(opts: {
     )
     .catch(() => {}));
   inBackground("push", () => sendPushNotification(recipientId, {
-    title: `${senderCode} shared private photos with you`,
-    body: "You have one 60-second session to view them.",
+    title: `${senderCode} shared photos with you`,
+    body: "You have a 60-second session to view them.",
     url: `/chats/${opts.requestId.toString()}`,
     tag: `private-photo-${created.id.toString()}`,
     type: "photo",

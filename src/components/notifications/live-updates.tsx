@@ -223,8 +223,8 @@ export function LiveUpdates() {
       if (window.location.pathname === `/chats/${e.requestId}`) return;
       show({
         key: `photo-${e.requestId}-${Date.now()}`,
-        title: `${e.fromCode || "Your match"} shared private photos`,
-        body: "Tap to view — one 60-second session.",
+        title: `${e.fromCode || "Your match"} shared photos with you`,
+        body: "You have a 60-second session to view them.",
         href: `/chats/${e.requestId}?photos=1`,
         fromUserId: e.fromUserId,
       });
