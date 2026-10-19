@@ -66,7 +66,10 @@ export function MemberWarningGate() {
         </p>
         <p className="mt-2 text-[12px] text-ink-700/60">
           Sent {new Date(pending.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}.
-          You can see past messages in Settings.
+          You can see past messages in Settings.{" "}
+          <a href="/guidelines" target="_blank" rel="noopener" className="font-semibold text-rose-600 hover:underline">
+            Read the community guidelines
+          </a>
         </p>
         <button
           type="button"

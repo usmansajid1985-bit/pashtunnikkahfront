@@ -65,6 +65,7 @@ export function SiteFooter() {
           <div>
             <h3 className="text-rose-300 font-semibold text-sm uppercase tracking-wide">Support</h3>
             <ul className="mt-5 space-y-3 text-sm text-white/55">
+              <li><Link href="/guidelines" className="hover:text-white transition">Community Guidelines</Link></li>
               <li><Link href="/privacy" className="hover:text-white transition">Privacy Policy</Link></li>
               <li><a href="mailto:info@pashtunnikah.com" className="hover:text-white transition">Contact Us</a></li>
             </ul>

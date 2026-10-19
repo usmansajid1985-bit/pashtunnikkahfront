@@ -92,8 +92,8 @@ const REPLY_THRESHOLD_PX = 56;
 const MENU_SPACE_PX = 260;
 const REPLY_MAX_PX = 84;
 
-/** Where "Pashtun Nikah" in the chat guidelines prompt points. TODO: a dedicated guidelines page. */
-const COMMUNITY_GUIDELINES_HREF = "/";
+/** Where "Pashtun Nikah" in the chat guidelines prompt points. */
+const COMMUNITY_GUIDELINES_HREF = "/guidelines";
 
 const PANE_TRANSITION = "transform 260ms cubic-bezier(0.22, 0.8, 0.3, 1)";
 
