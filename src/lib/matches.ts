@@ -80,9 +80,14 @@ export async function nextMatchRequestId() {
   return (max._max.id ?? BigInt(0)) + BigInt(1);
 }
 
+/**
+ * The request that describes this pair right now. A pair can have several rows (an old
+ * expired/declined request next to the accepted one), so a live row wins over a newer closed
+ * one: accepted first, then pending, else the latest row.
+ */
 export async function findRelation(me: bigint, peer: bigint) {
   await ensureMatchRequestsSchema();
-  return prisma.match_requests.findFirst({
+  const rows = await prisma.match_requests.findMany({
     where: {
       OR: [
         { sender_id: me, receiver_id: peer },
@@ -91,6 +96,8 @@ export async function findRelation(me: bigint, peer: bigint) {
     },
     orderBy: { id: "desc" },
   });
+  const withStatus = (s: string) => rows.find((r) => r.status.toLowerCase() === s);
+  return withStatus("accepted") ?? withStatus("pending") ?? rows[0] ?? null;
 }
 
 export type MatchRelationStatus =
