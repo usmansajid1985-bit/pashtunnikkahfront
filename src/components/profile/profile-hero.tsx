@@ -65,14 +65,9 @@ export function ProfileHero({
         </div>
       ) : null}
 
-      <div
-        className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none"
-        aria-hidden
-      />
-
       <div className={`absolute inset-x-0 bottom-0 z-10 text-white pointer-events-none ${wide ? "px-8 pb-7" : "px-5 pb-5"}`}>
         <p
-          className={`font-bold flex items-baseline gap-2 leading-tight [text-shadow:0_1px_3px_rgba(0,0,0,0.4)] ${
+          className={`font-bold flex items-baseline gap-2 leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.55),0_2px_12px_rgba(0,0,0,0.45)] ${
             wide ? "text-[34px]" : "text-[22px]"
           }`}
         >
@@ -85,7 +80,7 @@ export function ProfileHero({
           ) : null}
         </p>
         <p
-          className={`mt-0.5 flex items-center gap-1.5 font-semibold uppercase tracking-wide text-white/85 ${
+          className={`mt-0.5 flex items-center gap-1.5 font-semibold uppercase tracking-wide text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6),0_1px_8px_rgba(0,0,0,0.4)] ${
             wide ? "text-[14px]" : "text-[13px]"
           }`}
         >
@@ -98,7 +93,7 @@ export function ProfileHero({
             .map((v, i) => (
               <span
                 key={`${v}-${i}`}
-                className={`rounded-full bg-white/15 backdrop-blur-md font-medium text-white border border-white/20 ${
+                className={`rounded-full bg-black/35 backdrop-blur-md font-medium text-white border border-white/20 ${
                   wide ? "px-3.5 py-1.5 text-[13px]" : "px-2.5 py-1 text-[11.5px]"
                 }`}
               >
