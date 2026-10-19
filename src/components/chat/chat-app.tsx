@@ -92,6 +92,9 @@ const REPLY_THRESHOLD_PX = 56;
 const MENU_SPACE_PX = 260;
 const REPLY_MAX_PX = 84;
 
+/** Where "Pashtun Nikah" in the chat guidelines prompt points. TODO: a dedicated guidelines page. */
+const COMMUNITY_GUIDELINES_HREF = "/";
+
 const PANE_TRANSITION = "transform 260ms cubic-bezier(0.22, 0.8, 0.3, 1)";
 
 type SendStatus = "pending" | "failed" | "sent" | "delivered" | "read";
@@ -2184,22 +2187,41 @@ export function ChatApp({
                           ) : null}
 
                           {!chatConsent ? (
-                            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-950">
-                              <p className="font-semibold">Before you message</p>
-                              <p className="mt-1 text-[13px] leading-relaxed text-amber-900/85">
-                                Keep conversations respectful and within Pashtun Nikah guidelines. Do not share private
-                                contact details until you and your families are ready.
-                              </p>
+                            <div className="@container mb-3">
+                            <div className="rounded-2xl border border-rose-100 bg-rose-50/60 px-3.5 py-3.5 @xl:px-4 flex flex-col @xl:flex-row @xl:items-center gap-3 @xl:gap-4">
+                              <div className="flex gap-3 min-w-0 flex-1">
+                                <span className="shrink-0 w-10 h-10 @xl:w-11 @xl:h-11 rounded-full bg-rose-100/80 flex items-center justify-center" aria-hidden>
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M12 3 5 6v5c0 4.5 3 8.3 7 9.5 4-1.2 7-5 7-9.5V6Z" />
+                                    <path d="m9 12 2 2 4-4" />
+                                  </svg>
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-[12px] text-ink-700/70">Before you message!</p>
+                                  <p className="text-[15px] font-semibold text-ink-950 leading-snug">Keep conversations respectful</p>
+                                  <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-700/80">
+                                    Please follow the{" "}
+                                    <Link href={COMMUNITY_GUIDELINES_HREF} className="text-blue-600 underline underline-offset-2">
+                                      Pashtun Nikah
+                                    </Link>{" "}
+                                    community guidelines and keep conversations respectful. Avoid sharing phone numbers, social
+                                    media handles, emails or other private contact details. If there is compatibility, family
+                                    involvement is strongly encouraged. Failure to abide by the guidelines may result in account
+                                    suspension.
+                                  </p>
+                                </div>
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => {
                                   if (activeId) localStorage.setItem(`chat-consent-${activeId}`, "1");
                                   setChatConsent(true);
                                 }}
-                                className="mt-2 px-3 py-1.5 rounded-full bg-rose-600 text-white text-xs font-semibold"
+                                className="shrink-0 self-stretch @xl:self-center px-6 h-11 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white text-[14px] font-semibold shadow-sm transition"
                               >
-                                I understand — continue
+                                I understand
                               </button>
+                            </div>
                             </div>
                           ) : null}
 
