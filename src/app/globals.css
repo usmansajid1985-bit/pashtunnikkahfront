@@ -493,6 +493,26 @@ body {
     grid-column: 1 / -1;
   }
 }
+/* Edit Profile (desktop): all five beard styles in one row of compact tiles. Signup and phones
+   keep the 3 + 2 layout above. */
+@media (min-width: 1024px) {
+  .edit-appearance-row .choice-grid-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .edit-appearance-row .choice-grid-5 > .beard-tile:nth-child(n) {
+    grid-column: auto;
+  }
+  .edit-appearance-row .beard-tile {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  .edit-appearance-row .beard-tile-label {
+    font-size: 11px;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+}
 /* Sister appearance — head covering + dress style tiles */
 .choice-section-head {
   display: flex;

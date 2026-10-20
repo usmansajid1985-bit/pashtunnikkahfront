@@ -643,6 +643,7 @@ export function ProfileEditForm({
               );
             })()
           ) : (
+            <div className="edit-appearance-row">
             <ChoiceGrid count={5}>
               {MEN_APPEARANCE.map((v) => (
                 <BeardTile
@@ -653,6 +654,7 @@ export function ProfileEditForm({
                 />
               ))}
             </ChoiceGrid>
+            </div>
           )}
         </section>
         </div>
