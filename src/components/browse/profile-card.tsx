@@ -1,4 +1,5 @@
-import { compatLabel } from "@/lib/compat-engine";
+import "flag-icons/css/flag-icons.min.css";
+import { countryLabel, toCountryCode } from "@/lib/country";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
 
@@ -27,10 +28,30 @@ export type ProfileCardData = {
   activityBucket?: number;
 };
 
-function Detail({ children }: { children: React.ReactNode }) {
-  return <p className="detail-line">{children}</p>;
+/** "London, UK" — short names for the countries members mostly come from. */
+const SHORT_COUNTRY: Record<string, string> = { GB: "UK", US: "USA", AE: "UAE" };
+
+function placeLine(city: string | null, country: string | null) {
+  const code = toCountryCode(country);
+  const name = code ? SHORT_COUNTRY[code] ?? countryLabel(code) ?? country : country;
+  return { code, text: [city, name].filter(Boolean).join(", ") };
 }
 
+function Detail({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <p className="flex items-center gap-2.5 text-[13.5px] text-ink-900/80 min-w-0">
+      <span className="shrink-0 w-[18px] flex justify-center">{icon}</span>
+      <span className="min-w-0 truncate flex items-center gap-2">{children}</span>
+    </p>
+  );
+}
+
+/**
+ * Browse card: blurred photo across the top (activity + Just Joined pills on it), then the
+ * profile ID, age, height, flag + place, tribe and profession, a short about, and the bookmark.
+ * The whole card opens the full profile; only the bookmark does something else. No compatibility
+ * on Browse cards.
+ */
 export function ProfileCard({
   p,
   saved = false,
@@ -52,16 +73,48 @@ export function ProfileCard({
 
   // B13/B14: simple activity wording only; Just Joined is its own badge, never a replacement.
   const presenceLabel = p.lastSeenLabel || "Not recently active";
-  const activeToday = presenceLabel === "Active today";
+  const recentlyActive = presenceLabel === "Active today" || presenceLabel === "Active yesterday" || Boolean(p.online);
+  const place = placeLine(p.city, p.country);
+  const href = p.profileCode
+    ? `/p/${encodeURIComponent(p.profileCode)}${returnQuery ? `?from=${encodeURIComponent(returnQuery)}` : ""}`
+    : `#profile-${p.id}`;
 
   return (
-    <article className="card p-4 flex flex-col">
-      <div className="flex justify-between items-start gap-3">
-        <div className="flex-1 min-w-0 pr-1">
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
-            <span className="inline-block px-2.5 py-1 rounded-md bg-rose-50 text-rose-600 text-xs font-bold">
-              Profile: {code}
+    <article className="relative card p-3 flex flex-col group hover:border-rose-200 transition">
+      {/* The whole card opens the profile; the bookmark sits above this link. */}
+      <a href={href} className="absolute inset-0 rounded-[inherit] z-0" aria-label={`View ${code}'s profile`} />
+
+      <div className="relative z-[1] pointer-events-none">
+        <div className="relative aspect-[5/4] w-full overflow-hidden rounded-xl border border-ink-900/8 bg-ink-900/5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.photoUrl || `https://i.pravatar.cc/300?img=${(p.avatarSeed % 70) + 1}`}
+            className="h-full w-full object-cover scale-110"
+            style={{ filter: "blur(10px) saturate(0.85)" }}
+            alt="Blurred profile photo"
+          />
+          <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-sm px-2.5 py-1 text-[11.5px] font-medium text-white">
+              <span
+                className={`h-2 w-2 rounded-full ${recentlyActive ? "bg-emerald-400" : "bg-white/50"}`}
+                aria-hidden
+              />
+              {presenceLabel}
             </span>
+            {p.justJoined ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11.5px] font-semibold text-rose-600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 2l2.2 6.6H21l-5.5 4 2.1 6.6L12 15.2 6.4 19.2l2.1-6.6L3 8.6h6.8Z" />
+                </svg>
+                Just Joined
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="px-1 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[17px] font-bold text-rose-600">{code}</p>
             {p.expandedLabel ? (
               <span className="inline-block px-2 py-0.5 rounded-md bg-sky-50 text-sky-800 text-[11px] font-semibold">
                 {p.expandedLabel}
@@ -69,117 +122,40 @@ export function ProfileCard({
             ) : null}
           </div>
 
-          <p className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold">
-            <span className={`inline-flex items-center gap-1.5 ${activeToday ? "text-emerald-700" : "text-ink-700/65"}`}>
-              <span
-                className={`inline-flex h-2 w-2 shrink-0 rounded-full ${activeToday ? "bg-emerald-500" : "bg-ink-700/30"}`}
-                aria-hidden
-              />
-              {presenceLabel}
-            </span>
-            {p.justJoined ? (
-              <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                ✨ Just Joined
-              </span>
-            ) : null}
-          </p>
-
-          {/* B27: a plain label only — no percentages. The full written breakdown is on the profile. */}
-          {compatLabel(p.matchScore) ? (
-            <p className="mt-1.5 text-[11px] font-bold tracking-wide text-ink-950">{compatLabel(p.matchScore)}</p>
-          ) : null}
-
-          <div className="mt-3 space-y-1.5">
-            {p.age != null ? (
-              <Detail>
-                <IconCalendar />
-                {p.age} yrs
-              </Detail>
-            ) : null}
-            {p.height ? (
-              <Detail>
-                <IconRuler />
-                {p.height}
+          <div className="mt-2.5 space-y-2">
+            {p.age != null ? <Detail icon={<IconCalendar />}>{p.age} years</Detail> : null}
+            {p.height ? <Detail icon={<IconRuler />}>{p.height}</Detail> : null}
+            {place.text ? (
+              <Detail icon={<IconPin />}>
+                {place.code ? (
+                  <span aria-hidden className={`fi fi-${place.code.toLowerCase()} shrink-0 rounded-[2px]`} />
+                ) : null}
+                <span className="truncate">{place.text}</span>
               </Detail>
             ) : null}
             {tribeLabel(p.tribe) ? (
-              <Detail>
-                <IconFlag />
-                <TribePill tribe={p.tribe} className="px-2 py-0.5 text-[11.5px]" />
+              <Detail icon={<IconFamily />}>
+                <TribePill tribe={p.tribe} className="px-2.5 py-0.5 text-[12px]" />
               </Detail>
             ) : null}
-            {p.country ? (
-              <Detail>
-                <IconGlobe />
-                {p.country}
-              </Detail>
-            ) : null}
-            {p.city ? (
-              <Detail>
-                <IconPin />
-                {p.city}
-              </Detail>
-            ) : null}
-            {p.occupation ? (
-              <Detail>
-                <IconBriefcase />
-                {p.occupation}
-              </Detail>
-            ) : null}
+            {p.occupation ? <Detail icon={<IconBriefcase />}>{p.occupation}</Detail> : null}
           </div>
         </div>
-        <div className="relative shrink-0 self-start">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={
-              p.photoUrl ||
-              `https://i.pravatar.cc/200?img=${(p.avatarSeed % 70) + 1}`
-            }
-            className="w-[6.75rem] h-[6.75rem] sm:w-28 sm:h-28 rounded-xl object-cover"
-            style={{ filter: "blur(10px) saturate(0.8)" }}
-            alt="Blurred profile photo"
-          />
-          <span
-            title={presenceLabel}
-            className={`absolute top-1.5 right-1.5 h-3 w-3 rounded-full ring-2 ring-white ${
-              p.online ? "bg-emerald-500" : p.justJoined ? "bg-amber-500" : "bg-rose-400"
-            }`}
-            aria-label={presenceLabel}
-          />
-        </div>
       </div>
-      <p className="mt-3 text-xs text-ink-700/75 leading-relaxed line-clamp-3 flex-1">{about}</p>
-      <div className="mt-4 flex items-center gap-2">
-        <a
-          href={
-            p.profileCode
-              ? `/p/${encodeURIComponent(p.profileCode)}${
-                  returnQuery ? `?from=${encodeURIComponent(returnQuery)}` : ""
-                }`
-              : `#profile-${p.id}`
-          }
-          className="flex-1 text-center py-2 rounded-full border border-ink-900/12 text-sm font-semibold text-ink-900 hover:border-rose-300 transition"
-        >
-          Full Profile
-        </a>
+
+      <div className="relative z-[1] pointer-events-none mt-3 mx-1 pt-3 border-t border-ink-900/8 flex items-end gap-3 flex-1">
+        <p className="flex-1 text-[12.5px] text-ink-700/75 leading-relaxed line-clamp-4">{about}</p>
         <button
           type="button"
           onClick={onToggleSave}
           disabled={saveBusy}
           aria-pressed={saved}
-          className={`icon-circle transition disabled:opacity-50 ${
-            saved ? "bg-rose-50 border-rose-200 text-rose-600" : "text-ink-700/50 hover:text-ink-900"
+          className={`pointer-events-auto shrink-0 -mr-1 -mb-1 w-9 h-9 flex items-center justify-center rounded-full transition disabled:opacity-50 ${
+            saved ? "text-rose-600" : "text-ink-900/70 hover:text-ink-950 hover:bg-ink-900/5"
           }`}
           aria-label={saved ? "Remove from saved" : "Save"}
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill={saved ? "currentColor" : "none"}
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
             <path d="M6 3.5h12v17l-6-4-6 4v-17Z" />
           </svg>
         </button>
@@ -190,7 +166,7 @@ export function ProfileCard({
 
 function IconCalendar() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
       <rect x="3" y="4" width="18" height="17" rx="2" />
       <path d="M3 9h18M8 3v3M16 3v3" />
     </svg>
@@ -198,29 +174,24 @@ function IconCalendar() {
 }
 function IconRuler() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
       <path d="M6 3v18M18 3v18M4 7h4M4 17h4M16 7h4M16 17h4" />
     </svg>
   );
 }
-function IconFlag() {
+function IconFamily() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-    </svg>
-  );
-}
-function IconGlobe() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3c2.5 2.5 2.5 15.5 0 18M12 3c-2.5 2.5-2.5 15.5 0 18" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
+      <circle cx="17" cy="9" r="2.3" />
+      <path d="M15.5 14.3c.5-.2 1-.3 1.5-.3 2.2 0 4 1.5 4 4" />
     </svg>
   );
 }
 function IconPin() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
       <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
       <circle cx="12" cy="10.5" r="2" />
     </svg>
@@ -228,7 +199,7 @@ function IconPin() {
 }
 function IconBriefcase() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.8">
       <rect x="3" y="7" width="18" height="13" rx="2" />
       <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
     </svg>
