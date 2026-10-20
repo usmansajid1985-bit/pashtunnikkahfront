@@ -94,8 +94,6 @@ export function PrivatePhotoShare({
   const [startPromptOpen, setStartPromptOpen] = useState(false);
   const [viewerData, setViewerData] = useState<ViewerData | null>(null);
   const [endedOpen, setEndedOpen] = useState(false);
-  const [reciprocalOpen, setReciprocalOpen] = useState(false);
-  const shownReciprocalFor = useRef<Set<string>>(new Set());
 
   const refresh = useCallback(async () => {
     try {
@@ -104,14 +102,6 @@ export function PrivatePhotoShare({
       const data: Summary = await res.json();
       setSummary(data);
       onIncomingStatusChange?.(data.incoming.status);
-      if (
-        data.incoming.status === "expired" &&
-        data.outgoing.status === "none" &&
-        !shownReciprocalFor.current.has(data.incoming.shareId)
-      ) {
-        shownReciprocalFor.current.add(data.incoming.shareId);
-        setReciprocalOpen(true);
-      }
     } catch {
       /* transient — next poll retries */
     }
@@ -480,35 +470,6 @@ export function PrivatePhotoShare({
         </Overlay>
       ) : null}
 
-      {reciprocalOpen ? (
-        <Overlay>
-        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl text-center">
-            <p className="font-bold text-ink-950 text-sm">Would you like to share your photos with {peerName}?</p>
-            <p className="text-[12px] text-ink-700/65 mt-1.5">Sharing is completely optional.</p>
-            <div className="mt-4 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setReciprocalOpen(false);
-                  void openPicker();
-                }}
-                className="w-full py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold"
-              >
-                Share My Photos
-              </button>
-              <button
-                type="button"
-                onClick={() => setReciprocalOpen(false)}
-                className="w-full py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-              >
-                Not Now
-              </button>
-            </div>
-          </div>
-        </div>
-        </Overlay>
-      ) : null}
     </div>
   );
 }
