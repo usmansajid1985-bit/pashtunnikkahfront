@@ -173,6 +173,8 @@ export async function GET(
     matchEnded,
     endedAt: req.ended_at?.toISOString() ?? null,
     endReason: req.end_reason ?? null,
+    // N43: only the member who ended the match is offered "Request Rematch".
+    endedByMe: matchEnded && req.ended_by != null && req.ended_by === userId,
     chatConsent,
     ...meta,
   });

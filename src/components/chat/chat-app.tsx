@@ -580,6 +580,8 @@ export function ChatApp({
   const [chatWarning, setChatWarning] = useState<string | null>(null);
   const [matchEnded, setMatchEnded] = useState(false);
   const [endReason, setEndReason] = useState<string | null>(null);
+  const [endedByMe, setEndedByMe] = useState(false);
+  const [rematchBusy, setRematchBusy] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [endBusy, setEndBusy] = useState(false);
   // null = not known yet for this chat (no prompt, no sending) until the server says.
@@ -841,6 +843,7 @@ export function ChatApp({
           setChatConsent(Boolean(data.chatConsent) || local);
         }
         setEndReason(data.endReason ?? null);
+        setEndedByMe(Boolean(data.endedByMe));
         setShowEndConfirm(false);
         setThreads((prev) =>
           prev.map((t) => (t.requestId === requestId ? { ...t, unread: 0 } : t))
@@ -1027,6 +1030,7 @@ export function ChatApp({
       if (payload.requestId === activeId) {
         setMatchEnded(true);
         setEndReason(null);
+        setEndedByMe(false);
         setPeerTyping(false);
         setReplyTo(null);
         return;
@@ -1138,6 +1142,29 @@ export function ChatApp({
     }
   }, [messages, loadingThread, tab]);
 
+  /** N43: the member who ended the match can ask again — a new request costing one Match Token. */
+  async function requestRematch() {
+    if (!displayName || rematchBusy) return;
+    setRematchBusy(true);
+    setHeaderMenu(null);
+    try {
+      const res = await fetch("/api/matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profileCode: displayName, rematch: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setToast(data.error || "Could not request a rematch");
+        return;
+      }
+      setToast(data.message === "Request already sent" ? "Rematch request already sent" : "Rematch request sent");
+      window.location.assign("/requests?tab=sent");
+    } finally {
+      setRematchBusy(false);
+    }
+  }
+
   async function endMatchHandler() {
     if (!activeId || matchEnded || endBusy) return;
     setEndBusy(true);
@@ -1150,6 +1177,7 @@ export function ChatApp({
       }
       setMatchEnded(true);
       setEndReason(data.endReason ?? "user");
+      setEndedByMe(true);
       setShowEndConfirm(false);
       setThreads((prev) => prev.filter((t) => t.requestId !== activeId));
       setToast("Match ended");
@@ -1202,6 +1230,7 @@ export function ChatApp({
         setText(item.body);
         setMatchEnded(true);
         setEndReason(null);
+        setEndedByMe(false);
       }
       return false;
     }
@@ -2000,6 +2029,22 @@ export function ChatApp({
                                 </svg>
                                 End match
                               </button>
+                            ) : endedByMe ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                disabled={rematchBusy}
+                                onClick={() => void requestRematch()}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-sm text-[#c92763] hover:bg-rose-50 disabled:opacity-50"
+                              >
+                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
+                                  <path d="M12 20s-7-4.3-9-8.6C1.6 8.3 3.4 5 6.8 5c2 0 3.3 1.1 4.2 2.4C11.9 6.1 13.2 5 15.2 5c3.4 0 5.2 3.3 3.8 6.4C17 15.7 12 20 12 20Z" />
+                                </svg>
+                                <span>
+                                  Request rematch
+                                  <span className="block text-[11.5px] text-ink-700/55">Costs 1 match token</span>
+                                </span>
+                              </button>
                             ) : null}
                             <button
                               type="button"
@@ -2191,7 +2236,32 @@ export function ChatApp({
 
                     {/* Composer / Photo share */}
                     <div className="border-t border-ink-900/6 bg-white px-3 sm:px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                      {matchEnded ? (
+                      {matchEnded && endedByMe ? (
+                        <div className="@container mb-2">
+                          <div className="rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3.5 flex flex-col @md:flex-row @md:items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold text-ink-950">This match has ended</p>
+                              <p className="mt-0.5 text-[13px] text-ink-700/70 leading-relaxed">
+                                You can read past messages but cannot send new ones. Match ended by you
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              disabled={rematchBusy}
+                              onClick={() => void requestRematch()}
+                              className="shrink-0 flex items-center justify-center gap-3 px-5 py-2 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white shadow-sm disabled:opacity-60 transition"
+                            >
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                                <path d="M12 21s-7.5-4.6-9.7-9.3C.8 8.4 2.7 4.5 6.5 4.5c2.2 0 3.6 1.2 4.5 2.6.9-1.4 2.3-2.6 4.5-2.6 3.8 0 5.7 3.9 4.2 7.2C19.5 16.4 12 21 12 21Z" />
+                              </svg>
+                              <span className="text-left leading-tight">
+                                <span className="block text-[14px] font-semibold">{rematchBusy ? "Sending…" : "Request Rematch"}</span>
+                                <span className="block text-[11.5px] text-white/85">Costs 1 match token</span>
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      ) : matchEnded ? (
                         <div className="rounded-2xl border border-ink-900/8 bg-[#faf8f7] px-4 py-4 mb-2">
                           <p className="text-sm font-bold text-ink-950">This match has ended</p>
                           <p className="mt-1 text-[13px] text-ink-700/70 leading-relaxed">
