@@ -62,14 +62,19 @@ export function RequestPhoto({ card, className = "" }: { card: HubCard; classNam
       </div>
     );
   }
+  // Always visibly blurred, at every size (incl. small Past-matches avatars): the server copy is
+  // already a blur derivative, and this extra CSS blur keeps it unmistakably soft when tiny.
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={card.photoUrl}
-      alt=""
-      onError={() => setFailed(true)}
-      className={`shrink-0 rounded-2xl object-cover bg-ink-900/5 ${className}`}
-    />
+    <span className={`relative block shrink-0 overflow-hidden rounded-2xl bg-ink-900/10 ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={card.photoUrl}
+        alt=""
+        onError={() => setFailed(true)}
+        className="absolute inset-0 h-full w-full object-cover scale-125"
+        style={{ filter: "blur(6px) saturate(0.85)" }}
+      />
+    </span>
   );
 }
 
