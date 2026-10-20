@@ -47,7 +47,7 @@ export default async function WaliDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900">
-      <WaliHeader watchingName={view.fullName} />
+      <WaliHeader wardCode={view.profileCode} />
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
         <Link

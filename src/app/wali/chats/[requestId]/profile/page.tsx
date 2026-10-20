@@ -5,6 +5,7 @@ import { mapProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { withPeerPhotoUrls } from "@/lib/photos";
+import { profileCodeOf } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -46,11 +47,16 @@ export default async function WaliPeerProfilePage({
     );
   }
 
-  const view = await withPeerPhotoUrls(mapProfileView(profile, user));
+  // N46: the wali sees the match by profile ID only — his name never reaches this page.
+  const [mapped, wardCode] = await Promise.all([
+    withPeerPhotoUrls(mapProfileView(profile, user)),
+    profileCodeOf(profileUserId),
+  ]);
+  const view = { ...mapped, fullName: mapped.profileCode };
 
   return (
     <div className="bg-[#faf8f7] text-ink-900">
-      <WaliHeader watchingName={view.fullName} />
+      <WaliHeader wardCode={wardCode} />
       <ProfilePreview
         profile={view}
         showEditTab={false}

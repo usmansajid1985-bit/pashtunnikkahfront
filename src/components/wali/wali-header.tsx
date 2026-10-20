@@ -1,12 +1,13 @@
 "use client";
 
-export function WaliHeader({ watchingName }: { watchingName: string }) {
+/** N46: always the ward's profile ID — never a member's name (and never the match's). */
+export function WaliHeader({ wardCode }: { wardCode: string }) {
   return (
     <header className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/8">
       <div className="max-w-3xl mx-auto px-4 h-14 flex items-center justify-between">
         <div>
           <p className="font-bold text-ink-950 text-[15px]">Wali view</p>
-          <p className="text-[11px] text-ink-700/55">Read-only — {watchingName.split(" ")[0]}&apos;s chats</p>
+          <p className="text-[11px] text-ink-700/55">Read-only — {wardCode}&apos;s chats</p>
         </div>
         <button
           type="button"

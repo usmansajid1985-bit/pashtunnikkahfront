@@ -69,7 +69,7 @@ export default async function WaliChatThreadPage({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900">
-      <WaliHeader watchingName={peer?.name || "Chat"} />
+      <WaliHeader wardCode={wardCode} />
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between mb-3">
           <Link href="/wali" className="inline-flex items-center gap-1 text-sm text-ink-700/60 hover:text-ink-900">
@@ -79,7 +79,7 @@ export default async function WaliChatThreadPage({
             Back to chats
           </Link>
           <Link href={`/wali/chats/${raw}/profile`} className="text-sm font-semibold text-rose-600 hover:text-rose-700">
-            View {peer?.name?.split(" ")[0] || "member"}&apos;s full profile →
+            View {peer?.code ? `${peer.code}'s` : "their"} full profile →
           </Link>
         </div>
         <WaliPrivatePhoto requestId={raw} peerCode={peer?.code || "Member"} />

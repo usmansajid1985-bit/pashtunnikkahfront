@@ -34,7 +34,7 @@ export default async function WaliOwnProfilePage() {
 
   return (
     <div className="bg-[#faf8f7] text-ink-900">
-      <WaliHeader watchingName={view.fullName} />
+      <WaliHeader wardCode={view.profileCode} />
       <ProfilePreview
         profile={view}
         showEditTab={false}
