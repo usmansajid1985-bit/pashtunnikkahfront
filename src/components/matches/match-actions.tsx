@@ -136,7 +136,7 @@ export function MatchActions({
             href={`/chats/${status.requestId}`}
             className={`${btn} bg-rose-600 text-white hover:bg-rose-700`}
           >
-            Open Chat
+            Matched – go to chat
           </a>
         ) : null}
 

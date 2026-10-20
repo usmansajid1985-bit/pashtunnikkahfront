@@ -23,6 +23,7 @@ export function ProfileDesktop({
   presence,
   slides,
   photoAction,
+  footerTitle = "Connect",
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -46,6 +47,8 @@ export function ProfileDesktop({
   slides?: ProfileSlide[];
   /** Passed to the hero: a control centred on the photo. */
   photoAction?: ReactNode;
+  /** Heading over the footer box; null hides it (e.g. already matched — just the go-to-chat button). */
+  footerTitle?: string | null;
 }) {
   const isOwn = showEditTab;
   const avatarSrc =
@@ -123,7 +126,7 @@ export function ProfileDesktop({
 
           {!isOwn && footer ? (
             <div className="card p-6">
-              <h2 className="text-lg font-bold text-ink-950 mb-3">Connect</h2>
+              {footerTitle ? <h2 className="text-lg font-bold text-ink-950 mb-3">{footerTitle}</h2> : null}
               {footer}
             </div>
           ) : null}

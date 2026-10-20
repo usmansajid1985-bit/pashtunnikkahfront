@@ -107,6 +107,8 @@ export function ProfilePreview({
           slides={slides}
           photoOverrideVisible={photoVisible}
           photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
+          // N45: a matched profile opened from Browse shows only "Matched – go to chat".
+          footerTitle={matchStatus?.state === "accepted" ? null : "Connect"}
           footer={
             matchStatus || photoAccessory ? (
               <>
