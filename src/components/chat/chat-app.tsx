@@ -34,6 +34,7 @@ import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-statu
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
+import { ChatNotifyBanner } from "@/components/notifications/chat-notify-banner";
 import type { HubCard } from "@/lib/requests-hub-shared";
 import { RequestChatPane, RequestListRow, type RequestSub } from "@/components/requests/request-chat-pane";
 
@@ -482,7 +483,6 @@ export function ChatApp({
   const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null);
   const [peerTyping, setPeerTyping] = useState(false);
   const [typingByThread, setTypingByThread] = useState<Record<string, boolean>>({});
-  const [banner, setBanner] = useState(true);
   const [loadingThread, setLoadingThread] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
   const [unseenCount, setUnseenCount] = useState(0);
@@ -2018,28 +2018,7 @@ export function ChatApp({
                         onScroll={onScrollThread}
                         className={`flex-1 overflow-y-auto px-3 sm:px-5 pt-3 space-y-3 scroll-smooth ${peerTyping ? "pb-14" : "pb-4"}`}
                       >
-                      {banner ? (
-                        <div className="rounded-2xl px-3.5 py-3 flex items-center gap-3 bg-gradient-to-r from-[#eef2ff] to-[#f5f0ff] border border-indigo-100">
-                          <p className="flex-1 text-[13px] text-ink-900 leading-snug">
-                            Love moves fast. Make sure you&apos;re notified.
-                          </p>
-                          <button
-                            type="button"
-                            className="shrink-0 px-3 py-1.5 rounded-full bg-[#4f6ef7] text-white text-xs font-semibold"
-                            onClick={() => setBanner(false)}
-                          >
-                            Notify me
-                          </button>
-                          <button
-                            type="button"
-                            className="shrink-0 text-ink-700/40"
-                            onClick={() => setBanner(false)}
-                            aria-label="Dismiss"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : null}
+                      <ChatNotifyBanner />
 
                       {loadingThread ? (
                         <p className="text-center text-sm text-ink-700/50 py-10">Loading…</p>
