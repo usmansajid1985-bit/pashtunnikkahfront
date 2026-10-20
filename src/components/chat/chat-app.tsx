@@ -11,6 +11,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { createPortal } from "react-dom";
 import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
 import {
   FamilyIcon,
@@ -424,6 +425,72 @@ function MessageBubble({
         />
       </div>
     </div>
+  );
+}
+
+/**
+ * "End this match?" — rendered on <body>: the Chat/Profile panes sit on a transformed (and, for the
+ * hidden pane, inert) track, which clipped a fixed popup in half and made Cancel unclickable.
+ */
+function EndMatchConfirm({
+  busy,
+  onConfirm,
+  onCancel,
+}: {
+  busy: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) onCancel();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [busy, onCancel]);
+  if (!mounted) return null;
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !busy) onCancel();
+      }}
+    >
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="end-match-title"
+        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl animate-[chatIn_160ms_ease-out]"
+      >
+        <h3 id="end-match-title" className="text-lg font-bold text-ink-950">
+          End this match?
+        </h3>
+        <p className="mt-2 text-sm text-ink-700/70 leading-relaxed">
+          The conversation will become read-only. You can still view past messages. This cannot be undone.
+        </p>
+        <div className="mt-5 flex gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onConfirm}
+            className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? "Ending…" : "Yes, end match"}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onCancel}
+            className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -2278,33 +2345,11 @@ export function ChatApp({
                       />
                     ) : null}
                     {showEndConfirm ? (
-                      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
-                        <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl">
-                          <h3 className="text-lg font-bold text-ink-950">End this match?</h3>
-                          <p className="mt-2 text-sm text-ink-700/70 leading-relaxed">
-                            The conversation will become read-only. You can still view past messages. This cannot be
-                            undone.
-                          </p>
-                          <div className="mt-5 flex gap-2">
-                            <button
-                              type="button"
-                              disabled={endBusy}
-                              onClick={() => void endMatchHandler()}
-                              className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
-                            >
-                              {endBusy ? "Ending…" : "Yes, end match"}
-                            </button>
-                            <button
-                              type="button"
-                              disabled={endBusy}
-                              onClick={() => setShowEndConfirm(false)}
-                              className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      </div>
+                      <EndMatchConfirm
+                        busy={endBusy}
+                        onConfirm={() => void endMatchHandler()}
+                        onCancel={() => setShowEndConfirm(false)}
+                      />
                     ) : null}
                     </div>
                     <div className="w-1/2 h-full min-h-0 flex flex-col" inert={tab !== "profile" || undefined}>
