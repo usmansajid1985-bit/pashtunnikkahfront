@@ -223,22 +223,15 @@ export async function getBellCounts(userId: bigint): Promise<BellCounts> {
   await ensureNotificationsSchema();
   const since = new Date(Date.now() - NOTIFICATION_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-  const [activityUnread, publishedUpdates, readUpdates] = await Promise.all([
+  // N52: unread = live announcements this member hasn't opened (scheduled / unpublished /
+  // archived ones never count, and reads of removed ones can't push the number negative).
+  const { unreadAnnouncementCount } = await import("@/lib/announcements");
+  const [activityUnread, updatesUnread] = await Promise.all([
     prisma.notifications.count({
       where: { recipient_user_id: userId, read_at: null, created_at: { gte: since } },
     }),
-    prisma.announcements.count({
-      where: {
-        status: "published",
-        OR: [{ publish_at: null }, { publish_at: { lte: new Date() } }],
-      },
-    }),
-    prisma.$queryRaw<{ n: bigint }[]>`
-      SELECT count(*) n FROM announcement_reads WHERE user_id = ${userId}
-    `.then((r) => Number(r[0]?.n ?? 0)).catch(() => 0),
+    unreadAnnouncementCount(userId).catch(() => 0),
   ]);
-
-  const updatesUnread = Math.max(0, publishedUpdates - readUpdates);
   return {
     activityUnread,
     updatesUnread,

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { ActivityNotification, UpdateItem } from "@/lib/notifications";
+import type { ActivityNotification } from "@/lib/notifications";
+import type { AnnouncementCard } from "@/lib/announcements-shared";
+import { AnnouncementCardRow } from "@/components/announcements/announcement-card";
 
 function timeAgo(iso: string): string {
   const s = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -18,6 +20,13 @@ function timeAgo(iso: string): string {
   const w = Math.floor(d / 7);
   return `${w} week${w === 1 ? "" : "s"} ago`;
 }
+
+const ANNOUNCEMENT_SECTION: Record<AnnouncementCard["section"], string> = {
+  pinned: "Pinned",
+  this_week: "This week",
+  last_month: "Last month",
+  earlier: "Earlier",
+};
 
 const SECTION_LABEL: Record<string, string> = {
   today: "Today",
@@ -86,47 +95,6 @@ function ActivityGlyph({ n }: { n: ActivityNotification }) {
   );
 }
 
-function UpdateGlyph({ category }: { category: string }) {
-  const map: Record<string, { bg: string; icon: React.ReactNode }> = {
-    referral: {
-      bg: "bg-rose-50 text-rose-500",
-      icon: <path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S9 2 6.5 3.5 8 7 12 7m0 0s3-5 5.5-3.5S16 7 12 7" />,
-    },
-    feature: {
-      bg: "bg-amber-50 text-amber-500",
-      icon: <path d="M12 2l2.4 5 5.6.8-4 4 1 5.6L12 15l-5 2.4 1-5.6-4-4L9.6 7 12 2Z" />,
-    },
-    safety: {
-      bg: "bg-violet-50 text-violet-500",
-      icon: <path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3ZM9 12l2 2 4-4" />,
-    },
-    maintenance: {
-      bg: "bg-blue-50 text-blue-500",
-      icon: <path d="M14 7a4 4 0 0 1-5.5 5.5L4 17l3 3 4.5-4.5A4 4 0 0 0 17 10l-3-3Z" />,
-    },
-    policy: {
-      bg: "bg-rose-50 text-rose-400",
-      icon: <path d="M7 3h7l5 5v13H7V3ZM14 3v5h5M10 13h6M10 17h6" />,
-    },
-    major: {
-      bg: "bg-rose-50 text-rose-500",
-      icon: <path d="M3 11l19-8-8 19-2-8-9-3Z" />,
-    },
-    general: {
-      bg: "bg-ink-900/5 text-ink-700",
-      icon: <path d="M12 3l8 3v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z" />,
-    },
-  };
-  const c = map[category] ?? map.general;
-  return (
-    <div className={`shrink-0 h-11 w-11 rounded-xl flex items-center justify-center ${c.bg}`}>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        {c.icon}
-      </svg>
-    </div>
-  );
-}
-
 const Chevron = () => (
   <svg className="shrink-0 text-ink-700/30" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
     <path d="m9 18 6-6-6-6" />
@@ -138,19 +106,19 @@ const Chevron = () => (
 export function NotificationsView({
   initialTab,
   initialActivity,
-  initialUpdates,
+  initialAnnouncements,
 }: {
-  initialTab: "activity" | "updates";
+  initialTab: "activity" | "announcements";
   initialActivity: ActivityNotification[];
-  initialUpdates: UpdateItem[];
+  initialAnnouncements: AnnouncementCard[];
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"activity" | "updates">(initialTab);
+  const [tab, setTab] = useState<"activity" | "announcements">(initialTab);
   const [activity, setActivity] = useState(initialActivity);
-  const [updates] = useState(initialUpdates);
+  const announcements = initialAnnouncements;
+  const unreadAnnouncements = announcements.filter((a) => !a.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
-  const updatesMarked = useRef(false);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -160,17 +128,15 @@ export function NotificationsView({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
-  // Opening the Updates tab marks announcements as seen (spec §14).
-  useEffect(() => {
-    if (tab === "updates" && !updatesMarked.current) {
-      updatesMarked.current = true;
-      void fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markUpdatesRead: true }),
-      }).then(() => router.refresh());
-    }
-  }, [tab, router]);
+  // N52: announcements are marked read one at a time, when their page is opened — not when the
+  // tab is. Keep the URL in step with the tab so "Back to announcements" lands here.
+  function chooseTab(t: "activity" | "announcements") {
+    setTab(t);
+    const url = new URL(window.location.href);
+    if (t === "announcements") url.searchParams.set("tab", "announcements");
+    else url.searchParams.delete("tab");
+    window.history.replaceState(null, "", url);
+  }
 
   async function markAllRead() {
     setMenuOpen(false);
@@ -196,11 +162,6 @@ export function NotificationsView({
   }
 
   const sections: ActivityNotification["section"][] = ["today", "yesterday", "earlier"];
-  const pinned = updates.filter((u) => u.pinned);
-  const featured = pinned.find((u) => u.featured) ?? pinned[0];
-  const restPinned = pinned.filter((u) => u.id !== featured?.id);
-  const nonPinned = updates.filter((u) => !u.pinned);
-
   return (
     <>
       {/* Header */}
@@ -251,17 +212,24 @@ export function NotificationsView({
       </div>
 
       {/* Tabs */}
-      <div className="mt-4 flex border-b border-ink-900/10 text-[15px] font-semibold">
-        {(["activity", "updates"] as const).map((t) => (
+      <div role="tablist" className="mt-4 grid grid-cols-2 gap-1 rounded-2xl bg-ink-900/[0.04] p-1 text-[15px] font-semibold">
+        {(["activity", "announcements"] as const).map((t) => (
           <button
             key={t}
             type="button"
-            onClick={() => setTab(t)}
-            className={`flex-1 pb-2.5 text-center transition ${
-              tab === t ? "text-ink-950 border-b-2 border-rose-600" : "text-ink-700/45"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => chooseTab(t)}
+            className={`h-11 rounded-xl flex items-center justify-center gap-2 transition ${
+              tab === t ? "bg-rose-50 text-rose-600 shadow-[0_1px_3px_rgba(15,13,14,0.06)]" : "text-ink-700/60 hover:text-ink-900"
             }`}
           >
-            {t === "activity" ? "Activity" : "Updates"}
+            {t === "activity" ? "Activity" : "Announcements"}
+            {t === "announcements" && unreadAnnouncements > 0 ? (
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white text-[12px] font-bold flex items-center justify-center">
+                {unreadAnnouncements}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -323,91 +291,26 @@ export function NotificationsView({
         </div>
       ) : null}
 
-      {/* Updates */}
-      {tab === "updates" ? (
-        <div className="mt-2">
-          {updates.length === 0 ? (
+      {/* Announcements */}
+      {tab === "announcements" ? (
+        <div className="mt-2 max-w-3xl">
+          {announcements.length === 0 ? (
             <p className="mt-10 text-center text-sm text-ink-700/55">No announcements yet.</p>
           ) : (
-            <>
-              {featured ? (
-                <>
-                  <p className="mt-5 mb-2 text-xs font-semibold uppercase tracking-wide text-ink-700/45">
-                    Pinned
-                  </p>
-                  <Link
-                    href={featured.ctaUrl || "#"}
-                    className="block relative overflow-hidden rounded-2xl bg-ink-950 text-white p-5 min-h-[150px]"
-                    style={
-                      featured.imageUrl
-                        ? {
-                            backgroundImage: `linear-gradient(90deg, rgba(10,10,12,.82), rgba(10,10,12,.35)), url(${featured.imageUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
-                  >
-                    <span className="inline-block text-[11px] font-bold uppercase tracking-wide bg-rose-600 px-2 py-0.5 rounded">
-                      {featured.category === "major" ? "Major Update" : "Update"}
-                    </span>
-                    <p className="mt-2 text-xl font-bold leading-tight">{featured.title}</p>
-                    <p className="mt-1 text-sm text-white/80 line-clamp-2 max-w-sm">{featured.body}</p>
-                    {featured.ctaLabel ? (
-                      <span className="mt-3 inline-flex items-center gap-1 rounded-full bg-white text-ink-950 text-sm font-semibold px-3.5 py-1.5">
-                        {featured.ctaLabel} <Chevron />
-                      </span>
-                    ) : null}
-                  </Link>
-                </>
-              ) : null}
-
-              {[...restPinned, ...nonPinned].length > 0 ? (
-                <div className="mt-5">
-                  {["this_week", "earlier"].map((sec) => {
-                    const rows = [...restPinned, ...nonPinned].filter(
-                      (u) => (u.pinned ? "this_week" : u.section) === sec
-                    );
-                    if (rows.length === 0) return null;
-                    return (
-                      <div key={sec}>
-                        <p className="mt-4 mb-1 text-xs font-semibold uppercase tracking-wide text-ink-700/45">
-                          {SECTION_LABEL[sec]}
-                        </p>
-                        <div className="divide-y divide-ink-900/6">
-                          {rows.map((u) => (
-                            <Link
-                              key={u.id}
-                              href={u.ctaUrl || "#"}
-                              className={`flex items-start gap-3 py-3.5 -mx-1 px-1 rounded-lg ${
-                                u.read ? "" : "bg-rose-50/40"
-                              }`}
-                            >
-                              <UpdateGlyph category={u.category} />
-                              <div className="min-w-0 flex-1">
-                                <p className="text-[15px] font-semibold leading-snug text-ink-950">
-                                  {u.title}
-                                  {u.goldOnly ? (
-                                    <span className="ml-2 align-middle text-[10px] font-bold uppercase tracking-wide bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded">
-                                      Gold Only
-                                    </span>
-                                  ) : null}
-                                </p>
-                                <p className="text-[13px] text-ink-700/70 mt-0.5 line-clamp-2">{u.body}</p>
-                                <p className="text-[12px] text-ink-700/45 mt-1">{timeAgo(u.publishedAt)}</p>
-                              </div>
-                              <div className="self-center">
-                                <Chevron />
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </>
+            (["pinned", "this_week", "last_month", "earlier"] as const).map((sec) => {
+              const rows = announcements.filter((a) => a.section === sec);
+              if (rows.length === 0) return null;
+              return (
+                <section key={sec}>
+                  <h2 className="mt-6 mb-2.5 text-[15px] font-semibold text-ink-700/70">{ANNOUNCEMENT_SECTION[sec]}</h2>
+                  <div className="space-y-2.5">
+                    {rows.map((a) => (
+                      <AnnouncementCardRow key={a.id} card={a} />
+                    ))}
+                  </div>
+                </section>
+              );
+            })
           )}
         </div>
       ) : null}

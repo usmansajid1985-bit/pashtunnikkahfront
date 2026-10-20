@@ -16,7 +16,7 @@ const ROWS: { key: Key; label: string; hint: string }[] = [
   { key: "notify_messages", label: "Messages", hint: "New chat messages" },
   { key: "notify_profile_views", label: "Profile views", hint: "When someone views your profile" },
   { key: "notify_wali", label: "Wali & family activity", hint: "Wali handovers and reminders" },
-  { key: "notify_updates", label: "Pashtun Nikah updates", hint: "Announcements and new features" },
+  { key: "notify_updates", label: "Pashtun Nikah announcements", hint: "Product updates, community news and safety notices" },
   {
     key: "in_app_banners",
     label: "In-app notification banners",

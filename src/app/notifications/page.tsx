@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { getNavCounts } from "@/lib/dashboard";
-import { getActivityFeed, getUpdatesFeed } from "@/lib/notifications";
+import { getActivityFeed } from "@/lib/notifications";
+import { getAnnouncementCards } from "@/lib/announcements";
 import { NotificationsView } from "@/components/notifications/notifications-view";
 import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
 
@@ -19,7 +20,8 @@ export default async function NotificationsPage({
 
   const userId = BigInt(session.userId);
   const { tab } = await searchParams;
-  const initialTab = tab === "updates" ? "updates" : "activity";
+  // "updates" is the old name of the Announcements tab — keep old links working.
+  const initialTab = tab === "announcements" || tab === "updates" ? "announcements" : "activity";
 
   const [user, navCounts] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId }, select: { plan: true } }),
@@ -27,9 +29,9 @@ export default async function NotificationsPage({
   ]);
   const isGold = (user?.plan ?? "").toLowerCase() === "gold";
 
-  const [activity, updates] = await Promise.all([
+  const [activity, announcements] = await Promise.all([
     getActivityFeed(userId, { isGold }),
-    getUpdatesFeed(userId),
+    getAnnouncementCards(userId),
   ]);
 
   return (
@@ -46,7 +48,7 @@ export default async function NotificationsPage({
         <NotificationsView
           initialTab={initialTab}
           initialActivity={activity}
-          initialUpdates={updates}
+          initialAnnouncements={announcements}
         />
       </main>
     </div>
