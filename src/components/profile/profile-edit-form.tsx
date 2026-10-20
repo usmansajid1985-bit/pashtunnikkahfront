@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileView } from "@/lib/profile";
 import {
@@ -130,6 +130,49 @@ const EMPLOYMENT = [
   { v: "Unemployed", tone: "sand" as const, icon: I.search },
 ];
 
+type EditTab = "personal" | "faith" | "roots" | "about";
+
+const EDIT_TABS: { id: EditTab; label: string; icon: React.ReactNode }[] = [
+  {
+    id: "personal",
+    label: "Personal details",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+        <circle cx="12" cy="8" r="3.5" />
+        <path d="M5 20c0-3.9 3.1-6.5 7-6.5s7 2.6 7 6.5" />
+      </svg>
+    ),
+  },
+  {
+    id: "faith",
+    label: "Faith & lifestyle",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
+        <path d="M12 20s-7-4.3-9-8.6C1.6 8.3 3.4 5 6.8 5c2 0 3.3 1.1 4.2 2.4C11.9 6.1 13.2 5 15.2 5c3.4 0 5.2 3.3 3.8 6.4C17 15.7 12 20 12 20Z" />
+      </svg>
+    ),
+  },
+  {
+    id: "roots",
+    label: "Roots & location",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M3 21h18M4 21V10l8-5 8 5v11M9 21v-6h6v6" />
+      </svg>
+    ),
+  },
+  {
+    id: "about",
+    label: "About me",
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 11v5M12 8h.01" />
+      </svg>
+    ),
+  },
+];
+
 export function ProfileEditForm({
   initial,
   unreadCount = 0,
@@ -153,6 +196,27 @@ export function ProfileEditForm({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const isSister = (initial.gender || "").toLowerCase() === "female";
+
+  // N51: Edit is split into four tabs. Every section stays mounted (one form, one Save), only the
+  // chosen tab's sections are shown; "contents" keeps them in the two-column grid on desktop.
+  const [editTab, setEditTab] = useState<EditTab>("personal");
+  const paneClass = (tab: EditTab) => (editTab === tab ? "contents" : "hidden");
+  // Deep links like /profile/edit#wali-contact open the tab that holds that section.
+  useEffect(() => {
+    const jump = () => {
+      const id = window.location.hash.slice(1);
+      if (!id) return;
+      const pane = document.getElementById(id)?.closest<HTMLElement>("[data-tab]");
+      const tab = pane?.dataset.tab as EditTab | undefined;
+      if (tab && EDIT_TABS.some((t) => t.id === tab)) {
+        setEditTab(tab);
+        window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      }
+    };
+    jump();
+    window.addEventListener("hashchange", jump);
+    return () => window.removeEventListener("hashchange", jump);
+  }, []);
 
   const [form, setForm] = useState({
     fullName: initial.fullName,
@@ -324,8 +388,41 @@ export function ProfileEditForm({
           </div>
         </div>
 
-        <PhotoGallery initialPhotos={photos} profileApproved={(initial.status || "").toLowerCase() === "approved"} />
+        <div
+          role="tablist"
+          aria-label="Edit profile sections"
+          className="lg:col-span-2 -mx-4 px-4 lg:mx-0 lg:px-0 flex gap-2 overflow-x-auto scrollbar-none lg:mb-2"
+        >
+          {EDIT_TABS.map((t) => {
+            const active = editTab === t.id;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => {
+                  setEditTab(t.id);
+                  if (window.location.hash) history.replaceState(null, "", window.location.pathname);
+                }}
+                className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[13.5px] font-semibold transition ${
+                  active
+                    ? "bg-rose-50 border-rose-200 text-rose-600"
+                    : "bg-white border-ink-900/8 text-ink-700/70 hover:text-ink-900 hover:border-ink-900/15"
+                }`}
+              >
+                {t.icon}
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
 
+        <div data-tab="personal" className={paneClass("personal")}>
+        <PhotoGallery initialPhotos={photos} profileApproved={(initial.status || "").toLowerCase() === "approved"} />
+        </div>
+
+        <div data-tab="about" className={paneClass("about")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <h2 className="font-bold text-ink-950">About me &amp; looking for</h2>
           <label htmlFor="edit-about-me" className="block text-xs font-semibold">About me</label>
@@ -347,9 +444,11 @@ export function ProfileEditForm({
           />
           <TextHint text={form.lookingFor} initial={initial.lookingFor || ""} />
         </section>
+        </div>
 
+        <div data-tab="personal" className={paneClass("personal")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Basics</h2>
+          <h2 className="font-bold text-ink-950">Personal Details</h2>
           <label className="block text-xs font-semibold">Full name</label>
           <input className={field} value={form.fullName} onChange={(e) => patch("fullName", e.target.value)} />
           <label className="block text-xs font-semibold">Height</label>
@@ -401,7 +500,9 @@ export function ProfileEditForm({
             ))}
           </select>
         </section>
+        </div>
 
+        <div data-tab="roots" className={paneClass("roots")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Roots & relocation</h2>
           <label className="block text-xs font-semibold">Ancestral region</label>
@@ -431,7 +532,16 @@ export function ProfileEditForm({
             ))}
           </ChoiceGrid>
         </section>
+        </div>
+        <div data-tab="roots" className={paneClass("roots")}>
+        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
+          <h2 className="font-bold text-ink-950">Tribe</h2>
+          <p className="text-xs font-semibold">What is your tribe?</p>
+          <TribePicker selected={form.tribe ? [form.tribe] : []} onChange={([tribe]) => patch("tribe", tribe ?? "")} />
+        </section>
+        </div>
 
+        <div data-tab="faith" className={paneClass("faith")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Faith</h2>
           <ChoiceGrid count={4}>
@@ -483,7 +593,9 @@ export function ProfileEditForm({
           />
           <p className="text-right text-xs text-ink-700/50">{wordCount(form.islamicPractice)} words</p>
         </section>
+        </div>
 
+        <div data-tab="personal" className={paneClass("personal")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Appearance</h2>
           {isSister ? (
@@ -543,50 +655,10 @@ export function ProfileEditForm({
             </ChoiceGrid>
           )}
         </section>
+        </div>
 
-        <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Family</h2>
-          <p className="text-xs font-semibold">Do you have children?</p>
-          <ChoiceGrid count={2}>
-            <ChoiceTile
-              label="Yes, I have children"
-              tone="sky"
-              icon={I.baby}
-              showCheck
-              selected={form.hasChildren === "Have Children"}
-              onClick={() => patch("hasChildren", "Have Children")}
-            />
-            <ChoiceTile
-              label="No, I don't"
-              tone="sand"
-              icon={I.babyOff}
-              showCheck
-              selected={form.hasChildren === "No Children"}
-              onClick={() => patch("hasChildren", "No Children")}
-            />
-          </ChoiceGrid>
-          <p className="text-xs font-semibold">Do you want to have children?</p>
-          <ChoiceGrid count={2}>
-            <ChoiceTile
-              label="Yes, Insha'Allah"
-              hint="If Allah wills"
-              tone="mint"
-              icon={I.babySparkle}
-              showCheck
-              selected={form.willingChildren === "Insha'Allah if Allah Wills" || form.willingChildren === "Yes"}
-              onClick={() => patch("willingChildren", "Insha'Allah if Allah Wills")}
-            />
-            <ChoiceTile
-              label="No"
-              tone="peach"
-              icon={I.babyNo}
-              showCheck
-              selected={form.willingChildren === "No"}
-              onClick={() => patch("willingChildren", "No")}
-            />
-          </ChoiceGrid>
-        </section>
 
+        <div data-tab="roots" className={paneClass("roots")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Languages</h2>
           <div className="flex flex-wrap gap-2">
@@ -638,13 +710,54 @@ export function ProfileEditForm({
             </>
           ) : null}
         </section>
-
+        </div>
+        <div data-tab="roots" className={paneClass("roots")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Tribe</h2>
-          <p className="text-xs font-semibold">What is your tribe?</p>
-          <TribePicker selected={form.tribe ? [form.tribe] : []} onChange={([tribe]) => patch("tribe", tribe ?? "")} />
+          <h2 className="font-bold text-ink-950">Family</h2>
+          <p className="text-xs font-semibold">Do you have children?</p>
+          <ChoiceGrid count={2}>
+            <ChoiceTile
+              label="Yes, I have children"
+              tone="sky"
+              icon={I.baby}
+              showCheck
+              selected={form.hasChildren === "Have Children"}
+              onClick={() => patch("hasChildren", "Have Children")}
+            />
+            <ChoiceTile
+              label="No, I don't"
+              tone="sand"
+              icon={I.babyOff}
+              showCheck
+              selected={form.hasChildren === "No Children"}
+              onClick={() => patch("hasChildren", "No Children")}
+            />
+          </ChoiceGrid>
+          <p className="text-xs font-semibold">Do you want to have children?</p>
+          <ChoiceGrid count={2}>
+            <ChoiceTile
+              label="Yes, Insha'Allah"
+              hint="If Allah wills"
+              tone="mint"
+              icon={I.babySparkle}
+              showCheck
+              selected={form.willingChildren === "Insha'Allah if Allah Wills" || form.willingChildren === "Yes"}
+              onClick={() => patch("willingChildren", "Insha'Allah if Allah Wills")}
+            />
+            <ChoiceTile
+              label="No"
+              tone="peach"
+              icon={I.babyNo}
+              showCheck
+              selected={form.willingChildren === "No"}
+              onClick={() => patch("willingChildren", "No")}
+            />
+          </ChoiceGrid>
         </section>
+        </div>
 
+
+        <div data-tab="personal" className={paneClass("personal")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Career</h2>
           <p className="text-xs font-semibold">Employment status</p>
@@ -692,7 +805,9 @@ export function ProfileEditForm({
             );
           })()}
         </section>
+        </div>
 
+        <div data-tab="faith" className={paneClass("faith")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">Health & lifestyle</h2>
           <p className="text-xs font-semibold">Smoking</p>
@@ -724,7 +839,9 @@ export function ProfileEditForm({
             ))}
           </ChoiceGrid>
         </section>
+        </div>
 
+        <div data-tab="about" className={paneClass("about")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -745,7 +862,9 @@ export function ProfileEditForm({
           />
           <p className="text-xs text-ink-700/55">Your interests help others get to know you at a glance.</p>
         </section>
+        </div>
 
+        <div data-tab="about" className={paneClass("about")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <h2 className="font-bold text-ink-950">
             Personality traits <span className="text-xs font-normal text-ink-700/55">(optional)</span>
@@ -757,7 +876,9 @@ export function ProfileEditForm({
           <ChipPicker choices={PERSONALITY_TRAITS} selected={form.personality} onChange={(next) => patch("personality", next)} />
           <p className="text-xs text-ink-700/55">Your traits help us show you more compatible matches.</p>
         </section>
+        </div>
 
+        <div data-tab="personal" className={paneClass("personal")}>
         <section id="visibility" className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <h2 className="font-bold text-ink-950">Visibility</h2>
           <label id="pause" className="flex items-center justify-between gap-3 py-2">
@@ -781,9 +902,14 @@ export function ProfileEditForm({
                 : "Active — you appear in Browse."}
           </p>
         </section>
+        </div>
 
+        <div data-tab="personal" className={paneClass("personal")}>
         {isSister ? <GuardianContactManager /> : null}
+        </div>
+        <div data-tab="personal" className={paneClass("personal")}>
         {isSister ? <WaliAccessManager /> : null}
+        </div>
 
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">
