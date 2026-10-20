@@ -12,7 +12,11 @@ import { sendPushNotification } from "@/lib/push/server";
  *
  *   (nothing) ──request (brother)──▶ pending ──share (sister)──▶ shared ──contacted (brother)──▶ contacted
  *                                       │
- *                                       └──decline (sister)──▶ declined (cooldown, then he may ask again)
+ *                                       └──decline (sister)──▶ declined (wait, then he may ask again)
+ *
+ *   "Not yet" #1 → he waits at least notYetFirstDays (5), #2 → notYetSecondDays (10), and from
+ *   notYetMaxRequests (3) on he can't ask again — only she can share. She picks the wait herself
+ *   (5 days / 10 days / a day she chooses) but never shorter than that minimum.
  *   (nothing) ──share (sister, unprompted)──▶ shared
  *
  * The Family icon (manual) and the automatic reminder are only two entry points to the same
@@ -49,7 +53,10 @@ export async function ensureFamilySchema() {
         ADD COLUMN IF NOT EXISTS family_auto_dismiss_receiver INT NOT NULL DEFAULT 0,
         ADD COLUMN IF NOT EXISTS family_auto_dismissed_receiver_at TIMESTAMPTZ,
         ADD COLUMN IF NOT EXISTS family_auto_final_receiver_at TIMESTAMPTZ,
-        ADD COLUMN IF NOT EXISTS family_force_eligible BOOLEAN NOT NULL DEFAULT FALSE
+        ADD COLUMN IF NOT EXISTS family_force_eligible BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS family_not_yet_count INT NOT NULL DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS family_next_request_at TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS family_requests_closed BOOLEAN NOT NULL DEFAULT FALSE
     `);
     await prisma.$executeRawUnsafe(
       `ALTER TABLE profile_guardians ADD COLUMN IF NOT EXISTS relation VARCHAR(64)`
@@ -76,7 +83,14 @@ export type FamilySettings = {
   minActiveDaysEach: number;
   recentActivityHours: number;
   finalReminderAfterDays: number;
+  /** Legacy single cooldown — replaced by the notYet* settings below; kept so old rows still parse. */
   requestCooldownDays: number;
+  /** Minimum wait after her first "Not yet" before he can ask again. */
+  notYetFirstDays: number;
+  /** Minimum wait after her second "Not yet". */
+  notYetSecondDays: number;
+  /** The "Not yet" that ends his requests (3 = the third); after it only she can share. */
+  notYetMaxRequests: number;
   contactPromptAfterHours: number;
   contactFollowupAfterDays: number;
   /** `{code}` is replaced with the other member's profile ID. */
@@ -95,6 +109,9 @@ export const FAMILY_DEFAULTS: FamilySettings = {
   recentActivityHours: 48,
   finalReminderAfterDays: 7,
   requestCooldownDays: 7,
+  notYetFirstDays: 5,
+  notYetSecondDays: 10,
+  notYetMaxRequests: 3,
   contactPromptAfterHours: 24,
   contactFollowupAfterDays: 3,
   pushTitle: "Ready to involve family? ❤️",
@@ -154,6 +171,9 @@ type Row = {
   family_auto_dismissed_receiver_at: Date | null;
   family_auto_final_receiver_at: Date | null;
   family_force_eligible: boolean;
+  family_not_yet_count: number;
+  family_next_request_at: Date | null;
+  family_requests_closed: boolean;
 };
 
 const ROW_SQL = `
@@ -164,7 +184,7 @@ const ROW_SQL = `
          family_auto_eligible_at, family_auto_cancelled_at,
          family_auto_dismiss_sender, family_auto_dismissed_sender_at, family_auto_final_sender_at,
          family_auto_dismiss_receiver, family_auto_dismissed_receiver_at, family_auto_final_receiver_at,
-         family_force_eligible
+         family_force_eligible, family_not_yet_count, family_next_request_at, family_requests_closed
   FROM match_requests`;
 
 async function loadRow(requestId: bigint): Promise<Row | null> {
@@ -228,6 +248,25 @@ function announce(row: { id: bigint; sender_id: bigint; receiver_id: bigint }) {
   );
 }
 
+/* ───────────────────────────── "Not yet" rules ───────────────────────────── */
+
+/** For her n-th "Not yet": the shortest wait she may pick, and whether it ends his requests. */
+function notYetRules(n: number, s: FamilySettings): { minDays: number; final: boolean } {
+  const max = Math.max(1, Math.round(s.notYetMaxRequests));
+  if (n >= max) return { minDays: 0, final: true };
+  return { minDays: Math.max(1, Math.round(n <= 1 ? s.notYetFirstDays : s.notYetSecondDays)), final: false };
+}
+
+/** When he may ask again after her last "Not yet" (rows from before the choices existed use day 1 rules). */
+function nextRequestTime(row: Row, s: FamilySettings): number {
+  if (row.family_next_request_at) return row.family_next_request_at.getTime();
+  return row.family_declined_at ? row.family_declined_at.getTime() + s.notYetFirstDays * DAY_MS : 0;
+}
+
+export function formatAskAgainDate(iso: string | Date) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+}
+
 /* ───────────────────────────── view ───────────────────────────── */
 
 export type FamilyCard =
@@ -249,8 +288,12 @@ export type FamilyView = {
     state: "pending" | "declined" | null;
     requestedAt: string | null;
     declinedAt: string | null;
-    /** Brother only: when he may ask again after a "Not now". Null = he can ask now. */
+    /** Brother only: when he may ask again after a "Not yet". Null = he can ask now (or closed). */
     canRequestAt: string | null;
+    /** She has said "Not yet" too many times — he can't ask again; only she can share. */
+    closed: boolean;
+    /** Sister only, while a request is pending: what her "Not yet" may offer. */
+    notYet: { minDays: number; final: boolean } | null;
   };
   /** Her own wali for the confirmation preview; his copy only once she has shared it. */
   wali: WaliDetails | null;
@@ -333,10 +376,8 @@ export async function getFamilyView(requestId: bigint, viewerId: bigint): Promis
     !shared && (row.family_request_state === "pending" || row.family_request_state === "declined")
       ? row.family_request_state
       : null;
-  const cooldownEnds =
-    state === "declined" && row.family_declined_at
-      ? row.family_declined_at.getTime() + settings.requestCooldownDays * DAY_MS
-      : 0;
+  const closed = state === "declined" && row.family_requests_closed;
+  const cooldownEnds = state === "declined" && !closed ? nextRequestTime(row, settings) : 0;
   const peerId = role === "female" ? pair.maleId : pair.femaleId;
 
   return {
@@ -352,6 +393,8 @@ export async function getFamilyView(requestId: bigint, viewerId: bigint): Promis
       declinedAt: state === "declined" ? (row.family_declined_at?.toISOString() ?? null) : null,
       canRequestAt:
         role === "male" && cooldownEnds > Date.now() ? new Date(cooldownEnds).toISOString() : null,
+      closed,
+      notYet: role === "female" && state === "pending" ? notYetRules(row.family_not_yet_count + 1, settings) : null,
     },
     wali: role === "female" || shared ? await loadWaliDetails(pair.femaleId) : null,
     card: cardFor(row, role, sideOf(row, viewerId), settings),
@@ -400,12 +443,14 @@ export async function requestFamilyInvolvement(requestId: bigint, userId: bigint
         AND wali_details_shared_at IS NULL
         AND (family_request_state IS NULL
              OR (family_request_state = 'declined'
-                 AND (family_declined_at IS NULL
-                      OR family_declined_at <= NOW() - ($3::int * INTERVAL '1 day'))))
+                 AND NOT family_requests_closed
+                 AND COALESCE(family_next_request_at,
+                              family_declined_at + ($3::int * INTERVAL '1 day'),
+                              NOW()) <= NOW()))
       RETURNING id`,
     requestId,
     via,
-    Math.round(settings.requestCooldownDays)
+    Math.round(settings.notYetFirstDays)
   );
 
   if (updated.length === 0) {
@@ -413,8 +458,15 @@ export async function requestFamilyInvolvement(requestId: bigint, userId: bigint
     if (now?.wali_details_shared_at) throw new FamilyFlowError("Wali details have already been shared.", 409);
     // A second tap, or a second tab: the request is already out — nothing more to do.
     if (now?.family_request_state === "pending") return;
+    const her = pair.codes.get(femaleId.toString()) || "She";
+    if (now?.family_requests_closed) {
+      throw new FamilyFlowError(`${her} would like more time to get to know you. She'll share her wali's details when she's ready.`, 429);
+    }
+    const at = now ? nextRequestTime(now, settings) : 0;
     throw new FamilyFlowError(
-      `${pair.codes.get(femaleId.toString())} isn't ready to involve family yet. You can ask again later.`,
+      at
+        ? `${her} would like more time to get to know you. You can ask again from ${formatAskAgainDate(new Date(at))}.`
+        : `${her} isn't ready to involve family yet. You can ask again later.`,
       429
     );
   }
@@ -437,28 +489,60 @@ export async function requestFamilyInvolvement(requestId: bigint, userId: bigint
   }).catch((err) => console.error("[family] request push failed", err)));
 }
 
-/** Sister answers "Not now" to his actual request: it closes, and he gets a cooldown. */
-export async function declineFamilyRequest(requestId: bigint, userId: bigint) {
+export type NotYetChoice = { days?: number; until?: string };
+
+/**
+ * Sister answers "Not yet" to his request. She picks when he may ask again (5 / 10 days, or a day
+ * she chooses) — never sooner than the minimum for this "Not yet" — and the final one ends his
+ * requests altogether.
+ */
+export async function declineFamilyRequest(requestId: bigint, userId: bigint, choice: NotYetChoice = {}) {
   const { row, pair, role, maleId } = await context(requestId, userId);
   if (role !== "female") throw new FamilyFlowError("Only she can answer this request.");
+  const settings = await getFamilySettings();
+  const n = row.family_not_yet_count + 1;
+  const rules = notYetRules(n, settings);
+
+  let next: Date | null = null;
+  if (!rules.final) {
+    const minAt = Date.now() + rules.minDays * DAY_MS;
+    let at = minAt;
+    if (choice.until && /^\d{4}-\d{2}-\d{2}$/.test(choice.until)) {
+      // A calendar day she picked: from the start of that day (UTC), within the next 6 months.
+      at = Date.parse(`${choice.until}T00:00:00Z`);
+      if (!Number.isFinite(at) || at > Date.now() + 183 * DAY_MS) {
+        throw new FamilyFlowError("Choose a day within the next 6 months.");
+      }
+    } else if (choice.days && Number.isFinite(choice.days)) {
+      at = Date.now() + Math.min(183, Math.max(1, Math.round(choice.days))) * DAY_MS;
+    }
+    next = new Date(Math.max(at, minAt));
+  }
 
   const updated = await prisma.$queryRawUnsafe<{ id: bigint }[]>(
     `UPDATE match_requests
-        SET family_request_state = 'declined', family_declined_at = NOW()
+        SET family_request_state = 'declined', family_declined_at = NOW(),
+            family_not_yet_count = $2, family_next_request_at = $3, family_requests_closed = $4
       WHERE id = $1 AND status = 'accepted' AND family_request_state = 'pending'
         AND wali_details_shared_at IS NULL
       RETURNING id`,
-    requestId
+    requestId,
+    n,
+    next,
+    rules.final
   );
   if (updated.length === 0) return;
 
   announce(row);
+  const herCode = pair.codes.get(userId.toString()) || "Your match";
   // Discreet: a bell row only, no push.
   await createNotification({
     recipientUserId: maleId,
     type: "wali",
-    title: `${pair.codes.get(userId.toString())} isn't ready to involve family yet.`,
-    body: "You can keep getting to know each other.",
+    title: "Not ready to involve family yet",
+    body: next
+      ? `${herCode} would like more time to get to know you. You can ask again from ${formatAskAgainDate(next)}.`
+      : `${herCode} would like more time to get to know you. She'll share her wali's details when she's ready.`,
     url: `/chats/${requestId}`,
     tag: `family-${requestId}`,
     actorUserId: userId,

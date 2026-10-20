@@ -221,7 +221,12 @@ export function familyEvents(family: FamilyView | null): FamilyEvent[] {
   if (family.role === "male" && family.request.state === "pending" && family.request.requestedAt) {
     events.push({ key: "fam-requested", at: family.request.requestedAt, kind: "requested" });
   }
-  if (family.role === "male" && family.request.state === "declined" && family.request.declinedAt && family.request.canRequestAt) {
+  if (
+    family.role === "male" &&
+    family.request.state === "declined" &&
+    family.request.declinedAt &&
+    (family.request.canRequestAt || family.request.closed)
+  ) {
     events.push({ key: "fam-declined", at: family.request.declinedAt, kind: "declined" });
   }
   if (family.role === "female" && family.contacted && family.contactedAt) {
@@ -251,6 +256,115 @@ export function FamilyStatusLine({ kind, peerCode }: { kind: FamilyEvent["kind"]
   );
 }
 
+/** "15 October" — the day he may ask again. */
+function askAgainDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+}
+
+function isoDay(ms: number) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Her "Not yet": when he may ask again — in 5 days, in 10 days, or a day she picks ("I'll let you
+ * know"). Options shorter than this "Not yet"'s minimum are left out; the final one simply ends
+ * his requests (she can still share whenever she's ready).
+ */
+function NotYetChooser({
+  peer,
+  rules,
+  busy,
+  onPick,
+  onBack,
+}: {
+  peer: string;
+  rules: { minDays: number; final: boolean };
+  busy: boolean;
+  onPick: (choice: Record<string, string>) => void;
+  onBack: () => void;
+}) {
+  const [picking, setPicking] = useState(false);
+  const minDay = isoDay(Date.now() + Math.max(1, rules.minDays) * 24 * 60 * 60 * 1000);
+  const maxDay = isoDay(Date.now() + 180 * 24 * 60 * 60 * 1000);
+  const [day, setDay] = useState(minDay);
+  // Never let the picked day sit before the earliest allowed one (e.g. the rules changed).
+  useEffect(() => {
+    setDay((d) => (d < minDay ? minDay : d));
+  }, [minDay]);
+  const optionBtn =
+    "w-full py-2.5 rounded-xl border border-ink-900/12 bg-white text-[13px] font-semibold text-ink-900 hover:bg-ink-900/[0.03] disabled:opacity-50";
+
+  if (rules.final) {
+    return (
+      <div className="mt-2.5">
+        <p className="text-[12.5px] leading-snug text-ink-700/75">
+          {peer} won&apos;t be able to ask again. You can share your wali&apos;s details yourself whenever you&apos;re ready.
+        </p>
+        <div className="mt-2.5 flex gap-2">
+          <button type="button" disabled={busy} onClick={() => onPick({})} className="flex-1 py-2 rounded-xl bg-ink-950 text-white text-[13px] font-semibold disabled:opacity-50">
+            Not yet
+          </button>
+          <button type="button" disabled={busy} onClick={onBack} className="flex-1 py-2 rounded-xl border border-ink-900/15 text-[13px] font-semibold text-ink-900 disabled:opacity-50">
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-2.5">
+      <p className="text-[12.5px] font-semibold text-ink-900">When can {peer} ask again?</p>
+      {picking ? (
+        <div className="mt-2 space-y-2">
+          <label className="block text-[12px] text-ink-700/70" htmlFor="family-ask-again-day">
+            I&apos;ll let you know — {peer} can ask again from:
+          </label>
+          <input
+            id="family-ask-again-day"
+            type="date"
+            min={minDay}
+            max={maxDay}
+            value={day}
+            onChange={(e) => setDay(e.target.value)}
+            className="w-full rounded-xl border border-ink-900/12 bg-white px-3 py-2 text-[14px]"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy || !day || day < minDay || day > maxDay}
+              onClick={() => onPick({ until: day })}
+              className="flex-1 py-2 rounded-xl bg-ink-950 text-white text-[13px] font-semibold disabled:opacity-50"
+            >
+              Confirm
+            </button>
+            <button type="button" disabled={busy} onClick={() => setPicking(false)} className="flex-1 py-2 rounded-xl border border-ink-900/15 text-[13px] font-semibold text-ink-900">
+              Back
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-2 space-y-2">
+          {[5, 10]
+            .filter((d) => d >= rules.minDays)
+            .map((d) => (
+              <button key={d} type="button" disabled={busy} onClick={() => onPick({ days: String(d) })} className={optionBtn}>
+                Ask again in {d} days
+              </button>
+            ))}
+          <button type="button" disabled={busy} onClick={() => setPicking(true)} className={optionBtn}>
+            I&apos;ll let you know when I&apos;m ready
+          </button>
+          <button type="button" disabled={busy} onClick={onBack} className="w-full py-1.5 text-[12.5px] font-semibold text-ink-700/60 hover:text-ink-900">
+            Back
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ───────────────────────────── card above the composer ───────────────────────────── */
 
 export function FamilyPromptCard({
@@ -269,6 +383,7 @@ export function FamilyPromptCard({
   onInvolve: () => void;
 }) {
   const [error, setError] = useState<string | null>(null);
+  const [choosing, setChoosing] = useState(false);
   const peer = family.peerCode;
   const male = family.role === "male";
   if (!family.card) return null;
@@ -288,8 +403,8 @@ export function FamilyPromptCard({
     case "incoming_request":
       title = `${peer} wants to involve family`;
       body = "He's asked if you're comfortable sharing your wali's contact details.";
-      primary = { label: "Share wali details", onClick: () => onShare("manual") };
-      secondary = { label: "Not now", onClick: () => void run("decline") };
+      primary = { label: "Yes, I'm ready", onClick: () => onShare("manual") };
+      secondary = { label: "Not yet", onClick: () => setChoosing(true) };
       break;
     case "auto_first":
       title = male ? "Ready to involve family? ❤️" : "Ready to involve your wali? ❤️";
@@ -323,6 +438,15 @@ export function FamilyPromptCard({
       <p className="text-[14px] font-bold text-ink-950">{title}</p>
       {body ? <p className="mt-0.5 text-[12.5px] leading-snug text-ink-700/75">{body}</p> : null}
       {error ? <p className="mt-1 text-[12px] font-semibold text-red-600">{error}</p> : null}
+      {family.card === "incoming_request" && choosing ? (
+        <NotYetChooser
+          peer={peer}
+          rules={family.request.notYet ?? { minDays: 5, final: false }}
+          busy={busy}
+          onPick={(choice) => void run("decline", choice)}
+          onBack={() => setChoosing(false)}
+        />
+      ) : (
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"
@@ -342,6 +466,7 @@ export function FamilyPromptCard({
           {secondary.label}
         </button>
       </div>
+      )}
     </div>
   );
 }
@@ -424,16 +549,18 @@ export function FamilyModal({
         </button>
       </>
     );
-  } else if (male && family.request.canRequestAt) {
+  } else if (male && (family.request.canRequestAt || family.request.closed)) {
     content = (
       <>
-        <h3 className="text-[17px] font-bold text-ink-950">{peer} isn&apos;t ready to involve family yet</h3>
-        <p className="mt-1.5 text-[13px] text-ink-700/70 leading-relaxed">
-          You can keep getting to know each other, and ask again from{" "}
-          {new Date(family.request.canRequestAt).toLocaleDateString(undefined, { day: "numeric", month: "long" })}.
+        <h3 className="text-[17px] font-bold text-ink-950">Not ready to involve family yet</h3>
+        <p className="mt-1.5 text-[13.5px] text-ink-700/75 leading-relaxed">
+          {peer} would like more time to get to know you.{" "}
+          {family.request.canRequestAt
+            ? `You can ask again from ${askAgainDate(family.request.canRequestAt)}.`
+            : "She'll share her wali's details when she's ready."}
         </p>
-        <button type="button" onClick={onClose} className={`${secondaryBtn} mt-5`}>
-          Close
+        <button type="button" onClick={onClose} className="mt-5 w-full py-3 rounded-full bg-ink-950 text-white text-[14px] font-semibold hover:bg-black">
+          Understood
         </button>
       </>
     );

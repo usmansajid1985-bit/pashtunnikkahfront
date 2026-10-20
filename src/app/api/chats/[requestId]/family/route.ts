@@ -35,7 +35,8 @@ export async function GET(
 /**
  * Every Involve Family action, manual or automatic, goes through here.
  * Body: { action: "request" | "decline" | "share" | "contact_action" | "contacted" | "dismiss_auto",
- *         via?: "manual" | "auto", answer?: "yes" | "not_yet" }
+ *         via?: "manual" | "auto", answer?: "yes" | "not_yet",
+ *         days?: number, until?: "YYYY-MM-DD" }   (days / until: her "Not yet" choice)
  */
 export async function POST(
   req: Request,
@@ -59,7 +60,10 @@ export async function POST(
         await requestFamilyInvolvement(requestId, userId, via);
         break;
       case "decline":
-        await declineFamilyRequest(requestId, userId);
+        await declineFamilyRequest(requestId, userId, {
+          days: body.days != null ? Number(body.days) : undefined,
+          until: typeof body.until === "string" ? body.until : undefined,
+        });
         break;
       case "share":
         await shareWaliDetails(requestId, userId, via);
