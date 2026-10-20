@@ -249,14 +249,24 @@ export async function listenForegroundPush(): Promise<() => void> {
       const badge = payload.data?.badge || "/icons/pn-badge-v2-96.png";
       const url = payload.data?.url || payload.fcmOptions?.link || "/";
       if (typeof navigator !== "undefined" && navigator.serviceWorker?.ready) {
-        void navigator.serviceWorker.ready.then((reg) => {
+        void navigator.serviceWorker.ready.then(async (reg) => {
+          // N47: same single tag + running count as the service worker, so notifications replace
+          // each other instead of stacking under Android's generic stacked-square summary icon.
+          let count = 1;
+          try {
+            const open = await reg.getNotifications({ tag: "pashtun-nikah" });
+            for (const n of open) count += (n.data as { count?: number } | null)?.count || 1;
+          } catch {
+            /* unsupported — show just this one */
+          }
           void reg.showNotification(title, {
-            body,
+            body: count > 1 ? `${body}${body ? "\n" : ""}${count} new notifications` : body,
             icon,
             badge,
-            tag: payload.data?.tag || "pashtun-nikah",
-            data: { url },
-          });
+            tag: "pashtun-nikah",
+            renotify: true,
+            data: { url, count },
+          } as NotificationOptions);
         });
         return;
       }
