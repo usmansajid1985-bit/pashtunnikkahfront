@@ -9,6 +9,7 @@ import { CommunicationModeSettings } from "@/components/settings/communication-m
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { GoldBadgeSettings } from "@/components/settings/gold-badge-settings";
 import { ReferralsSettings } from "@/components/settings/referrals-settings";
+import { LogoutRow } from "@/components/settings/logout-row";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { withOwnerPhotoUrls } from "@/lib/photos";
@@ -247,6 +248,7 @@ export default async function SettingsPage() {
           iconColor="#374151"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a3 3 0 1 1 5 2c0 2-3 2-3 4M12 17h.01" /></svg>}
         />
+        <LogoutRow />
       </SettingsGroup>
 
       <div className="mt-6 flex gap-3">
