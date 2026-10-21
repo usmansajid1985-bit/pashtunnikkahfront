@@ -316,54 +316,65 @@ export function ReceivedCard({ card }: { card: HubCard }) {
   );
 }
 
-/** Status pill + sent time; a pending request can be withdrawn from the ⋮ menu. */
+/** Status pill, date, and the one action that fits this request. */
 export function SentCard({ card }: { card: HubCard }) {
-  const router = useRouter();
   const { act, pending, error } = useRequestActions(card.requestId!);
-  const isPending = (card.status || "pending") === "pending";
+  const status = card.status || "pending";
+  const isPending = status === "pending";
 
   return (
     <CardShell card={card}>
       <div className="flex gap-3.5 sm:gap-5">
         <RequestPhoto card={card} className="w-20 h-20 sm:w-28 sm:h-28" />
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <NameAge card={card} className="text-[17px] sm:text-lg pt-0.5" />
-            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-              <span className="pointer-events-auto">
-                <StatusPill status={card.status} />
-              </span>
-              <KebabMenu
-                items={
-                  isPending
-                    ? [{ label: "Withdraw request", icon: MinusCircleIcon, onClick: () => act("withdraw"), disabled: pending }]
-                    : [{ label: "View profile", icon: UserIcon, onClick: () => router.push(`/p/${card.code}`) }]
-                }
-              />
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <NameAge card={card} className="text-[17px] sm:text-lg pt-0.5" />
+              <PlaceLine card={card} />
+              <TimeLine>
+                {isPending ? (
+                  <LocalTime iso={card.requestedAt || card.createdAt} prefix="Sent" />
+                ) : (
+                  <StatusLine card={card} />
+                )}
+              </TimeLine>
+              {isPending && card.expiresAt ? (
+                <p className="mt-0.5 pl-[21px] text-[12px]">
+                  <ExpiryNote expiresAt={card.expiresAt} />
+                </p>
+              ) : null}
+              {status === "expired" && card.tokenRefunded ? (
+                <p className="mt-0.5 pl-[21px] text-[12px] font-semibold text-emerald-700">1 Match token</p>
+              ) : null}
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <StatusPill status={status} />
+              {isPending ? (
+                <button
+                  type="button"
+                  disabled={pending}
+                  onClick={() => act("withdraw")}
+                  className="pointer-events-auto px-3.5 py-1.5 rounded-full border border-ink-900/12 bg-white text-[13px] font-semibold text-ink-900 disabled:opacity-50"
+                >
+                  Withdraw request
+                </button>
+              ) : status === "accepted" ? (
+                <Link
+                  href={`/chats/${card.requestId}`}
+                  className="pointer-events-auto px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-[13px] font-semibold"
+                >
+                  Open chat
+                </Link>
+              ) : status === "ended" && card.requestId ? (
+                <Link
+                  href={`/chats/${card.requestId}`}
+                  className="pointer-events-auto px-3.5 py-1.5 rounded-full border border-ink-900/12 bg-white text-[13px] font-semibold text-ink-900"
+                >
+                  View past chat
+                </Link>
+              ) : null}
             </div>
           </div>
-          <PlaceLine card={card} />
-          <TimeLine>
-            <LocalTime iso={card.requestedAt || card.createdAt} prefix="Sent" />
-          </TimeLine>
-          {isPending && card.expiresAt ? (
-            <p className="mt-0.5 pl-[21px] text-[12px]">
-              <ExpiryNote expiresAt={card.expiresAt} />
-            </p>
-          ) : !isPending ? (
-            <p className="mt-0.5 pl-[21px] text-[12px] text-ink-700/50 flex flex-wrap gap-x-2">
-              <StatusLine card={card} />
-              {card.tokenRefunded ? <span className="font-semibold text-emerald-700">1 Match Token refunded</span> : null}
-            </p>
-          ) : null}
-          {card.status === "accepted" ? (
-            <Link
-              href={`/chats/${card.requestId}`}
-              className="pointer-events-auto mt-2.5 inline-flex px-4 py-1.5 rounded-full bg-rose-600 text-white text-[13px] font-semibold"
-            >
-              Open chat
-            </Link>
-          ) : null}
           {error ? <p className="mt-2 text-xs text-rose-700">{error}</p> : null}
         </div>
       </div>

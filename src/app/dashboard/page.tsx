@@ -124,12 +124,6 @@ export default async function DashboardPage() {
             </h1>
             <p className="mt-1.5 text-ink-700/65">Salamuna! May your day be filled with barakah.</p>
           </div>
-          <p className="hidden lg:block pt-5 text-right text-[15px] leading-snug text-ink-700/70">
-            “Good people,
-            <br />
-            brighter tomorrows.”
-            <span aria-hidden className="mt-3 ml-auto block h-0.5 w-8 rounded bg-rose-600" />
-          </p>
         </header>
 
         {/* Quick overview: conversations, waiting requests, browse */}
@@ -169,7 +163,7 @@ export default async function DashboardPage() {
                 : "Continue your conversations and get to know your matches."}
             </p>
             <Link href="/chats" className={chats.active === 0 ? quietBtn : primaryBtn}>
-              {chats.active === 0 ? "Open messages" : "Continue chatting →"}
+              {chats.active === 0 ? "Open chats" : "Continue chatting →"}
             </Link>
           </section>
 
@@ -180,7 +174,7 @@ export default async function DashboardPage() {
                   {ACTIVITY_ICONS.wali}
                 </svg>
               </span>
-              Message requests
+              Chat requests
             </p>
             <h2 className="mt-3 text-xl font-bold text-ink-950">
               {waiting === 0 ? "No requests waiting" : `${waiting} request${waiting === 1 ? "" : "s"} waiting`}

@@ -10,7 +10,6 @@ import {
   stripGoldFilters,
 } from "@/lib/browse-filters-shared";
 import { LocationFilter, locationNarrows, locationSummary, type LocationChoice } from "@/components/browse/location-filter";
-import { FilterPresets } from "@/components/browse/filter-presets";
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
@@ -404,8 +403,6 @@ export function BrowseFiltersBar({
           </label>
         </div>
       </div>
-
-      <FilterPresets isGold={isGold} currentFilters={filters} onLoad={(next) => navigate(next)} />
 
       {open ? (
         <div className="fixed inset-0 z-50 flex justify-end">

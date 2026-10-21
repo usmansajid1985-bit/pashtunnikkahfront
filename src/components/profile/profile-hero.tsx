@@ -56,17 +56,15 @@ export function ProfileHero({
       ) : null}
 
       {presence ? (
-        <div className="absolute top-4 right-4 z-20 pointer-events-none flex flex-col items-end gap-1.5">
-          <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold backdrop-blur-md ${
-              presence.online ? "bg-emerald-500/90 text-white" : "bg-black/40 text-white"
-            }`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${presence.online ? "bg-white" : "bg-white/60"}`} />
+        <div className="absolute top-3 right-3 z-20 pointer-events-none flex flex-col items-end gap-1.5">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-950/80 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+            <span
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${presence.online ? "bg-emerald-400" : "bg-white/50"}`}
+            />
             {presence.label}
           </span>
           {presence.justJoined ? (
-            <span className="inline-flex items-center px-2.5 py-1.5 rounded-full text-[12px] font-semibold bg-amber-400/90 text-ink-950 backdrop-blur-md">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#fde8f1] px-2.5 py-1 text-[11px] font-semibold text-[#e12d72]">
               ✨ Just Joined
             </span>
           ) : null}

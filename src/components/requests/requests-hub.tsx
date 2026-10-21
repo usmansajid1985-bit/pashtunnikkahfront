@@ -30,12 +30,20 @@ function toTab(raw?: string): Tab | null {
   return TAB_IDS.includes(raw as Tab) ? (raw as Tab) : null;
 }
 
-/** Received / Sent / Matched as one segmented control; only Received carries a count badge. */
-function SegmentedTabs({ tab, onChange, received }: { tab: Tab; onChange: (t: Tab) => void; received: number }) {
-  const tabs: { id: Tab; label: string }[] = [
-    { id: "incoming", label: "Received" },
-    { id: "sent", label: "Sent" },
-    { id: "matched", label: "Matched" },
+/** Received / Sent / Matched. Sent counts pending requests only. */
+function SegmentedTabs({
+  tab,
+  onChange,
+  counts,
+}: {
+  tab: Tab;
+  onChange: (t: Tab) => void;
+  counts: { incoming: number; sent: number; matched: number };
+}) {
+  const tabs: { id: Tab; label: string; count: number }[] = [
+    { id: "incoming", label: "Received", count: counts.incoming },
+    { id: "sent", label: "Sent", count: counts.sent },
+    { id: "matched", label: "Matched", count: counts.matched },
   ];
   return (
     <div role="tablist" className="grid grid-cols-3 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
@@ -53,9 +61,9 @@ function SegmentedTabs({ tab, onChange, received }: { tab: Tab; onChange: (t: Ta
             }`}
           >
             {t.label}
-            {t.id === "incoming" && received > 0 ? (
+            {t.count > 0 ? (
               <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[13px] font-bold flex items-center justify-center">
-                {received}
+                {t.count}
               </span>
             ) : null}
           </button>
@@ -91,6 +99,14 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
 
   // The Sent list already shows every request I sent with its status; the history sections
   // below only cover requests I received.
+  const pendingSent = useMemo(
+    () => data.sent.filter((c) => (c.status || "pending") === "pending"),
+    [data.sent]
+  );
+  const sentHistory = useMemo(
+    () => data.sent.filter((c) => (c.status || "pending") !== "pending"),
+    [data.sent]
+  );
   const sentIds = useMemo(() => new Set(data.sent.map((c) => c.id)), [data.sent]);
   const receivedDeclined = data.declined.filter((c) => !sentIds.has(c.id));
   const receivedExpired = data.expired.filter((c) => !sentIds.has(c.id));
@@ -98,7 +114,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
 
   return (
     <div>
-      <SegmentedTabs tab={tab} onChange={changeTab} received={data.counts.incoming} />
+      <SegmentedTabs tab={tab} onChange={changeTab} counts={data.counts} />
 
       {tab === "matched" && list.length > 1 ? (
         <div className="mt-4 flex items-center justify-end gap-2">
@@ -116,27 +132,60 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         </div>
       ) : null}
 
+      {tab === "sent" && pendingSent.length === 0 && sentHistory.length === 0 ? (
+        <p className="mt-4 text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
+          You haven&apos;t sent any requests yet.
+        </p>
+      ) : null}
+
+      {tab === "sent" && (pendingSent.length > 0 || sentHistory.length > 0) ? (
+        <div className="mt-5 space-y-8">
+          <section>
+            <h3 className="text-sm font-bold text-ink-950">Pending requests</h3>
+            <p className="mt-0.5 text-[13px] text-ink-700/55">
+              {pendingSent.length === 0
+                ? "None waiting for a response."
+                : `${pendingSent.length} awaiting a response`}
+            </p>
+            <div className="mt-3 space-y-3">
+              {pendingSent.map((card) => (
+                <SentCard key={card.id} card={card} />
+              ))}
+            </div>
+          </section>
+          {sentHistory.length > 0 ? (
+            <section>
+              <h3 className="text-sm font-bold text-ink-950">Sent history</h3>
+              <p className="mt-0.5 text-[13px] text-ink-700/55">
+                {sentHistory.length} previous request{sentHistory.length === 1 ? "" : "s"}
+              </p>
+              <div className="mt-3 space-y-3">
+                {sentHistory.map((card) => (
+                  <SentCard key={card.id} card={card} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
+
+      {tab !== "sent" ? (
       <div className="mt-4 space-y-3">
         {list.length === 0 && !(tab === "matched" && ended.length > 0) ? (
           <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
-            {tab === "incoming"
-              ? "No requests waiting for you right now."
-              : tab === "sent"
-                ? "You haven't sent any requests yet."
-                : "No matches yet."}
+            {tab === "incoming" ? "No requests waiting for you right now." : "No matches yet."}
           </p>
         ) : (
           list.map((card) =>
             tab === "incoming" ? (
               <ReceivedCard key={card.id} card={card} />
-            ) : tab === "sent" ? (
-              <SentCard key={card.id} card={card} />
             ) : (
               <MatchedCard key={card.id} card={card} />
             )
           )
         )}
       </div>
+      ) : null}
 
       {tab === "matched" && ended.length > 0 ? (
         <section className="mt-8">

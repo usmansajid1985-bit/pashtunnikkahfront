@@ -322,7 +322,7 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
     isGold,
     counts: {
       incoming: incomingCards.length,
-      sent: sentCards.length,
+      sent: sentCards.filter((c) => (c.status || "pending") === "pending").length,
       matched: matchedCards.length,
       ended: endedCards.length,
     },

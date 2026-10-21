@@ -57,7 +57,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     key: "messages",
     href: "/chats",
-    label: "Messages",
+    label: "Chats",
     icon: (
       <svg {...iconProps}>
         <path d="M21 12a8 8 0 1 1-3.2-6.4L21 4l-1 3.6A7.96 7.96 0 0 1 21 12Z" />

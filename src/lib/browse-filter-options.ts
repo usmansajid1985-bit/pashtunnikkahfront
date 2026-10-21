@@ -38,7 +38,6 @@ export const getBrowseFilterOptions = unstable_cache(
     const [
       countries,
       cities,
-      marital,
       sects,
       practices,
       appearances,
@@ -50,7 +49,6 @@ export const getBrowseFilterOptions = unstable_cache(
     ] = await Promise.all([
       distinctStrings("country"),
       distinctStrings("city"),
-      distinctStrings("marital_status"),
       distinctStrings("religious_methodology"),
       distinctStrings("religious_practice"),
       distinctStrings("appearance"),
@@ -63,7 +61,8 @@ export const getBrowseFilterOptions = unstable_cache(
     return {
       countries,
       cities,
-      marital,
+      // Fixed set — Polygamy is no longer a filter, and Widowed is always offered.
+      marital: ["Annulled", "Divorced", "Never Married", "Widowed"],
       sects,
       practices,
       // Fixed canonical set — never derived from raw stored values (PN-BROWSE-009).
@@ -76,6 +75,6 @@ export const getBrowseFilterOptions = unstable_cache(
       languages,
     };
   },
-  ["browse-filter-options"],
+  ["browse-filter-options-v2"],
   { revalidate: 300 }
 );
