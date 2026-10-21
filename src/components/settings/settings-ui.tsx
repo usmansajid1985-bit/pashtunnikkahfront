@@ -10,8 +10,10 @@ export function SettingsShell({
   profileCode,
   unreadCount = 0,
   userId,
+  wide = false,
   children,
 }: {
+  wide?: boolean;
   title?: string;
   backHref?: string;
   profileCode?: string;
@@ -50,7 +52,7 @@ export function SettingsShell({
 
       <MobileBottomNavGate active="settings" unreadCount={unreadCount} />
 
-      <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 pb-[calc(3rem+var(--pn-bottom-nav-h))] lg:py-10">
+      <main className={`max-w-lg ${wide ? "md:max-w-5xl" : "lg:max-w-3xl"} mx-auto px-4 lg:px-8 pb-[calc(3rem+var(--pn-bottom-nav-h))] lg:py-10`}>
         {children}
       </main>
     </div>

@@ -57,15 +57,15 @@ export function ProfileHero({
 
       {presence ? (
         <div className="absolute top-3 right-3 z-20 pointer-events-none flex flex-col items-end gap-1.5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-ink-950/80 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-md">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3d3836]/85 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-md">
             <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${presence.online ? "bg-emerald-400" : "bg-white/50"}`}
+              className={`h-2 w-2 shrink-0 rounded-full ${presence.online ? "bg-[#4ade3a]" : "bg-white/50"}`}
             />
             {presence.label}
           </span>
           {presence.justJoined ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#fde8f1] px-2.5 py-1 text-[11px] font-semibold text-[#e12d72]">
-              ✨ Just Joined
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#fbd3e3] px-3 py-1.5 text-[12px] font-semibold text-[#e12d72]">
+              🎉 Just Joined
             </span>
           ) : null}
         </div>

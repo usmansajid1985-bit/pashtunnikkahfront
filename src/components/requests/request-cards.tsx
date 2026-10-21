@@ -344,7 +344,7 @@ export function SentCard({ card }: { card: HubCard }) {
                 </p>
               ) : null}
               {status === "expired" && card.tokenRefunded ? (
-                <p className="mt-0.5 pl-[21px] text-[12px] font-semibold text-emerald-700">1 Match token</p>
+                <p className="mt-0.5 pl-[21px] text-[12px] font-semibold text-emerald-700">1 Match token refunded</p>
               ) : null}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">

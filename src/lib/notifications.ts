@@ -344,7 +344,7 @@ export async function getActivityFeed(
       category,
       title,
       body,
-      url: maskIdentity ? "/settings/membership" : r.url,
+      url: maskIdentity ? "/settings/membership?upgrade=1" : r.url,
       groupCount: r.group_count ?? 1,
       read: r.read_at != null,
       createdAt: r.created_at.toISOString(),

@@ -48,7 +48,7 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
           <p className="text-[13px] text-ink-700/75 leading-snug">
             Upgrade to Gold to see who viewed your profile and get more visibility.
           </p>
-          <Link href="/settings/membership" className="text-[13px] font-semibold text-rose-600 hover:text-rose-700 whitespace-nowrap">
+          <Link href="/settings/membership?upgrade=1" className="text-[13px] font-semibold text-rose-600 hover:text-rose-700 whitespace-nowrap">
             Upgrade to Gold →
           </Link>
         </div>
