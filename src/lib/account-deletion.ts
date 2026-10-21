@@ -238,3 +238,56 @@ async function deleteAccountNow(u: { id: bigint; email: string; display_name: st
   });
   await prisma.$executeRawUnsafe(`UPDATE users SET deleted_at = NOW() WHERE id = $1`, userId);
 }
+
+/**
+ * One-off: deletion requests made before this flow (status 'deletion_requested') get a fresh
+ * 30 days from now on the new flow — hidden profile, the "will be deleted on … unless you log in"
+ * email, then the daily job deletes them. Their original reason is kept. `dryRun` changes nothing.
+ */
+export async function startFreshWindowForLegacyRequests(opts: { dryRun: boolean }) {
+  await ensureDeletionSchema();
+  const rows = await prisma.$queryRawUnsafe<
+    { id: bigint; email: string; display_name: string; full_name: string | null; profile_code: string | null; is_hidden: boolean | null }[]
+  >(
+    `SELECT u.id, u.email, u.display_name, p.full_name, p.profile_code, p.is_hidden
+       FROM users u LEFT JOIN profiles p ON p.user_id = u.id
+      WHERE u.deletion_requested_at IS NOT NULL AND u.deleted_at IS NULL AND u.account_status = 'deletion_requested'
+      ORDER BY u.deletion_requested_at`
+  );
+  const now = new Date();
+  const until = longDate(deletionDate(now));
+  const results: { id: string; code: string | null; emailed: boolean }[] = [];
+  for (const r of rows) {
+    if (opts.dryRun) {
+      results.push({ id: r.id.toString(), code: r.profile_code, emailed: false });
+      continue;
+    }
+    await prisma.$executeRawUnsafe(
+      `UPDATE users SET account_status = 'pending_deletion', deletion_requested_at = $2, deletion_hid_profile = $3, updated_at = NOW() WHERE id = $1`,
+      r.id,
+      now,
+      r.is_hidden === false
+    );
+    if (r.is_hidden === false) {
+      await prisma.profiles.updateMany({ where: { user_id: r.id }, data: { is_hidden: true, updated_at: now } });
+    }
+    const name = (r.full_name || r.display_name || "there").split(" ")[0];
+    const mail = emailLayout(
+      name,
+      [
+        "Some time ago you asked us to close your Pashtun Nikah account. We've now moved to a new process, and your profile is hidden so no one can find you in Browse.",
+        `Your account will be permanently deleted on ${until}. If you'd like to keep it after all, simply log in before then and it will be reactivated.`,
+        "Jazakallahu khairan for being part of our community.",
+      ],
+      { label: "Log in to keep my account", url: `${appOrigin()}/login` }
+    );
+    const sent = await sendMail({ to: r.email, subject: "Your Pashtun Nikah account will be deleted", ...mail })
+      .then((x) => x.ok)
+      .catch((err) => {
+        console.error(`[account-deletion] legacy email failed for ${r.id}`, err);
+        return false;
+      });
+    results.push({ id: r.id.toString(), code: r.profile_code, emailed: sent });
+  }
+  return { count: rows.length, deleteOn: deletionDate(now).toISOString(), results };
+}
