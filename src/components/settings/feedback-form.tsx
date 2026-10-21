@@ -144,7 +144,7 @@ export function FeedbackForm() {
 
   return (
     <div className="mt-5 space-y-4">
-      <div role="tablist" aria-label="Feedback type" className="grid grid-cols-3 gap-1 rounded-full border border-ink-900/8 bg-ink-900/[0.03] p-1">
+      <div role="tablist" aria-label="Feedback type" className="grid grid-cols-[0.75fr_1fr_1.3fr] gap-0.5 sm:gap-1 rounded-full border border-ink-900/8 bg-ink-900/[0.03] p-1">
         {KINDS.map((k) => {
           const active = kind === k.id;
           return (
@@ -154,12 +154,12 @@ export function FeedbackForm() {
               role="tab"
               aria-selected={active}
               onClick={() => setKind(k.id)}
-              className={`min-w-0 h-11 rounded-full flex items-center justify-center gap-1.5 px-2 text-[13px] sm:text-[14px] font-semibold transition ${
+              className={`min-w-0 h-11 rounded-full flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2 text-[12px] sm:text-[14px] font-semibold tracking-tight transition [&_svg]:w-[14px] sm:[&_svg]:w-4 ${
                 active ? "bg-[#e0306f] text-white shadow-sm" : "text-ink-700/75 hover:text-ink-950"
               }`}
             >
               {k.icon}
-              <span className="truncate">{k.label}</span>
+              <span className="whitespace-nowrap">{k.label}</span>
             </button>
           );
         })}
