@@ -121,6 +121,7 @@ function toCard(
     note: extra.note ?? null,
     countryCode,
     photoUrl: extra.photoUrl ?? null,
+    canRematch: extra.canRematch,
   };
 }
 
@@ -263,6 +264,7 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
       communication_mode: string | null;
       photo_shared: boolean;
       intro_message?: string | null;
+      ended_by?: bigint | null;
     },
     asMatch = false
   ): HubCard | null {
@@ -300,6 +302,8 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
         expiresAt: r.status === "pending" ? r.expires_at.toISOString() : null,
         tokenRefunded: r.sender_id === userId && refundedIds.has(r.id.toString()),
         photoUrl: photoByUser.get(peerId.toString()) ?? null,
+        // N53: only the member who ended a match can ask to rematch (either, if the PN team ended it).
+        canRematch: r.status === "ended" ? r.ended_by == null || r.ended_by === userId : undefined,
       },
       compatCache
     );

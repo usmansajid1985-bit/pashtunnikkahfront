@@ -64,6 +64,9 @@ export type ChatThreadDTO = {
   privateChat: boolean;
   photoShared: boolean;
   photoVisible: boolean;
+  /** N53: the match has ended — the thread stays readable under "Past matches". */
+  ended: boolean;
+  endedAt: string | null;
 };
 
 export type PhotoOnceStatus = "none" | "pending" | "viewed";
@@ -406,7 +409,8 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
   const [requests, blocked] = await Promise.all([
     prisma.match_requests.findMany({
       where: {
-        status: "accepted",
+        // N53: ended matches stay listed (read-only, under "Past matches") for both members.
+        status: { in: ["accepted", "ended"] },
         OR: [{ sender_id: userId }, { receiver_id: userId }],
       },
       orderBy: { updated_at: "desc" },
@@ -452,6 +456,8 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       privateChat: meta.privateChat,
       photoShared: meta.photoShared,
       photoVisible: meta.photoVisible,
+      ended: req.status === "ended",
+      endedAt: req.status === "ended" ? (req.ended_at ?? req.updated_at).toISOString() : null,
       };
     })
   );
@@ -459,6 +465,7 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
   const threads: ChatThreadDTO[] = built.filter(Boolean) as ChatThreadDTO[];
 
   threads.sort((a, b) => {
+    if (a.ended !== b.ended) return a.ended ? 1 : -1;
     const at = a.lastAt ? new Date(a.lastAt).getTime() : 0;
     const bt = b.lastAt ? new Date(b.lastAt).getTime() : 0;
     return bt - at;

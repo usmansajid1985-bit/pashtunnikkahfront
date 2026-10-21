@@ -31,6 +31,8 @@ export type HubCard = {
   countryCode?: string | null;
   /** Signed URL of the server-blurred photo derivative (never the original); null = placeholder. */
   photoUrl?: string | null;
+  /** Ended matches: may this member request a rematch (they ended it, or the PN team did). */
+  canRematch?: boolean;
 };
 
 /** "today at 14:05" / "yesterday at 09:12" / "on 8 Oct at 15:35" in the member's local time. */

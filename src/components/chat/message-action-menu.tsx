@@ -35,6 +35,7 @@ export function MessageActionMenu({
   mine,
   open,
   canReport,
+  locked = false,
   onClose,
   onReact,
   onReply,
@@ -46,6 +47,8 @@ export function MessageActionMenu({
   mine: boolean;
   open: boolean;
   canReport: boolean;
+  /** Ended match: no reactions or replies — only copy / report. */
+  locked?: boolean;
   onClose: () => void;
   onReact: (emoji: string) => void;
   onReply: () => void;
@@ -74,6 +77,7 @@ export function MessageActionMenu({
       ref={wrapRef}
       className={`absolute z-40 ${placement === "below" ? "top-full mt-2" : "bottom-full mb-2"} ${mine ? "right-0" : "left-0"} w-max max-w-[min(20rem,calc(100vw-2.5rem))] animate-[chatIn_140ms_ease-out]`}
     >
+      {locked ? null : (
       <div className="flex items-center gap-0.5 bg-white rounded-full border border-ink-900/10 shadow-[0_14px_36px_-14px_rgba(15,13,14,0.4)] px-1.5 py-1 mb-2 overflow-x-auto">
         {QUICK_REACTIONS.map((emoji) => (
           <button
@@ -97,8 +101,9 @@ export function MessageActionMenu({
           +
         </button>
       </div>
+      )}
 
-      {showMore ? (
+      {showMore && !locked ? (
         <div className="grid grid-cols-7 gap-0.5 bg-white rounded-2xl border border-ink-900/10 shadow-[0_14px_36px_-14px_rgba(15,13,14,0.4)] p-2 mb-2 max-h-40 overflow-y-auto">
           {MORE_REACTIONS.map((emoji) => (
             <button
@@ -143,6 +148,7 @@ export function MessageActionMenu({
           <CopyIcon />
           Copy to clipboard
         </button>
+        {locked ? null : (
         <button
           type="button"
           onClick={() => {
@@ -154,6 +160,7 @@ export function MessageActionMenu({
           <ReplyIcon />
           Reply to message
         </button>
+        )}
       </div>
     </div>
   );

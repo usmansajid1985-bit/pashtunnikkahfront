@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   FormEvent,
+  Fragment,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -191,7 +192,10 @@ function MessageBubble({
   onRetry,
   waliContacted,
   onWaliAction,
+  locked = false,
 }: {
+  /** N53: ended match — read-only (no reply / react); copy and report still work. */
+  locked?: boolean;
   onRetry?: (m: ChatMessageDTO) => void;
   /** Wali contact card only: he has confirmed contacting her wali. */
   waliContacted?: boolean;
@@ -250,7 +254,7 @@ function MessageBubble({
     cancelLongPress();
     const d = drag.current;
     drag.current = null;
-    if (d?.lock === "h" && dragX >= REPLY_THRESHOLD_PX) onReply(msg);
+    if (!locked && d?.lock === "h" && dragX >= REPLY_THRESHOLD_PX) onReply(msg);
     setDragX(0);
   }
 
@@ -382,6 +386,7 @@ function MessageBubble({
                 <button
                   key={r.emoji}
                   type="button"
+                  disabled={locked}
                   onClick={() => onReact(msg, r.emoji)}
                   className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[13px] leading-5 border shadow-sm transition ${
                     reactedByMe
@@ -417,6 +422,7 @@ function MessageBubble({
           mine={mine}
           open={menuOpen}
           canReport={!mine}
+          locked={locked}
           onClose={() => setMenuOpen(false)}
           onReact={(emoji) => onReact(msg, emoji)}
           onReply={() => onReply(msg)}
@@ -1027,15 +1033,17 @@ export function ChatApp({
 
     const onMatchClosed = (payload: { requestId: string; byUserId: string }) => {
       if (payload.byUserId === userId) return;
+      // N53: the thread moves to "Past matches" (still readable) instead of disappearing.
+      setThreads((prev) =>
+        prev.map((t) => (t.requestId === payload.requestId ? { ...t, ended: true, endedAt: new Date().toISOString() } : t))
+      );
       if (payload.requestId === activeId) {
         setMatchEnded(true);
-        setEndReason(null);
+        setEndReason("user");
         setEndedByMe(false);
         setPeerTyping(false);
         setReplyTo(null);
-        return;
       }
-      setThreads((prev) => prev.filter((t) => t.requestId !== payload.requestId));
     };
 
     const offs = [
@@ -1179,7 +1187,9 @@ export function ChatApp({
       setEndReason(data.endReason ?? "user");
       setEndedByMe(true);
       setShowEndConfirm(false);
-      setThreads((prev) => prev.filter((t) => t.requestId !== activeId));
+      setThreads((prev) =>
+        prev.map((t) => (t.requestId === activeId ? { ...t, ended: true, endedAt: new Date().toISOString() } : t))
+      );
       setToast("Match ended");
     } finally {
       setEndBusy(false);
@@ -1540,6 +1550,11 @@ export function ChatApp({
   }, []);
 
   const activeThread = threads.find((t) => t.requestId === activeId) || null;
+  // N53: active chats first, then ended ones under "Past matches" (newest first within each).
+  const orderedThreads = useMemo(
+    () => [...threads.filter((t) => !t.ended), ...threads.filter((t) => t.ended)],
+    [threads]
+  );
   const requestRows = requestLists ? requestLists[requestSub] : [];
   const openRequest =
     openRequestId && requestLists
@@ -1713,11 +1728,17 @@ export function ChatApp({
                   </Link>
                 </div>
               ) : (
-                threads.map((t) => {
+                orderedThreads.map((t, i) => {
                   const active = t.requestId === activeId;
+                  const firstPast = t.ended && (i === 0 || !orderedThreads[i - 1].ended);
                   return (
+                    <Fragment key={t.requestId}>
+                    {firstPast ? (
+                      <p className="px-4 pt-5 pb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-700/45 border-b border-ink-900/5">
+                        Past matches
+                      </p>
+                    ) : null}
                     <button
-                      key={t.requestId}
                       type="button"
                       onClick={() => {
                         setOpenRequestId(null);
@@ -1726,7 +1747,7 @@ export function ChatApp({
                           window.history.replaceState(null, "", `/chats/${t.requestId}`);
                         });
                       }}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-ink-900/5 transition ${
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-ink-900/5 transition ${t.ended ? "opacity-70" : ""} ${
                         active ? "bg-rose-50/70" : "hover:bg-ink-900/[0.03]"
                       }`}
                     >
@@ -1749,7 +1770,12 @@ export function ChatApp({
                               </svg>
                             ) : null}
                           </span>
-                          <span className="text-[11px] text-ink-700/50 shrink-0">
+                          <span className="text-[11px] text-ink-700/50 shrink-0 flex items-center gap-1.5">
+                            {t.ended ? (
+                              <span className="rounded-full bg-ink-900/[0.06] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ink-700/60">
+                                Ended
+                              </span>
+                            ) : null}
                             <LocalStamp iso={t.lastAt} variant="list" />
                           </span>
                         </span>
@@ -1780,6 +1806,7 @@ export function ChatApp({
                         </span>
                       </span>
                     </button>
+                    </Fragment>
                   );
                 })
               )}
@@ -2178,6 +2205,7 @@ export function ChatApp({
                               onCopy={(m) => void copyMessage(m)}
                               onReport={(m) => reportMessage(m)}
                               onRetry={(m) => void retryMessage(m)}
+                              locked={matchEnded}
                               waliContacted={Boolean(family?.contacted)}
                               onWaliAction={noteWaliAction}
                             />
@@ -2262,11 +2290,13 @@ export function ChatApp({
                           </div>
                         </div>
                       ) : matchEnded ? (
-                        <div className="rounded-2xl border border-ink-900/8 bg-[#faf8f7] px-4 py-4 mb-2">
+                        <div className="mb-2 rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3.5">
                           <p className="text-sm font-bold text-ink-950">This match has ended</p>
-                          <p className="mt-1 text-[13px] text-ink-700/70 leading-relaxed">
-                            You can read past messages but cannot send new ones.
-                            {endReason ? ` Reason: ${endReason.replace(/_/g, " ")}.` : ""}
+                          <p className="mt-0.5 text-[13px] text-ink-700/70 leading-relaxed">
+                            You can read past messages but cannot send new ones.{" "}
+                            {endReason === "admin"
+                              ? "Match closed by the Pashtun Nikah team."
+                              : `Match ended by ${displayName}.`}
                           </p>
                         </div>
                       ) : (

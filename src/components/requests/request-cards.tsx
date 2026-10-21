@@ -421,7 +421,7 @@ export function PastMatchRow({ card }: { card: HubCard }) {
         <Link href={`/p/${card.code}`} className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold">
           Profile
         </Link>
-        <RematchButton profileCode={card.code} />
+        {card.canRematch ? <RematchButton profileCode={card.code} /> : null}
       </div>
     </article>
   );
