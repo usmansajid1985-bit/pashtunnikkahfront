@@ -107,8 +107,10 @@ type LoginUser = { id: bigint; email: string; display_name: string; account_stat
  * Login of an account that asked to be deleted: within 30 days it's reactivated (returns
  * "reactivated"); after that it's gone ("expired" — the job may not have run yet).
  */
-export async function reactivateOnLogin(user: LoginUser): Promise<"reactivated" | "expired" | "none"> {
+export async function reactivateOnLogin(user: LoginUser): Promise<"reactivated" | "expired" | "legacy" | "none"> {
   if (!user.deletion_requested_at) return "none";
+  // Requests from before this flow ('deletion_requested') wait for an admin decision.
+  if (user.account_status !== "pending_deletion") return "legacy";
   if (Date.now() >= deletionDate(user.deletion_requested_at).getTime()) return "expired";
   await ensureDeletionSchema();
   const rows = await prisma.$queryRawUnsafe<{ deletion_hid_profile: boolean }[]>(
@@ -139,6 +141,9 @@ export async function purgeExpiredDeletions(limit = 50): Promise<{ deleted: numb
   const due = await prisma.$queryRawUnsafe<{ id: bigint; email: string; display_name: string }[]>(
     `SELECT id, email, display_name FROM users
       WHERE deletion_requested_at IS NOT NULL AND deleted_at IS NULL
+        -- Only accounts closed through this flow. Older 'deletion_requested' rows (from before
+        -- N54) are never purged automatically — they need an admin decision first.
+        AND account_status = 'pending_deletion'
         AND deletion_requested_at <= NOW() - ($1::int * INTERVAL '1 day')
       ORDER BY deletion_requested_at LIMIT $2`,
     DELETION_GRACE_DAYS,

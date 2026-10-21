@@ -46,6 +46,9 @@ export async function POST(req: Request) {
 
     // N54: closing an account keeps it for 30 days — logging in within them reactivates it.
     const deletion = await reactivateOnLogin(user);
+    if (deletion === "legacy") {
+      return NextResponse.json({ error: "This account is scheduled for deletion. Contact support to restore it." }, { status: 403 });
+    }
     if (deletion === "expired") {
       return NextResponse.json(
         { error: "This account has been deleted. You're welcome to register again." },
