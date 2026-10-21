@@ -640,7 +640,8 @@ export function SignupWizard() {
                       <ChoiceTile
                         key={v}
                         label={v}
-                        tone={MARITAL_TILES[v].tone}
+                        tone="white"
+                        pink
                         icon={MARITAL_TILES[v].icon}
                         multi
                         selected={on}
@@ -711,25 +712,21 @@ export function SignupWizard() {
                     {
                       v: "Strictly Practising",
                       hint: "All 5 salah consistently; deen guides daily life",
-                      tone: "mint" as const,
                       icon: I.practiceStrict,
                     },
                     {
                       v: "Actively Practising",
                       hint: "Prays all 5 salah and actively practises",
-                      tone: "sky" as const,
                       icon: I.practiceActive,
                     },
                     {
                       v: "Occasionally Practising",
                       hint: "Practises, but not always consistently",
-                      tone: "peach" as const,
                       icon: I.practiceOccasional,
                     },
                     {
                       v: "Does Not Practise",
                       hint: "Muslim, but not currently practising regularly",
-                      tone: "rose" as const,
                       icon: I.practiceNone,
                     },
                   ] as const
@@ -738,7 +735,8 @@ export function SignupWizard() {
                     key={o.v}
                     label={o.v}
                     hint={o.hint}
-                    tone={o.tone}
+                    tone="white"
+                    pink
                     icon={o.icon}
                     showCheck
                     selected={data.religiousPractice === o.v}
@@ -967,11 +965,11 @@ export function SignupWizard() {
 
             {step.id === "photo" && (
               <div className="space-y-4">
-                <p className="text-sm text-ink-700/70">
-                  {wearsNiqab
-                    ? "If you wear a niqab, you may upload yourself in a niqab or choose to upload something else."
-                    : "Upload a clear photo of yourself. Add up to 3 — you choose which is your main photo."}
-                </p>
+                {wearsNiqab ? (
+                  <p className="text-sm text-ink-700/70">
+                    If you wear a niqab, you may upload yourself in a niqab or choose to upload something else.
+                  </p>
+                ) : null}
 
                 {data.photos.length === 0 ? (
                   <button
@@ -1042,8 +1040,11 @@ export function SignupWizard() {
                   className="hidden"
                   onChange={(e) => onPhoto(e.target.files?.[0] ?? null)}
                 />
-                <p className="text-xs text-ink-700/55">
-                  Every photo is manually reviewed before it goes live.
+                <p className="flex items-start gap-2 text-xs text-ink-700/55">
+                  <span className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-ink-700/30 text-[10px] font-bold" aria-hidden>
+                    i
+                  </span>
+                  Photos added at registration will be reviewed before they go live.
                 </p>
               </div>
             )}

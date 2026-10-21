@@ -30,6 +30,7 @@ export function ChoiceTile({
   tone = "white",
   multi,
   showCheck,
+  pink,
 }: {
   label: string;
   hint?: string;
@@ -40,16 +41,18 @@ export function ChoiceTile({
   multi?: boolean;
   /** Single-select tiles: show the tick badge once selected. */
   showCheck?: boolean;
+  /** Neutral tile; selected state is a #E12D72 tint instead of a rainbow fill. */
+  pink?: boolean;
 }) {
   const t = TONES[tone];
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`choice-tile ${selected ? "is-selected" : ""} ${multi ? "is-multi" : ""}`}
+      className={`choice-tile ${selected ? "is-selected" : ""} ${multi ? "is-multi" : ""} ${pink ? "pink-select" : ""}`}
       style={{
-        background: t.bg,
-        borderColor: selected ? t.selectedBorder : t.border,
+        background: pink ? (selected ? "#FBE7F0" : "#ffffff") : t.bg,
+        borderColor: pink ? (selected ? "#E12D72" : "#ece7e6") : selected ? t.selectedBorder : t.border,
       }}
     >
       <IconBadge>{icon}</IconBadge>

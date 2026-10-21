@@ -389,6 +389,13 @@ body {
 .choice-tile.is-selected {
   box-shadow: 0 0 0 1px #aa1945, 0 12px 24px -16px rgba(170, 25, 69, 0.45);
 }
+.choice-tile.pink-select.is-selected {
+  box-shadow: none;
+}
+.choice-tile.pink-select .choice-check.on {
+  background: #e12d72;
+  border-color: #e12d72;
+}
 .choice-tile-label {
   font-size: 13.5px;
   font-weight: 600;

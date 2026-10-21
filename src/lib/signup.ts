@@ -139,7 +139,7 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       title: "What is your tribe?",
       subtitle: "Search for your tribe.",
     },
-    { id: "openTo", title: "Who are you open to?", subtitle: "Select all that apply." },
+    { id: "openTo", title: "Who are you open to?", subtitle: "Select the marital statuses you would consider in a potential spouse." },
     { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },
     { id: "faith", title: "How would you describe your practice?", subtitle: "Choose the option that best reflects your current practice." },
     {
@@ -163,7 +163,7 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
     {
       id: "photo",
       title: "Add a genuine profile photo",
-      subtitle: "Every photo is manually reviewed before approval.",
+      subtitle: "Upload a clear photo of yourself. Add up to 3 — you choose which is your main photo.",
     },
   ];
 
