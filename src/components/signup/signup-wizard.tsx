@@ -9,7 +9,8 @@ import {
   ANCESTRAL_REGIONS,
   COMM_MODES,
   COUNTRIES,
-  HEIGHTS,
+  HEIGHT_SLIDER,
+  HEIGHT_SLIDER_DEFAULT,
   LANGUAGES_ORDERED,
   MEN_APPEARANCE,
   OPEN_TO_OPTIONS,
@@ -17,6 +18,7 @@ import {
   WOMEN_HEAD_COVERING,
   calcAge,
   emptySignupData,
+  signupDobBounds,
   getSignupSteps,
   isStepValid,
   normalizeOpenTo,
@@ -232,6 +234,12 @@ export function SignupWizard() {
     if (stepIndex >= steps.length) setStepIndex(steps.length - 1);
   }, [steps.length, stepIndex]);
 
+  // Height slider starts on 5'4" so Next is ready without an extra tap.
+  useEffect(() => {
+    if (step.id !== "height") return;
+    setData((d) => (d.height ? d : { ...d, height: HEIGHT_SLIDER_DEFAULT }));
+  }, [step.id]);
+
   function patch(partial: Partial<SignupData>) {
     setData((d) => ({ ...d, ...partial }));
     setError(null);
@@ -335,6 +343,7 @@ export function SignupWizard() {
   }
 
   const age = calcAge(data.dob);
+  const dobBounds = signupDobBounds();
 
   return (
     <div className="signup-shell min-h-screen text-ink-900 flex flex-col">
@@ -465,40 +474,65 @@ export function SignupWizard() {
                   type="date"
                   className="field"
                   value={data.dob}
-                  max={new Date(new Date().setFullYear(new Date().getFullYear() - 18))
-                    .toISOString()
-                    .slice(0, 10)}
-                  onChange={(e) => patch({ dob: e.target.value })}
+                  min={dobBounds.min}
+                  max={dobBounds.max}
+                  onChange={(e) => {
+                    let next = e.target.value;
+                    if (next && next < dobBounds.min) next = dobBounds.min;
+                    if (next && next > dobBounds.max) next = dobBounds.max;
+                    patch({ dob: next });
+                  }}
                 />
+                <p className="flex items-start gap-2 text-xs text-ink-700/55 leading-snug">
+                  <svg className="mt-0.5 shrink-0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+                  </svg>
+                  Only your age will be visible to other members. Your date of birth stays private.
+                </p>
                 {data.dob ? (
                   <p
                     className={`text-sm font-semibold rounded-xl px-4 py-2.5 ${
-                      age != null && age >= 18
-                        ? "bg-emerald-50 text-emerald-800"
-                        : "bg-red-50 text-red-700"
+                      isStepValid("dob", data) ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
                     }`}
                   >
-                    {age != null && age >= 18
-                      ? `Age: ${age} years old`
-                      : "You must be 18 or over to use Pashtun Nikah."}
+                    {data.dob < dobBounds.min
+                      ? `Maximum age is 100. The earliest date you can select is ${dobBounds.min.slice(0, 4)}.`
+                      : isStepValid("dob", data)
+                        ? `Age: ${age} years old`
+                        : "You must be 18 or over to use Pashtun Nikah."}
                   </p>
                 ) : null}
               </>
             )}
 
             {step.id === "height" && (
-              <select
-                className="field"
-                value={data.height}
-                onChange={(e) => patch({ height: e.target.value })}
-              >
-                <option value="">Select your height</option>
-                {HEIGHTS.map((h) => (
-                  <option key={h} value={h}>
-                    {h}
-                  </option>
-                ))}
-              </select>
+              <div className="rounded-2xl bg-[#f7f4f2] px-4 py-5">
+                <p className="text-center text-lg font-bold text-ink-950">
+                  {data.height || HEIGHT_SLIDER_DEFAULT}
+                </p>
+                <input
+                  type="range"
+                  className="mt-4 w-full accent-rose-600"
+                  min={0}
+                  max={HEIGHT_SLIDER.length - 1}
+                  value={Math.max(0, HEIGHT_SLIDER.indexOf(data.height || HEIGHT_SLIDER_DEFAULT))}
+                  onChange={(e) => patch({ height: HEIGHT_SLIDER[Number(e.target.value)] })}
+                  aria-label="Height"
+                />
+                <div className="mt-1 flex justify-between text-[11px] text-ink-700/55">
+                  <span className="text-left leading-tight">
+                    4&apos;6&quot;
+                    <br />
+                    (137 cm)
+                  </span>
+                  <span className="text-right leading-tight">
+                    6&apos;6&quot;
+                    <br />
+                    (198 cm)
+                  </span>
+                </div>
+              </div>
             )}
 
             {step.id === "location" && (

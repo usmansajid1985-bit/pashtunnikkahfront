@@ -13,7 +13,14 @@ import {
   SESSION_COOKIE,
   sessionCookieOptions,
 } from "@/lib/auth";
-import { calcAge, normalizeOpenTo, splitWomenAppearance, type SignupData } from "@/lib/signup";
+import {
+  calcAge,
+  normalizeOpenTo,
+  SIGNUP_MAX_AGE,
+  signupDobBounds,
+  splitWomenAppearance,
+  type SignupData,
+} from "@/lib/signup";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { sendVerificationEmail } from "@/lib/email-verification";
 import {
@@ -69,9 +76,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: PASSWORD_WEAK_MESSAGE }, { status: 400 });
     }
 
-    const age = calcAge(String(body.dob ?? ""));
-    if (age == null || age < 18) {
+    const dob = String(body.dob ?? "");
+    const age = calcAge(dob);
+    const { min: minDob, max: maxDob } = signupDobBounds();
+    if (!dob || dob > maxDob || age == null || age < 18) {
       return NextResponse.json({ error: "You must be 18 or over." }, { status: 400 });
+    }
+    if (dob < minDob || age > SIGNUP_MAX_AGE) {
+      return NextResponse.json(
+        { error: `Maximum age is 100. The earliest date you can select is ${minDob.slice(0, 4)}.` },
+        { status: 400 }
+      );
     }
 
     // About Me / Looking For must be real sentences (same check as the form).

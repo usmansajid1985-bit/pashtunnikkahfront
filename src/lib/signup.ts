@@ -305,6 +305,16 @@ export const HEIGHTS = Array.from({ length: 44 }, (_, i) => {
   return `${ft}'${inch}" (${cm} cm)`;
 });
 
+/** Signup slider: 4'6" (137 cm) through 6'6" (198 cm), one inch per step. */
+export const HEIGHT_SLIDER = Array.from({ length: 25 }, (_, i) => {
+  const totalIn = 54 + i;
+  const ft = Math.floor(totalIn / 12);
+  const inch = totalIn % 12;
+  const cm = Math.round(totalIn * 2.54);
+  return `${ft}'${inch}" (${cm} cm)`;
+});
+export const HEIGHT_SLIDER_DEFAULT = `5'4" (163 cm)`;
+
 export const MEN_APPEARANCE = [
   "Clean Shaven",
   "Stubble",
@@ -482,6 +492,23 @@ export function occupationIssue(employment: string, occupation: string): string 
   return isCareerOption(employment, occupation.trim()) ? null : `"${prompt.label}": please choose from the list.`;
 }
 
+export const SIGNUP_MIN_AGE = 18;
+export const SIGNUP_MAX_AGE = 100;
+
+function isoDay(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Inclusive ISO dates the DOB picker may use: 18–100 years old. */
+export function signupDobBounds(now = new Date()): { min: string; max: string } {
+  const max = new Date(now.getFullYear() - SIGNUP_MIN_AGE, now.getMonth(), now.getDate());
+  const min = new Date(now.getFullYear() - SIGNUP_MAX_AGE, now.getMonth(), now.getDate());
+  return { min: isoDay(min), max: isoDay(max) };
+}
+
 export function calcAge(dob: string): number | null {
   if (!dob) return null;
   const d = new Date(dob);
@@ -498,8 +525,9 @@ export function isStepValid(id: StepId, data: SignupData): boolean {
     case "marital":
       return Boolean(data.maritalStatus);
     case "dob": {
-      const age = calcAge(data.dob);
-      return age != null && age >= 18;
+      if (!data.dob) return false;
+      const { min, max } = signupDobBounds();
+      return data.dob >= min && data.dob <= max;
     }
     case "height":
       return Boolean(data.height);
