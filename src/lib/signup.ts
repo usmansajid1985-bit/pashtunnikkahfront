@@ -140,16 +140,8 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       subtitle: "Search for your tribe.",
     },
     { id: "openTo", title: "Who are you open to?", subtitle: "Select the marital statuses you would consider in a potential spouse." },
-    { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },
     { id: "faith", title: "How would you describe your practice?", subtitle: "Choose the option that best reflects your current practice." },
-    {
-      id: "appearance",
-      title: gender === "Sister" ? "How do you usually dress?" : "What's your appearance?",
-      subtitle:
-        gender === "Sister" ? "Select what best describes you." : "Choose the option that best describes you.",
-    },
     { id: "career", title: "Education & career", subtitle: "Highest qualification and employment." },
-    { id: "lifestyle", title: "Health & lifestyle", subtitle: "Smoking and vaping habits." },
     {
       id: "about",
       title: "Tell us about yourself",

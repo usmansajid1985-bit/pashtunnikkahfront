@@ -132,11 +132,8 @@ export function mapProfileView(
     },
     { label: "Religious practice", done: Boolean(profile.religious_practice), action: "edit" },
     {
-      label: "Children & relocation details",
-      done: Boolean(
-        (profile.has_children || profile.wants_children) &&
-          (profile.willing_to_relocate || profile.relocate || profile.ancestral_village)
-      ),
+      label: "Relocation details",
+      done: Boolean(profile.willing_to_relocate || profile.relocate || profile.ancestral_village),
       action: "edit",
     },
     {

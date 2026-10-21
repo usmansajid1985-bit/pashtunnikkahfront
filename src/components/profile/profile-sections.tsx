@@ -3,6 +3,7 @@ import type { ProfileView } from "@/lib/profile";
 import { iconFor } from "@/lib/profile-optional";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
+import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
@@ -13,6 +14,62 @@ const TONES: Record<Tone, string> = {
   solid: "bg-rose-600 text-white",
   dark: "bg-ink-900 text-white",
 };
+
+function LangIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M5 6h7M8.5 6c0 6-3 9-5 10M8.5 10c1.2 2.2 3 3.8 5.5 4.6" />
+      <path d="M14 18l2.2-5.2L19 18M15 16.2h3" />
+    </svg>
+  );
+}
+
+function BubbleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M6 16.5 4 20l4.2-1.6A8 8 0 1 0 6 16.5Z" />
+    </svg>
+  );
+}
+
+function MountainIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M3 19 9.2 8.4a1 1 0 0 1 1.7 0L14 13l1.4-2.2a1 1 0 0 1 1.6 0L21 19H3Z" />
+    </svg>
+  );
+}
+
+const APPEARANCE_ART: Record<string, { label: string; image: string }> = {
+  "Clean Shaven": { label: "Clean Shaven", image: "/images/signup/beard-clean-shaven.webp" },
+  Stubble: { label: "Stubble", image: "/images/signup/beard-stubble.webp" },
+  "Short Beard": { label: "Short Beard", image: "/images/signup/beard-short-beard.webp" },
+  "Medium Beard": { label: "Medium Beard", image: "/images/signup/beard-medium-beard.webp" },
+  "Long Beard": { label: "Long Beard", image: "/images/signup/beard-long-beard.webp" },
+  "Does Not Wear Hijab": { label: "No hijab", image: "/images/signup/head-no-hijab.webp" },
+  "Wears Hijab": { label: "Wears hijab", image: "/images/signup/head-hijab.webp" },
+  "Wears Niqab": { label: "Wears niqab", image: "/images/signup/head-niqab.webp" },
+  "Abaya / Jilbab": { label: "Abaya / Jilbab", image: "/images/signup/dress-abaya.webp" },
+  "Kamees Partug": { label: "Kamees Partug", image: "/images/signup/dress-kamees-partug.webp" },
+  "Western Modest": { label: "Western Modest", image: "/images/signup/dress-western.webp" },
+  "Traditional & Western Mix": { label: "Traditional & Western Mix", image: "/images/signup/dress-mix.webp" },
+};
+
+function AppearanceChip({ value }: { value: string }) {
+  const art = APPEARANCE_ART[value];
+  return (
+    <Chip
+      icon={
+        art ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={art.image} alt="" className="h-5 w-5 object-contain" />
+        ) : undefined
+      }
+    >
+      {art?.label ?? value}
+    </Chip>
+  );
+}
 
 function Chip({ icon, tone = "grey", children }: { icon?: ReactNode; tone?: Tone; children: ReactNode }) {
   return (
@@ -65,11 +122,6 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
           {profile.maritalStatus ? <Chip icon="💍">{profile.maritalStatus}</Chip> : null}
           {profile.hasChildren ? <Chip icon="👶">{profile.hasChildren}</Chip> : null}
           {profile.willingChildren ? <Chip icon="🍼">Children: {profile.willingChildren}</Chip> : null}
-          {profile.appearance.map((a) => (
-            <Chip key={a} tone="rose">
-              {a}
-            </Chip>
-          ))}
         </div>
         {profile.aboutMe ? <p className={text}>{profile.aboutMe}</p> : <p className="mt-3 text-sm text-ink-700/50">No about section yet.</p>}
       </Section>
@@ -118,31 +170,96 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
 
       {hasHeritage ? (
         <Section title="Heritage & Languages">
-          <div className={chips}>
-            {profile.languages.map((l) => (
-              <Chip key={l} icon="🗣️">
-                {l}
-              </Chip>
-            ))}
-            {profile.dialect ? (
-              <Chip tone="blue" icon="💬">
-                Speaks {profile.dialect} dialect
-              </Chip>
-            ) : null}
-            {pashtoLevel ? (
-              <Chip tone="rose" icon="💬">
-                Pashto proficiency: {pashtoLevel}
-              </Chip>
-            ) : null}
-            <TribePill tribe={profile.tribe} />
-            {profile.ancestralRegion ? (
-              <Chip tone="dark" icon="⛰️">
-                {profile.ancestralRegion}
-              </Chip>
-            ) : null}
-            {livesIn ? <Chip icon="📍">Lives in {livesIn}</Chip> : null}
-            {profile.relocation ? <Chip icon="✈️">{profile.relocation}</Chip> : null}
-          </div>
+          {profile.languages.length > 0 || profile.dialect || pashtoLevel ? (
+            <div>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Languages</p>
+              <div className={chips}>
+                {profile.languages.map((l) => (
+                  <Chip key={l} icon={<LangIcon />}>
+                    {l === "Pashto" && pashtoLevel ? `Pashto · ${pashtoLevel}` : l}
+                  </Chip>
+                ))}
+                {!profile.languages.includes("Pashto") && pashtoLevel ? (
+                  <Chip icon={<LangIcon />}>Pashto · {pashtoLevel}</Chip>
+                ) : null}
+                {profile.dialect ? (
+                  <Chip tone="blue" icon={<BubbleIcon />}>
+                    {profile.dialect} dialect
+                  </Chip>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+          {tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation ? (
+            <div className={profile.languages.length > 0 || profile.dialect || pashtoLevel ? "mt-4 border-t border-ink-900/6 pt-4" : ""}>
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Heritage</p>
+              <div className={chips}>
+                <TribePill tribe={profile.tribe} />
+                {profile.ancestralRegion ? (
+                  <Chip tone="dark" icon={<MountainIcon />}>
+                    {profile.ancestralRegion.toLowerCase().startsWith("roots")
+                      ? profile.ancestralRegion
+                      : `Roots in ${profile.ancestralRegion}`}
+                  </Chip>
+                ) : null}
+                {livesIn ? <Chip icon="📍">Lives in {livesIn}</Chip> : null}
+                {profile.relocation ? <Chip icon="✈️">{profile.relocation}</Chip> : null}
+              </div>
+            </div>
+          ) : null}
+        </Section>
+      ) : null}
+
+      {profile.appearance.length > 0 ? (
+        <Section title="Appearance">
+          {(() => {
+            const sister = (profile.gender || "").toLowerCase().startsWith("f");
+            const { head, dress } = splitWomenAppearance(profile.appearance);
+            const beards = profile.appearance.filter((a) => (MEN_APPEARANCE as readonly string[]).includes(a));
+            const known = new Set([head, ...dress, ...beards].filter(Boolean));
+            const rest = profile.appearance.filter((a) => !known.has(a));
+            if (sister && (head || dress.length)) {
+              return (
+                <>
+                  {head ? (
+                    <div className={chips}>
+                      <AppearanceChip value={head} />
+                    </div>
+                  ) : null}
+                  {dress.length > 0 ? (
+                    <div className={head ? "mt-3" : ""}>
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Dress style</p>
+                      <div className={chips}>
+                        {dress.map((d) => (
+                          <AppearanceChip key={d} value={d} />
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {rest.length > 0 ? (
+                    <div className={`${chips} mt-2`}>
+                      {rest.map((a) => (
+                        <AppearanceChip key={a} value={a} />
+                      ))}
+                    </div>
+                  ) : null}
+                </>
+              );
+            }
+            const shown = beards.length > 0 ? [...beards, ...rest] : profile.appearance;
+            return (
+              <>
+                {beards.length > 0 ? (
+                  <p className="mb-2 text-[11px] font-semibold text-ink-700/45">Facial hair</p>
+                ) : null}
+                <div className={chips}>
+                  {shown.map((a) => (
+                    <AppearanceChip key={a} value={a} />
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </Section>
       ) : null}
 

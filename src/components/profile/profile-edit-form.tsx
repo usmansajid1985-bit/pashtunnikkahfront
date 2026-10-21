@@ -597,7 +597,9 @@ export function ProfileEditForm({
 
         <div data-tab="personal" className={paneClass("personal")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Appearance</h2>
+          <h2 className="font-bold text-ink-950">
+            Appearance <span className="font-normal text-ink-700/55">(optional)</span>
+          </h2>
           {isSister ? (
             (() => {
               const { head, dress } = splitWomenAppearance(form.appearance);
@@ -715,7 +717,9 @@ export function ProfileEditForm({
         </div>
         <div data-tab="roots" className={paneClass("roots")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Family</h2>
+          <h2 className="font-bold text-ink-950">
+            About children <span className="font-normal text-ink-700/55">(optional)</span>
+          </h2>
           <p className="text-xs font-semibold">Do you have children?</p>
           <ChoiceGrid count={2}>
             <ChoiceTile
@@ -811,7 +815,9 @@ export function ProfileEditForm({
 
         <div data-tab="faith" className={paneClass("faith")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
-          <h2 className="font-bold text-ink-950">Health & lifestyle</h2>
+          <h2 className="font-bold text-ink-950">
+            Health &amp; lifestyle <span className="font-normal text-ink-700/55">(optional)</span>
+          </h2>
           <p className="text-xs font-semibold">Smoking</p>
           <ChoiceGrid count={3}>
             {(["Never", "Occasionally", "Regularly"] as const).map((v, i) => (

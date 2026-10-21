@@ -12,10 +12,7 @@ import {
   HEIGHT_SLIDER,
   HEIGHT_SLIDER_DEFAULT,
   LANGUAGES_ORDERED,
-  MEN_APPEARANCE,
   OPEN_TO_OPTIONS,
-  WOMEN_DRESS_STYLE,
-  WOMEN_HEAD_COVERING,
   calcAge,
   emptySignupData,
   signupDobBounds,
@@ -23,14 +20,13 @@ import {
   isStepValid,
   normalizeOpenTo,
   occupationPrompt,
-  splitWomenAppearance,
   wordCount,
   textQualityIssue,
   SALAH_OPTIONS,
   salahShortLabel,
   type SignupData,
 } from "@/lib/signup";
-import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, GenderTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
+import { ChoiceGrid, ChoiceTile, GenderTile, I } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
@@ -127,8 +123,6 @@ export function SignupWizard() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const MAX_PHOTOS = 3;
-  const wearsNiqab = data.gender === "Sister" && data.appearance.includes("Wears Niqab");
-
   const steps = useMemo(() => getSignupSteps(data.gender), [data.gender]);
   const step = steps[stepIndex] ?? steps[0];
   const total = steps.length;
@@ -165,11 +159,6 @@ export function SignupWizard() {
           if (openToIndex >= 0 && resumeAt > openToIndex && !restored.openTo.length) {
             resumeAt = openToIndex;
           }
-          // Same for sister drafts saved before appearance became head covering + dress style.
-          const appearanceIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "appearance");
-          if (appearanceIndex >= 0 && resumeAt > appearanceIndex && !isStepValid("appearance", restored)) {
-            resumeAt = appearanceIndex;
-          }
           // Drafts saved while "Profession / role" was optional: workers and students must now
           // answer it, so send them back to that step.
           const careerIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "career");
@@ -198,6 +187,17 @@ export function SignupWizard() {
           if (phoneIndex >= 0 && resumeAt > phoneIndex && toE164(restored.phoneIso, restored.phone) === null) {
             resumeAt = phoneIndex;
           }
+          // About children, appearance, and health were removed from signup. An old draft's
+          // step number can now land past the end, or skip a step that is still required.
+          const stepsNow = getSignupSteps(restored.gender);
+          if (resumeAt >= stepsNow.length) {
+            const accountIndex = stepsNow.findIndex((s) => s.id === "account");
+            resumeAt = accountIndex >= 0 ? accountIndex : stepsNow.length - 1;
+          }
+          const firstGap = stepsNow.findIndex(
+            (s) => s.id !== "done" && s.id !== "account" && !isStepValid(s.id, restored)
+          );
+          if (firstGap >= 0 && firstGap < resumeAt) resumeAt = firstGap;
           setData(restored);
           setStepIndex(resumeAt);
         }
@@ -661,48 +661,6 @@ export function SignupWizard() {
               </>
             )}
 
-            {step.id === "family" && (
-              <>
-                <p className="text-xs font-semibold text-ink-900">Do you currently have children?</p>
-                <ChoiceGrid count={2}>
-                  <ChoiceTile
-                    label="Yes, I have children"
-                    tone="sky"
-                    icon={I.baby}
-                    selected={data.hasChildren === "Have Children"}
-                    onClick={() => patch({ hasChildren: "Have Children" })}
-                  />
-                  <ChoiceTile
-                    label="No, I don't"
-                    tone="sand"
-                    icon={I.babyOff}
-                    selected={data.hasChildren === "No Children"}
-                    onClick={() => patch({ hasChildren: "No Children" })}
-                  />
-                </ChoiceGrid>
-                <p className="pt-3 text-xs font-semibold text-ink-900">Would you like children in the future?</p>
-                <ChoiceGrid count={2}>
-                  <ChoiceTile
-                    label="Yes, Insha'Allah"
-                    hint="If Allah wills"
-                    tone="mint"
-                    icon={I.babySparkle}
-                    selected={
-                      data.willingChildren === "Insha'Allah if Allah Wills" ||
-                      data.willingChildren === "Yes"
-                    }
-                    onClick={() => patch({ willingChildren: "Insha'Allah if Allah Wills" })}
-                  />
-                  <ChoiceTile
-                    label="No"
-                    tone="peach"
-                    icon={I.babyNo}
-                    selected={data.willingChildren === "No"}
-                    onClick={() => patch({ willingChildren: "No" })}
-                  />
-                </ChoiceGrid>
-              </>
-            )}
 
             {step.id === "faith" && (
               <>
@@ -763,64 +721,6 @@ export function SignupWizard() {
               </>
             )}
 
-            {step.id === "appearance" && data.gender === "Brother" && (
-              <ChoiceGrid count={5}>
-                {MEN_APPEARANCE.map((v) => (
-                  <BeardTile
-                    key={v}
-                    label={v}
-                    selected={data.appearance[0] === v}
-                    onClick={() => patch({ appearance: [v] })}
-                  />
-                ))}
-              </ChoiceGrid>
-            )}
-
-            {step.id === "appearance" && data.gender === "Sister" && (() => {
-              const { head, dress } = splitWomenAppearance(data.appearance);
-              return (
-                <>
-                  <ChoiceSection title="Head covering" rule="Select one option" />
-                  <div className="dress-grid">
-                    {WOMEN_HEAD_COVERING.map((o) => (
-                      <DressTile
-                        key={o.v}
-                        value={o.v}
-                        label={o.label}
-                        hint={o.hint}
-                        selected={head === o.v}
-                        onClick={() => patch({ appearance: [o.v, ...dress] })}
-                      />
-                    ))}
-                  </div>
-                  <div className="pt-3">
-                    <ChoiceSection title="Dress style" rule="Select one or more options" />
-                  </div>
-                  <div className="dress-grid dress-grid-4">
-                    {WOMEN_DRESS_STYLE.map((o) => {
-                      const on = dress.includes(o.v);
-                      return (
-                        <DressTile
-                          key={o.v}
-                          value={o.v}
-                          label={o.label}
-                          hint={o.hint}
-                          selected={on}
-                          onClick={() =>
-                            patch({
-                              appearance: [
-                                ...(head ? [head] : []),
-                                ...(on ? dress.filter((x) => x !== o.v) : [...dress, o.v]),
-                              ],
-                            })
-                          }
-                        />
-                      );
-                    })}
-                  </div>
-                </>
-              );
-            })()}
 
             {step.id === "career" && (
               <>
@@ -894,48 +794,6 @@ export function SignupWizard() {
               </>
             )}
 
-            {step.id === "lifestyle" && (
-              <>
-                <p className="text-xs font-semibold text-ink-900">Smoking</p>
-                <ChoiceGrid count={3}>
-                  {(
-                    [
-                      { v: "Never", tone: "mint" as const, icon: LIFESTYLE_ICONS.smoking[0] },
-                      { v: "Occasionally", tone: "peach" as const, icon: LIFESTYLE_ICONS.smoking[1] },
-                      { v: "Regularly", tone: "rose" as const, icon: LIFESTYLE_ICONS.smoking[2] },
-                    ] as const
-                  ).map((o) => (
-                    <ChoiceTile
-                      key={`s-${o.v}`}
-                      label={o.v}
-                      tone={o.tone}
-                      icon={o.icon}
-                      selected={data.smoking === o.v}
-                      onClick={() => patch({ smoking: o.v })}
-                    />
-                  ))}
-                </ChoiceGrid>
-                <p className="pt-3 text-xs font-semibold text-ink-900">Vaping</p>
-                <ChoiceGrid count={3}>
-                  {(
-                    [
-                      { v: "Never", tone: "mint" as const, icon: LIFESTYLE_ICONS.vaping[0] },
-                      { v: "Occasionally", tone: "peach" as const, icon: LIFESTYLE_ICONS.vaping[1] },
-                      { v: "Regularly", tone: "rose" as const, icon: LIFESTYLE_ICONS.vaping[2] },
-                    ] as const
-                  ).map((o) => (
-                    <ChoiceTile
-                      key={`v-${o.v}`}
-                      label={o.v}
-                      tone={o.tone}
-                      icon={o.icon}
-                      selected={data.vaping === o.v}
-                      onClick={() => patch({ vaping: o.v })}
-                    />
-                  ))}
-                </ChoiceGrid>
-              </>
-            )}
 
             {step.id === "about" && (
               <>
@@ -965,11 +823,6 @@ export function SignupWizard() {
 
             {step.id === "photo" && (
               <div className="space-y-4">
-                {wearsNiqab ? (
-                  <p className="text-sm text-ink-700/70">
-                    If you wear a niqab, you may upload yourself in a niqab or choose to upload something else.
-                  </p>
-                ) : null}
 
                 {data.photos.length === 0 ? (
                   <button
