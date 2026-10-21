@@ -148,16 +148,19 @@ export type ChatsOverview = {
 
 /** Overview's "Your conversations" card. */
 export async function getChatsOverview(userId: bigint): Promise<ChatsOverview> {
-  const where = { status: "accepted", ended_at: null, OR: [{ sender_id: userId }, { receiver_id: userId }] };
-  const [active, recent] = await Promise.all([
-    prisma.match_requests.count({ where }),
+  // Same rules as the Chats list: accepted, not ended, and no block either way.
+  const [matches, blocked] = await Promise.all([
     prisma.match_requests.findMany({
-      where,
+      where: { status: "accepted", ended_at: null, OR: [{ sender_id: userId }, { receiver_id: userId }] },
       orderBy: { updated_at: "desc" },
-      take: 6,
       select: { sender_id: true, receiver_id: true },
     }),
+    blockedUserIds(userId),
   ]);
+  const blockedSet = new Set(blocked.map((id) => id.toString()));
+  const visible = matches.filter((m) => !blockedSet.has((m.sender_id === userId ? m.receiver_id : m.sender_id).toString()));
+  const active = visible.length;
+  const recent = visible.slice(0, 6);
   const peerIds = recent.map((m) => (m.sender_id === userId ? m.receiver_id : m.sender_id));
   const peers = peerIds.length
     ? await prisma.profiles.findMany({
@@ -177,7 +180,11 @@ export async function getChatsOverview(userId: bigint): Promise<ChatsOverview> {
 }
 
 export async function getUnreadMessageCount(userId: bigint): Promise<number> {
-  return prisma.messages.count({ where: { receiver_id: userId, is_read: false } });
+  // Messages from someone blocked either way don't count — their chat isn't listed.
+  const blocked = await blockedUserIds(userId);
+  return prisma.messages.count({
+    where: { receiver_id: userId, is_read: false, ...(blocked.length ? { sender_id: { notIn: blocked } } : {}) },
+  });
 }
 
 export type NavCounts = {
