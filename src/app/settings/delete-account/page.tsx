@@ -16,7 +16,8 @@ export default async function DeleteAccountPage() {
     <SettingsShell title="Close account" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
       <h2 className="text-2xl font-bold text-ink-950">Close account</h2>
       <p className="mt-1 text-sm text-ink-700/65 leading-relaxed">
-        Your profile will be hidden and your account scheduled for removal. This action cannot be undone easily.
+        We&apos;re sorry to see you go. Your profile is hidden straight away, and your account is deleted after 30
+        days — log in before then to reactivate it.
       </p>
       <div className="mt-6 card p-4">
         <DeleteAccountForm />

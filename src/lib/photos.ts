@@ -252,3 +252,17 @@ export async function withPeerPhotoUrls<T extends PhotoFields>(view: T): Promise
   const blurred = view.photoBlurUrl ? await signedPhotoUrl(view.photoBlurUrl) : null;
   return { ...view, photoUrl: blurred, photoBlurUrl: blurred };
 }
+
+/** Remove stored photo objects (account deletion). Best effort — never throws. */
+export async function removeStoredPhotos(stored: (string | null | undefined)[]): Promise<number> {
+  const paths = [...new Set(stored.map((s) => photoObjectPath(s)).filter((p): p is string => Boolean(p)))];
+  if (paths.length === 0) return 0;
+  try {
+    const { error } = await storageClient().storage.from(BUCKET).remove(paths);
+    if (error) console.error("[photos] remove failed", error.message);
+    return error ? 0 : paths.length;
+  } catch (err) {
+    console.error("[photos] remove failed", err);
+    return 0;
+  }
+}

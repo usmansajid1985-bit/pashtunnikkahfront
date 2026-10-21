@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { ensureP3Schema } from "@/lib/ensure-p3-schema";
+import { reactivateOnLogin } from "@/lib/account-deletion";
 
 export async function POST(req: Request) {
   try {
@@ -34,16 +35,22 @@ export async function POST(req: Request) {
       );
     }
 
-    if (user.deletion_requested_at) {
-      return NextResponse.json(
-        { error: "This account is scheduled for deletion." },
-        { status: 403 }
-      );
+    if (user.account_status === "deleted") {
+      return NextResponse.json({ error: "Invalid login details." }, { status: 401 });
     }
 
     const ok = await verifyPassword(password, user.password_hash);
     if (!ok) {
       return NextResponse.json({ error: "Invalid login details." }, { status: 401 });
+    }
+
+    // N54: closing an account keeps it for 30 days — logging in within them reactivates it.
+    const deletion = await reactivateOnLogin(user);
+    if (deletion === "expired") {
+      return NextResponse.json(
+        { error: "This account has been deleted. You're welcome to register again." },
+        { status: 403 }
+      );
     }
 
     const needsPasswordSetup = !(user.password_hash ?? "").trim();
@@ -81,7 +88,8 @@ export async function POST(req: Request) {
         profileCode,
         plan: user.plan,
       },
-      redirectTo: needsPasswordSetup ? "/set-password" : "/browse",
+      redirectTo: needsPasswordSetup ? "/set-password" : deletion === "reactivated" ? "/dashboard?reactivated=1" : "/browse",
+      reactivated: deletion === "reactivated",
     });
 
     res.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

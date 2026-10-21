@@ -2,6 +2,7 @@ import { runRequestLifecycleJobs } from "@/lib/request-lifecycle";
 import { processFamilyReminders } from "@/lib/family-flow";
 import { processUnreadMessageReminders } from "@/lib/notification-email";
 import { NextResponse } from "next/server";
+import { purgeExpiredDeletions } from "@/lib/account-deletion";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,12 +25,18 @@ async function run(req: Request) {
     return { checked: 0, advanced: 0 };
   });
   const messageReminders = await processUnreadMessageReminders().catch(() => ({ sent: 0 }));
+  // N54: accounts closed more than 30 days ago are deleted (email first).
+  const accountDeletions = await purgeExpiredDeletions().catch((err) => {
+    console.error("[account-deletion] purge failed", err);
+    return { deleted: 0 };
+  });
 
   return NextResponse.json({
     ok: true,
     requests,
     family,
     messageReminders,
+    accountDeletions,
     ranAt: new Date().toISOString(),
   });
 }

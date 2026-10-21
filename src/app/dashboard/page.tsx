@@ -10,6 +10,7 @@ import { PushNudge } from "@/components/notifications/push-nudge";
 import { ProfileViewsCard } from "@/components/dashboard/profile-views-card";
 import { GreetingMemo } from "@/components/dashboard/greeting-memo";
 import { withOwnerPhotoUrls } from "@/lib/photos";
+import { ReactivatedNotice } from "@/components/settings/reactivated-notice";
 
 export const dynamic = "force-dynamic";
 
@@ -213,6 +214,7 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mt-4">
+          <ReactivatedNotice />
           <PushNudge />
         </div>
 

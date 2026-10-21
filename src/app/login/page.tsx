@@ -21,6 +21,8 @@ function LoginForm() {
       setInfo("An account with this email already exists. Please sign in.");
     } else if (searchParams.get("reset") === "1") {
       setInfo("Password updated. You can sign in with your new password.");
+    } else if (searchParams.get("closed") === "1") {
+      setInfo("Your account is closed and will be deleted in 30 days. Changed your mind? Just log in to reactivate it.");
     }
   }, [searchParams]);
 

@@ -33,7 +33,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, message: GENERIC_OK });
     }
 
-    if (user.account_status === "suspended" || user.deletion_requested_at) {
+    // N54: a closed account can still reset its password during the 30 days (logging in
+    // reactivates it); after that, or once deleted, it can't.
+    const deletionExpired =
+      user.deletion_requested_at && Date.now() - user.deletion_requested_at.getTime() >= 30 * 24 * 60 * 60 * 1000;
+    if (user.account_status === "suspended" || user.account_status === "deleted" || deletionExpired) {
       return NextResponse.json({ ok: true, message: GENERIC_OK });
     }
 
