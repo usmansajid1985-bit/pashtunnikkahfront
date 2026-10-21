@@ -19,6 +19,8 @@ export function ProfileHero({
   presence,
   size = "phone",
   photoAction,
+  topLeft,
+  topRight,
 }: {
   profile: ProfileView;
   slides: ProfileSlide[];
@@ -30,6 +32,9 @@ export function ProfileHero({
   size?: "phone" | "wide" | "panel";
   /** A control centred on the photo — e.g. chat's "View photo here" when private photos are shared. */
   photoAction?: ReactNode;
+  /** Over the photo's top corners — the back arrow and the ⋯ (Report / Block) menu. */
+  topLeft?: ReactNode;
+  topRight?: ReactNode;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const countryCode = toCountryCode(profile.country);
@@ -55,8 +60,19 @@ export function ProfileHero({
         <div className="absolute inset-x-0 top-[28%] -translate-y-1/2 z-20 flex justify-center px-4">{photoAction}</div>
       ) : null}
 
+      {topLeft || topRight ? (
+        <div className={`absolute inset-x-0 top-0 z-30 flex items-start justify-between pointer-events-none ${wide ? "p-5" : "p-3.5"}`}>
+          <div>{topLeft}</div>
+          <div>{topRight}</div>
+        </div>
+      ) : null}
+
       {presence ? (
-        <div className="absolute top-3 right-3 z-20 pointer-events-none flex flex-col items-end gap-1.5">
+        <div
+          className={`absolute right-3 z-20 pointer-events-none flex flex-col items-end gap-1.5 ${
+            topRight ? (wide ? "top-[4.25rem] right-5" : "top-16 right-3.5") : "top-3"
+          }`}
+        >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3d3836]/85 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-md">
             <span
               className={`h-2 w-2 shrink-0 rounded-full ${presence.online ? "bg-[#4ade3a]" : "bg-white/50"}`}
@@ -74,41 +90,39 @@ export function ProfileHero({
       <div className={`absolute inset-x-0 bottom-0 z-10 text-white pointer-events-none ${wide ? "px-8 pb-7" : "px-5 pb-5"}`}>
         <p
           className={`font-bold flex items-baseline gap-2 leading-tight [text-shadow:0_1px_2px_rgba(0,0,0,0.55),0_2px_12px_rgba(0,0,0,0.45)] ${
-            wide ? "text-[34px]" : "text-[22px]"
+            wide ? "text-[34px]" : "text-[26px]"
           }`}
         >
-          {wide ? profile.profileCode : `${profile.profileCode}${profile.age ? `, ${profile.age}` : ""}`}
-          {wide && profile.age ? <span className="text-[26px] font-medium text-white/90">{profile.age}</span> : null}
-          {profile.verified ? (
-            <svg width={wide ? 22 : 16} height={wide ? 22 : 16} viewBox="0 0 24 24" fill="#60a5fa" className="shrink-0 self-center">
-              <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
-            </svg>
-          ) : null}
+          {profile.profileCode}
+          {profile.age ? <span className={`font-medium text-white/90 ${wide ? "text-[26px]" : "text-[21px]"}`}>{profile.age}</span> : null}
         </p>
         <p
-          className={`mt-0.5 flex items-center gap-1.5 font-semibold uppercase tracking-wide text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6),0_1px_8px_rgba(0,0,0,0.4)] ${
-            wide ? "text-[14px]" : "text-[13px]"
+          className={`mt-0.5 flex items-center gap-1.5 font-medium text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.6),0_1px_8px_rgba(0,0,0,0.4)] ${
+            wide ? "text-[16px]" : "text-[14px]"
           }`}
         >
           {countryCode ? <span aria-hidden className={`fi fi-${countryCode.toLowerCase()} rounded-[2px]`} /> : null}
           {location || "—"}
         </p>
+        {/* Exactly three hero pills: practice, tribe (in its colour), employment. */}
         <div className={`flex flex-wrap ${wide ? "mt-4 gap-2" : "mt-3 gap-1.5"}`}>
-          {[profile.occupation, profile.religiousPractice, profile.ancestralRegion, profile.relocation]
-            .filter((v): v is string => Boolean(v))
-            .map((v, i) => (
-              <span
-                key={`${v}-${i}`}
-                className={`rounded-full bg-black/35 backdrop-blur-md font-medium text-white border border-white/20 ${
-                  wide ? "px-3.5 py-1.5 text-[13px]" : "px-2.5 py-1 text-[11.5px]"
-                }`}
-              >
-                {v}
-              </span>
-            ))}
-          <TribePill tribe={profile.tribe} className={wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[11.5px]"} />
+          {profile.religiousPractice ? <HeroPill wide={wide}>{profile.religiousPractice}</HeroPill> : null}
+          <TribePill tribe={profile.tribe} className={wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"} />
+          {profile.employment ? <HeroPill wide={wide}>{profile.employment}</HeroPill> : null}
         </div>
       </div>
     </div>
+  );
+}
+
+function HeroPill({ wide, children }: { wide: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={`rounded-full bg-black/40 backdrop-blur-md font-medium text-white border border-white/20 ${
+        wide ? "px-3.5 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"
+      }`}
+    >
+      {children}
+    </span>
   );
 }

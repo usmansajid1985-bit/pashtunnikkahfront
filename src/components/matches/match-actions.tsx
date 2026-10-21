@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
-import { FormEvent, useState, useTransition } from "react";
+import React, { FormEvent, useState, useTransition } from "react";
 import type { MatchRelationStatus } from "@/lib/matches";
 
 const INTRO_MAX = 30;
@@ -12,10 +12,14 @@ export function MatchActions({
   initial,
   layout = "fixed",
   blockedReason = null,
+  trailing,
 }: {
   profileCode: string;
   initial: MatchRelationStatus;
-  layout?: "fixed" | "inline";
+  /** "bar": the profile's own fixed bottom bar on phones (replaces the tab bar). */
+  layout?: "fixed" | "inline" | "bar";
+  /** Shown to the right of the buttons — the profile's Bookmark. */
+  trailing?: React.ReactNode;
   /** Set when this member can't send/accept requests yet — buttons are disabled with this note. */
   blockedReason?: string | null;
 }) {
@@ -91,11 +95,16 @@ export function MatchActions({
   }
 
   const btn =
-    "flex-1 text-center py-3.5 rounded-2xl font-semibold text-[15px] disabled:opacity-60 transition";
+    "flex-1 inline-flex items-center justify-center gap-2 h-[52px] rounded-full font-semibold text-[15px] disabled:opacity-60 transition";
+  const arrow = (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12h14M13 5l7 7-7 7" />
+    </svg>
+  );
 
   const actions = (
     <>
-      <div className="flex gap-2 w-full">
+      <div className="flex gap-2 w-full items-center">
         {status.state === "none" ||
         status.state === "declined" ||
         status.state === "expired" ||
@@ -106,7 +115,11 @@ export function MatchActions({
             onClick={() => setShowSendModal(true)}
             className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)] disabled:hover:bg-rose-600 disabled:shadow-none`}
           >
-            {pending ? "Sending…" : "Request Match"}
+            {pending ? "Sending…" : (
+              <>
+                Request match {arrow}
+              </>
+            )}
           </button>
         ) : null}
 
@@ -164,6 +177,7 @@ export function MatchActions({
             </button>
           </>
         ) : null}
+        {trailing}
       </div>
       {blockedReason &&
       ["none", "declined", "expired", "cancelled", "ended", "pending_received"].includes(status.state) ? (
@@ -222,6 +236,14 @@ export function MatchActions({
   );
 
   if (layout === "inline") return <div className="w-full">{actions}</div>;
+
+  if (layout === "bar") {
+    return (
+      <div className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur border-t border-ink-900/[0.06] pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="max-w-lg mx-auto px-4">{actions}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 z-30 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:static lg:bg-none lg:pt-4 lg:pb-0">

@@ -24,6 +24,8 @@ export function ProfileDesktop({
   slides,
   photoAction,
   footerTitle = "Connect",
+  heroTopLeft,
+  heroTopRight,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -49,6 +51,9 @@ export function ProfileDesktop({
   photoAction?: ReactNode;
   /** Heading over the footer box; null hides it (e.g. already matched — just the go-to-chat button). */
   footerTitle?: string | null;
+  /** Over the photo: "← Back to browse" and the ⋯ Report / Block menu. Replaces the back link row. */
+  heroTopLeft?: ReactNode;
+  heroTopRight?: ReactNode;
 }) {
   const isOwn = showEditTab;
   const avatarSrc =
@@ -76,10 +81,10 @@ export function ProfileDesktop({
         className={
           embedded
             ? "px-4 sm:px-6 py-5"
-            : "max-w-4xl mx-auto px-5 sm:px-8 py-6 pb-[var(--pn-bottom-nav-h)]"
+            : "max-w-3xl mx-auto px-5 sm:px-8 py-6 pb-[calc(2rem+var(--pn-bottom-nav-h))]"
         }
       >
-        {embedded ? null : (
+        {embedded || heroTopLeft ? null : (
           <div className="mb-5 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <Link
               href={backHref}
@@ -113,9 +118,11 @@ export function ProfileDesktop({
           presence={isOwn ? null : presence}
           size={embedded ? "panel" : "wide"}
           photoAction={photoAction}
+          topLeft={heroTopLeft}
+          topRight={heroTopRight}
         />
 
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-3">
           {profile.plan === "gold" && !profile.hideGoldBadge ? (
             <div>
               <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 text-[13px] font-medium">
@@ -133,7 +140,7 @@ export function ProfileDesktop({
 
           {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
 
-          <ProfileSections profile={profile} card />
+          <ProfileSections profile={profile} />
 
           {isOwn ? (
             <div className="card p-6">

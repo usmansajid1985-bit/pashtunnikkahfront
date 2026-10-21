@@ -8,16 +8,16 @@ import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
 const TONES: Record<Tone, string> = {
-  grey: "bg-[#f3f1f0] text-ink-950",
-  rose: "bg-rose-50 text-rose-700",
-  blue: "bg-sky-50 text-sky-800",
-  solid: "bg-rose-600 text-white",
-  dark: "bg-ink-900 text-white",
+  grey: "bg-[#f5f4f3] border-ink-900/[0.06] text-ink-950",
+  rose: "bg-rose-50 border-rose-100 text-rose-700",
+  blue: "bg-sky-50 border-sky-100 text-sky-700",
+  solid: "bg-rose-600 border-rose-600 text-white",
+  dark: "bg-ink-950 border-ink-950 text-white",
 };
 
 function LangIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <path d="M5 6h7M8.5 6c0 6-3 9-5 10M8.5 10c1.2 2.2 3 3.8 5.5 4.6" />
       <path d="M14 18l2.2-5.2L19 18M15 16.2h3" />
     </svg>
@@ -26,18 +26,55 @@ function LangIcon() {
 
 function BubbleIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
       <path d="M6 16.5 4 20l4.2-1.6A8 8 0 1 0 6 16.5Z" />
     </svg>
   );
 }
 
+/** Hollow white mountain for the black "Roots in …" pill. */
 function MountainIcon() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-      <path d="M3 19 9.2 8.4a1 1 0 0 1 1.7 0L14 13l1.4-2.2a1 1 0 0 1 1.6 0L21 19H3Z" />
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
+      <path d="M2.5 19 9.2 7.6a1 1 0 0 1 1.7 0L17 18" />
+      <path d="m13.4 12.2 1.6-2.4a1 1 0 0 1 1.7 0L21.5 19H2.5" />
     </svg>
   );
+}
+
+function HeightIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
+      <path d="M12 4v16M8.5 4h7M8.5 20h7" />
+    </svg>
+  );
+}
+
+/** Profile wording (spec): short, plain labels for the stored answers. */
+function childrenLabel(v: string | null) {
+  if (!v) return null;
+  if (v === "No Children") return "Doesn't have children";
+  if (v === "Have Children") return "Has children";
+  return v;
+}
+function wantsChildrenLabel(v: string | null) {
+  if (!v) return null;
+  if (v === "Yes" || v.startsWith("Insha")) return "Wants children";
+  if (v === "No") return "Doesn't want children";
+  return v;
+}
+function salahLabel(v: string | null) {
+  if (!v) return null;
+  const head = v.split("–")[0].trim().toLowerCase();
+  const map: Record<string, string> = {
+    consistently: "Prays 5 daily prayers",
+    "almost always": "Prays 5 daily prayers (most days)",
+    regularly: "Prays most prayers",
+    sometimes: "Prays sometimes",
+    rarely: "Prays rarely",
+    "never / one-offs": "Doesn't pray regularly",
+  };
+  return map[head] ?? v.split("–")[0].trim();
 }
 
 const APPEARANCE_ART: Record<string, { label: string; image: string }> = {
@@ -73,7 +110,7 @@ function AppearanceChip({ value }: { value: string }) {
 
 function Chip({ icon, tone = "grey", children }: { icon?: ReactNode; tone?: Tone; children: ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium ${TONES[tone]}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] font-medium ${TONES[tone]}`}>
       {icon ? <span aria-hidden className="shrink-0">{icon}</span> : null}
       {children}
     </span>
@@ -82,56 +119,64 @@ function Chip({ icon, tone = "grey", children }: { icon?: ReactNode; tone?: Tone
 
 /**
  * The body of a member profile, in one fixed order on every screen: About Me, I'm Looking For,
- * Career & Education, Faith & Lifestyle, Heritage & Languages, Interests, Personality. A section
- * with nothing to show is left out. `card` wraps each section in a card (desktop).
+ * Career & Education, Faith & Lifestyle, Appearance, Heritage & Languages, Interests, Personality.
+ * Each section is its own white card; a section with nothing to show is left out.
  *
  * The order and grouping are the design; the CONTENT rule is that every detail a member has
  * filled in appears somewhere here — don't drop a field because a mock-up didn't happen to show it.
+ * (Employment is the third hero pill, so it isn't repeated under Career.)
  */
-export function ProfileSections({ profile, card = false }: { profile: ProfileView; card?: boolean }) {
+export function ProfileSections({ profile }: { profile: ProfileView; card?: boolean }) {
   const Section = ({ title, children }: { title: string; children: ReactNode }) => (
-    <section className={card ? "card p-6" : "mt-7"}>
-      <h2 className={card ? "text-lg font-bold text-ink-950 mb-3" : "text-[20px] font-bold text-ink-950 mb-3"}>{title}</h2>
+    <section className="rounded-2xl bg-white border border-ink-900/[0.06] shadow-[0_1px_2px_rgba(15,13,14,0.03)] p-4 sm:p-5 lg:p-6">
+      <h2 className="text-[18px] lg:text-[19px] font-bold text-ink-950 mb-3">{title}</h2>
       {children}
     </section>
+  );
+  const Group = ({ label, first = false, children }: { label: string; first?: boolean; children: ReactNode }) => (
+    <div className={first ? "" : "mt-4 pt-4 border-t border-ink-900/[0.06]"}>
+      <div className="sm:grid sm:grid-cols-[150px_1fr] sm:items-start sm:gap-3">
+        <p className="mb-2 sm:mb-0 sm:pt-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/50">{label}</p>
+        <div>{children}</div>
+      </div>
+    </div>
   );
   // A profile loaded by an older page (cached before these fields existed) may lack the arrays.
   const interests = profile.interests ?? [];
   const personality = profile.personality ?? [];
   const chips = "flex flex-wrap gap-2";
-  const text = "mt-3 text-[14px] leading-relaxed text-ink-700 whitespace-pre-line";
+  const text = "text-[14px] leading-relaxed text-ink-700 whitespace-pre-line";
 
   const pashtoLevel = profile.pashto && profile.pashto !== "None" ? profile.pashto : null;
   const smoking = profile.smoking ? (profile.smoking === "Never" ? "Non-smoker" : `Smokes ${profile.smoking.toLowerCase()}`) : null;
   const vaping = profile.vaping ? (profile.vaping === "Never" ? "Doesn't vape" : `Vapes ${profile.vaping.toLowerCase()}`) : null;
-  const hasCareer = profile.education || profile.employment || profile.occupation;
-  const hasFaith =
-    profile.islamicBackground || profile.religiousPractice || profile.salah || smoking || vaping || profile.bornMuslim || profile.islamicPractice;
+  const hasChildren = childrenLabel(profile.hasChildren);
+  const wantsChildren = wantsChildrenLabel(profile.willingChildren);
+  const salah = salahLabel(profile.salah);
+  const hasCareer = profile.education || profile.occupation || (profile.employment && !profile.occupation);
+  const hasFaithPractice = profile.islamicBackground || profile.religiousPractice || salah || profile.bornMuslim;
+  const hasLifestyle = smoking || vaping;
+  const hasFaith = hasFaithPractice || hasLifestyle || profile.islamicPractice;
   const livesIn = [profile.city, profile.country].filter(Boolean).join(", ");
-  const hasHeritage =
-    profile.languages.length > 0 || profile.dialect || pashtoLevel || tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation;
+  const hasLanguages = profile.languages.length > 0 || profile.dialect || pashtoLevel;
+  const hasHeritageGroup = tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation;
 
   return (
     <>
       <Section title="About Me">
         <div className={chips}>
-          {profile.age != null ? <Chip>{profile.age} years</Chip> : null}
-          {profile.height ? <Chip icon="↕">{profile.height}</Chip> : null}
+          {profile.height ? <Chip icon={<HeightIcon />}>{profile.height}</Chip> : null}
+          {profile.maritalStatus ? <Chip icon="💍">{profile.maritalStatus}</Chip> : null}
+          {hasChildren ? <Chip icon="👶">{hasChildren}</Chip> : null}
+          {wantsChildren ? <Chip icon="🍼">{wantsChildren}</Chip> : null}
           {profile.weight ? <Chip>Weight: {profile.weight}</Chip> : null}
           {profile.build ? <Chip>Build: {profile.build}</Chip> : null}
-          {profile.maritalStatus ? <Chip icon="💍">{profile.maritalStatus}</Chip> : null}
-          {profile.hasChildren ? <Chip icon="👶">{profile.hasChildren}</Chip> : null}
-          {profile.willingChildren ? <Chip icon="🍼">Children: {profile.willingChildren}</Chip> : null}
         </div>
-        {profile.aboutMe ? <p className={text}>{profile.aboutMe}</p> : <p className="mt-3 text-sm text-ink-700/50">No about section yet.</p>}
+        {profile.aboutMe ? <p className={`mt-3 ${text}`}>{profile.aboutMe}</p> : <p className="mt-3 text-sm text-ink-700/50">No about section yet.</p>}
       </Section>
 
       <Section title="I'm Looking For">
-        {profile.lookingFor ? (
-          <p className={text.replace("mt-3 ", "")}>{profile.lookingFor}</p>
-        ) : (
-          <p className="text-sm text-ink-700/50">Preferences not added yet.</p>
-        )}
+        {profile.lookingFor ? <p className={text}>{profile.lookingFor}</p> : <p className="text-sm text-ink-700/50">Preferences not added yet.</p>}
         {profile.openTo.length ? (
           <div className={`${chips} mt-3`}>
             {profile.openTo.map((o) => (
@@ -148,63 +193,36 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
           <div className={chips}>
             {profile.education ? <Chip icon="🎓">{profile.education}</Chip> : null}
             {profile.occupation ? <Chip icon="💼">{profile.occupation}</Chip> : null}
-            {profile.employment && profile.employment !== profile.occupation ? <Chip icon="🧑‍💻">{profile.employment}</Chip> : null}
+            {!profile.occupation && profile.employment ? <Chip icon="💼">{profile.employment}</Chip> : null}
           </div>
         </Section>
       ) : null}
 
       {hasFaith ? (
         <Section title="Faith & Lifestyle">
-          <div className={chips}>
-            {profile.islamicBackground ? <Chip icon="☪">{profile.islamicBackground}</Chip> : null}
-            {smoking ? <Chip icon="🚭">{smoking}</Chip> : null}
-            {vaping ? <Chip icon="💨">{vaping}</Chip> : null}
-            {/* B08: members can filter by Salah, so it must be visible on the profile. */}
-            {profile.salah ? <Chip icon="🕌">{profile.salah}</Chip> : null}
-            {profile.religiousPractice ? <Chip>{profile.religiousPractice}</Chip> : null}
-            {profile.bornMuslim ? <Chip>{profile.bornMuslim}</Chip> : null}
-          </div>
-          {profile.islamicPractice ? <p className={text}>{profile.islamicPractice}</p> : null}
-        </Section>
-      ) : null}
-
-      {hasHeritage ? (
-        <Section title="Heritage & Languages">
-          {profile.languages.length > 0 || profile.dialect || pashtoLevel ? (
-            <div>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Languages</p>
+          {hasFaithPractice ? (
+            <Group label="Faith & Practice" first>
               <div className={chips}>
-                {profile.languages.map((l) => (
-                  <Chip key={l} icon={<LangIcon />}>
-                    {l === "Pashto" && pashtoLevel ? `Pashto · ${pashtoLevel}` : l}
-                  </Chip>
-                ))}
-                {!profile.languages.includes("Pashto") && pashtoLevel ? (
-                  <Chip icon={<LangIcon />}>Pashto · {pashtoLevel}</Chip>
-                ) : null}
-                {profile.dialect ? (
-                  <Chip tone="blue" icon={<BubbleIcon />}>
-                    {profile.dialect} dialect
-                  </Chip>
-                ) : null}
+                {profile.islamicBackground ? <Chip icon="☪️">{profile.islamicBackground}</Chip> : null}
+                {/* B08: members can filter by Salah, so it must be visible on the profile. */}
+                {salah ? <Chip icon="🕌">{salah}</Chip> : null}
+                {profile.religiousPractice ? <Chip>{profile.religiousPractice}</Chip> : null}
+                {profile.bornMuslim ? <Chip>{profile.bornMuslim}</Chip> : null}
               </div>
-            </div>
+            </Group>
           ) : null}
-          {tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation ? (
-            <div className={profile.languages.length > 0 || profile.dialect || pashtoLevel ? "mt-4 border-t border-ink-900/6 pt-4" : ""}>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Heritage</p>
+          {hasLifestyle ? (
+            <Group label="Lifestyle" first={!hasFaithPractice}>
               <div className={chips}>
-                <TribePill tribe={profile.tribe} />
-                {profile.ancestralRegion ? (
-                  <Chip tone="dark" icon={<MountainIcon />}>
-                    {profile.ancestralRegion.toLowerCase().startsWith("roots")
-                      ? profile.ancestralRegion
-                      : `Roots in ${profile.ancestralRegion}`}
-                  </Chip>
-                ) : null}
-                {livesIn ? <Chip icon="📍">Lives in {livesIn}</Chip> : null}
-                {profile.relocation ? <Chip icon="✈️">{profile.relocation}</Chip> : null}
+                {smoking ? <Chip icon="🚭">{smoking}</Chip> : null}
+                {vaping ? <Chip icon="💨">{vaping}</Chip> : null}
               </div>
+            </Group>
+          ) : null}
+          {profile.islamicPractice ? (
+            <div className={hasFaithPractice || hasLifestyle ? "mt-4 pt-4 border-t border-ink-900/[0.06]" : ""}>
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-ink-700/50">My Islamic Practice</p>
+              <p className={text}>{profile.islamicPractice}</p>
             </div>
           ) : null}
         </Section>
@@ -218,17 +236,21 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
             const beards = profile.appearance.filter((a) => (MEN_APPEARANCE as readonly string[]).includes(a));
             const known = new Set([head, ...dress, ...beards].filter(Boolean));
             const rest = profile.appearance.filter((a) => !known.has(a));
+            const label = "mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/50";
             if (sister && (head || dress.length)) {
               return (
                 <>
                   {head ? (
-                    <div className={chips}>
-                      <AppearanceChip value={head} />
+                    <div>
+                      <p className={label}>Head covering</p>
+                      <div className={chips}>
+                        <AppearanceChip value={head} />
+                      </div>
                     </div>
                   ) : null}
                   {dress.length > 0 ? (
-                    <div className={head ? "mt-3" : ""}>
-                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-700/45">Dress style</p>
+                    <div className={head ? "mt-4" : ""}>
+                      <p className={label}>Dress style</p>
                       <div className={chips}>
                         {dress.map((d) => (
                           <AppearanceChip key={d} value={d} />
@@ -237,7 +259,7 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
                     </div>
                   ) : null}
                   {rest.length > 0 ? (
-                    <div className={`${chips} mt-2`}>
+                    <div className={`${chips} mt-3`}>
                       {rest.map((a) => (
                         <AppearanceChip key={a} value={a} />
                       ))}
@@ -249,9 +271,7 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
             const shown = beards.length > 0 ? [...beards, ...rest] : profile.appearance;
             return (
               <>
-                {beards.length > 0 ? (
-                  <p className="mb-2 text-[11px] font-semibold text-ink-700/45">Facial hair</p>
-                ) : null}
+                {beards.length > 0 ? <p className={label}>Facial hair</p> : null}
                 <div className={chips}>
                   {shown.map((a) => (
                     <AppearanceChip key={a} value={a} />
@@ -260,6 +280,42 @@ export function ProfileSections({ profile, card = false }: { profile: ProfileVie
               </>
             );
           })()}
+        </Section>
+      ) : null}
+
+      {hasLanguages || hasHeritageGroup ? (
+        <Section title="Heritage & Languages">
+          {hasLanguages ? (
+            <Group label="Languages" first>
+              <div className={chips}>
+                {profile.languages.map((l) => (
+                  <Chip key={l} icon={<LangIcon />}>
+                    {l === "Pashto" && pashtoLevel ? `Pashto · ${pashtoLevel}` : l}
+                  </Chip>
+                ))}
+                {!profile.languages.includes("Pashto") && pashtoLevel ? <Chip icon={<LangIcon />}>Pashto · {pashtoLevel}</Chip> : null}
+                {profile.dialect ? (
+                  <Chip tone="blue" icon={<BubbleIcon />}>
+                    {profile.dialect} dialect
+                  </Chip>
+                ) : null}
+              </div>
+            </Group>
+          ) : null}
+          {hasHeritageGroup ? (
+            <Group label="Heritage" first={!hasLanguages}>
+              <div className={chips}>
+                <TribePill tribe={profile.tribe} className="px-3.5 py-1.5 text-[13px]" />
+                {profile.ancestralRegion ? (
+                  <Chip tone="dark" icon={<MountainIcon />}>
+                    {profile.ancestralRegion.toLowerCase().startsWith("roots") ? profile.ancestralRegion : `Roots in ${profile.ancestralRegion}`}
+                  </Chip>
+                ) : null}
+                {livesIn ? <Chip icon="📍">Lives in {livesIn}</Chip> : null}
+                {profile.relocation ? <Chip icon="✈️">{profile.relocation}</Chip> : null}
+              </div>
+            </Group>
+          ) : null}
         </Section>
       ) : null}
 

@@ -8,6 +8,7 @@ import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate"
 import type { MatchRelationStatus } from "@/lib/matches";
 import type { ProfileSlide } from "@/components/profile/profile-photo-slider";
 import { ProfileHero } from "@/components/profile/profile-hero";
+import { HeroBackButton, HeroMoreMenu, SaveProfileButton } from "@/components/profile/profile-hero-controls";
 
 function Pill({
   icon,
@@ -49,6 +50,7 @@ export function ProfilePreview({
   showMobileChrome = true,
   photoAccessory,
   photos = [],
+  saved,
 }: {
   profile: ProfileView;
   showEditTab?: boolean;
@@ -75,6 +77,8 @@ export function ProfilePreview({
   photoAccessory?: ReactNode;
   /** Extra profile photos (own preview, or a matched viewer). Main photo first. */
   photos?: ProfileSlide[];
+  /** Viewer has bookmarked this member — set on a member's profile, enables the Bookmark button. */
+  saved?: boolean;
 }) {
   const avatar = profile.photoUrl || `https://i.pravatar.cc/240?img=${(profile.avatarSeed % 70) + 1}`;
   const slides: ProfileSlide[] = (
@@ -89,6 +93,11 @@ export function ProfilePreview({
   // Server decides for other people's profiles; the owner always sees their own photo (K10).
   const showPhoto = photoVisible !== undefined ? photoVisible : true;
   const photoHidden = photoVisible === false && !profile.photoUrl;
+  // Someone else's profile opened as a member (not own preview, not a wali view): Report/Block
+  // menu over the photo, and on phones the tab bar gives way to Request match + Bookmark.
+  const memberView = !showEditTab && !hideNav && Boolean(matchStatus);
+  const saveButton = memberView && saved !== undefined ? <SaveProfileButton userId={profile.userId} initialSaved={saved} /> : null;
+  const moreMenu = memberView ? <HeroMoreMenu userId={profile.userId} code={profile.profileCode} afterBlockHref={backHref || "/browse"} /> : null;
 
   return (
     <>
@@ -109,12 +118,20 @@ export function ProfilePreview({
           photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
           // N45: a matched profile opened from Browse shows only "Matched – go to chat".
           footerTitle={matchStatus?.state === "accepted" ? null : "Connect"}
+          heroTopLeft={showEditTab ? undefined : <HeroBackButton href={backHref || closeHref} label={backLabel || "Back"} />}
+          heroTopRight={moreMenu}
           footer={
             matchStatus || photoAccessory ? (
               <>
                 {photoAccessory}
                 {matchStatus ? (
-                  <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="inline" blockedReason={requestBlockedReason} />
+                  <MatchActions
+                    profileCode={profile.profileCode}
+                    initial={matchStatus}
+                    layout="inline"
+                    blockedReason={requestBlockedReason}
+                    trailing={saveButton}
+                  />
                 ) : null}
               </>
             ) : null
@@ -123,9 +140,9 @@ export function ProfilePreview({
       </div>
 
       {/* Mobile — photo-led hero preview */}
-      <div className="lg:hidden bg-white min-h-full">
-      {/* Top bar */}
-      {showMobileChrome ? (
+      <div className={`lg:hidden min-h-full ${showEditTab ? "bg-white" : "bg-[#f6f5f4]"}`}>
+      {/* Top bar — own profile only; a member's profile puts ← and ⋯ over the photo instead. */}
+      {showMobileChrome && showEditTab ? (
       <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <a
@@ -174,28 +191,36 @@ export function ProfilePreview({
         photoHidden={photoHidden}
         fallbackSrc={avatar}
         presence={presence}
+        topLeft={showMobileChrome && !showEditTab ? <HeroBackButton href={closeHref} /> : undefined}
+        topRight={showMobileChrome ? moreMenu : undefined}
       />
 
       <div
-        className={`max-w-lg mx-auto px-4 ${
-          showMobileChrome ? "pb-[calc(7rem+var(--pn-bottom-nav-h))]" : "pb-[calc(1.5rem+var(--pn-bottom-nav-h))]"
+        className={`max-w-lg mx-auto px-3 ${
+          memberView && showMobileChrome
+            ? "pb-[calc(6.5rem+env(safe-area-inset-bottom))]"
+            : showMobileChrome
+              ? "pb-[calc(7rem+var(--pn-bottom-nav-h))]"
+              : "pb-[calc(1.5rem+var(--pn-bottom-nav-h))]"
         }`}
       >
         {photoAccessory ? <div className="pt-4 -mx-4">{photoAccessory}</div> : null}
 
         {profile.plan === "gold" && !profile.hideGoldBadge ? (
-          <div className="pt-4 flex flex-wrap gap-1.5">
+          <div className="pt-3 flex flex-wrap gap-1.5">
             <Pill tone="amber">Gold</Pill>
           </div>
         ) : null}
 
         {viewerCompat ? (
-          <div className="mt-5">
+          <div className="mt-3">
             <CompatibilityPanel compat={viewerCompat} compact />
           </div>
         ) : null}
 
-        <ProfileSections profile={profile} />
+        <div className="mt-3 space-y-3">
+          <ProfileSections profile={profile} />
+        </div>
 
         {/* Completeness mini — own profile only */}
         {showEditTab ? (
@@ -215,7 +240,7 @@ export function ProfilePreview({
       </div>
 
       {/* Bottom CTA — mobile only */}
-      {!showMobileChrome || hideNav ? null : (
+      {!showMobileChrome || hideNav || memberView ? null : (
         <MobileBottomNavGate active="browse" unreadCount={unreadCount} />
       )}
       {!showMobileChrome ? null : showEditTab ? (
@@ -231,7 +256,13 @@ export function ProfilePreview({
         </div>
       ) : matchStatus ? (
         <div className="lg:hidden">
-          <MatchActions profileCode={profile.profileCode} initial={matchStatus} layout="fixed" blockedReason={requestBlockedReason} />
+          <MatchActions
+            profileCode={profile.profileCode}
+            initial={matchStatus}
+            layout={memberView ? "bar" : "fixed"}
+            blockedReason={requestBlockedReason}
+            trailing={saveButton}
+          />
         </div>
       ) : (
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-6 lg:hidden">

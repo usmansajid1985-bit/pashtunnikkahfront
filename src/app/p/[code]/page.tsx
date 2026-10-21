@@ -52,7 +52,7 @@ export default async function PublicProfilePage({
 
   // Mutual blocking: a blocked pair can't open each other's profile at all.
   if (await isBlockedBetween(viewerId, profile.user_id)) notFound();
-  const [relation, unreadCount, viewerUser, viewerProfile, hideGoldBadge, cachedCompat] =
+  const [relation, unreadCount, viewerUser, viewerProfile, hideGoldBadge, cachedCompat, savedRow] =
     await Promise.all([
       findRelation(viewerId, profile.user_id),
       getUnreadMessageCount(viewerId),
@@ -89,6 +89,7 @@ export default async function PublicProfilePage({
       }),
       readHideGoldBadge(profile.user_id),
       getCachedCompatDetail(viewerId, profile.user_id),
+      prisma.favourites.findFirst({ where: { user_id: viewerId, profile_user_id: profile.user_id }, select: { id: true } }),
     ]);
   const matchStatus = relationStatus(relation, viewerId);
 
@@ -235,6 +236,7 @@ export default async function PublicProfilePage({
       viewerCompat={viewerCompat}
       presence={presence}
       photoVisible={photo.photoVisible}
+      saved={Boolean(savedRow)}
       // N38: private-photo sharing / preview lives only in the chat (Chat + Profile tabs), never on
       // a profile opened from Browse — the match card's "Open Chat" leads there.
     />
