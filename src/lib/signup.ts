@@ -137,7 +137,7 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
     {
       id: "tribe",
       title: "What is your tribe?",
-      subtitle: "Open a confederacy to find your tribe, or search for it. Choose Unsure if you don't know.",
+      subtitle: "Search for your tribe.",
     },
     { id: "openTo", title: "Who are you open to?", subtitle: "Select all that apply." },
     { id: "family", title: "About children", subtitle: "Tell us about your current situation and future family plans." },

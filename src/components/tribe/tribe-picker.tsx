@@ -31,9 +31,9 @@ function Check() {
 }
 
 /**
- * The Confederacy → Tribe selector shared by signup, Edit Profile, the tribe confirmation and the
- * Browse filter: a search box, one coloured bar per confederacy that expands to its tribes, and
- * "Unsure" as a direct choice. `multiple` (filters) lets several tribes be picked.
+ * Tribe selector shared by signup, Edit Profile, the tribe confirmation and the Browse filter:
+ * a search box, one neutral bar per group that expands to its coloured tribes, and "Unsure" as a
+ * direct choice. `multiple` (filters) lets several tribes be picked.
  */
 export function TribePicker({
   selected,
@@ -107,10 +107,9 @@ export function TribePicker({
               type="button"
               aria-expanded={open}
               onClick={() => setOpenId(open ? null : c.id)}
-              className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-[15px] font-semibold ${
-                open ? "rounded-t-xl" : "rounded-xl"
+              className={`flex w-full items-center justify-between gap-3 border border-[#ece7e6] bg-white px-4 py-3 text-left text-[15px] font-semibold text-ink-950 ${
+                open ? "rounded-t-xl border-b-0" : "rounded-xl"
               }`}
-              style={{ backgroundColor: c.tone.bg, color: c.tone.text }}
             >
               <span className="flex items-center gap-2">
                 {c.label}
@@ -129,8 +128,7 @@ export function TribePicker({
               <div
                 role={multiple ? "group" : "radiogroup"}
                 aria-label={`${c.label} tribes`}
-                className="flex flex-wrap gap-2 rounded-b-xl border border-t-0 bg-white p-3"
-                style={{ borderColor: c.tone.border }}
+                className="flex flex-wrap gap-2 rounded-b-xl border border-[#ece7e6] border-t-0 bg-white p-3"
               >
                 {c.shown.map((t) => {
                   const on = selected.includes(t);
