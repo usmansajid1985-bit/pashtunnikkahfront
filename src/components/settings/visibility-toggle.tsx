@@ -30,42 +30,59 @@ export function VisibilityToggle({ initialPaused }: { initialPaused: boolean }) 
   }
 
   return (
-    <div className="mt-5 bg-white rounded-2xl border border-ink-900/6 p-5">
-      <div className="grid grid-cols-2 gap-2 rounded-full bg-ink-900/[0.04] p-1" role="radiogroup" aria-label="Profile visibility">
-        {[
-          { v: false, label: "Active" },
-          { v: true, label: "Paused" },
-        ].map((o) => (
-          <button
-            key={o.label}
-            type="button"
-            role="radio"
-            aria-checked={paused === o.v}
-            disabled={busy}
-            onClick={() => void set(o.v)}
-            className={`py-2.5 rounded-full text-sm font-semibold transition ${
-              paused === o.v ? (o.v ? "bg-amber-500 text-white" : "bg-emerald-600 text-white") : "text-ink-700"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
+    <div className="mt-6 space-y-4">
+      <div className="rounded-2xl border border-ink-900/8 bg-white p-1.5 shadow-[0_8px_30px_-20px_rgba(15,13,14,0.35)]">
+        <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-ink-900/[0.04] p-1" role="radiogroup" aria-label="Profile visibility">
+          {[
+            { v: false, label: "Active" },
+            { v: true, label: "Paused" },
+          ].map((o) => {
+            const on = paused === o.v;
+            return (
+              <button
+                key={o.label}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                disabled={busy}
+                onClick={() => void set(o.v)}
+                className={`h-12 rounded-xl flex items-center justify-center gap-2 text-[15px] font-semibold transition ${
+                  on
+                    ? o.v
+                      ? "bg-amber-500 text-white shadow-sm"
+                      : "bg-emerald-700 text-white shadow-sm"
+                    : "text-ink-700 hover:text-ink-950"
+                }`}
+              >
+                {o.v ? (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <rect x="6" y="5" width="4" height="14" rx="1" />
+                    <rect x="14" y="5" width="4" height="14" rx="1" />
+                  </svg>
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-current" aria-hidden />
+                )}
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <p className="mt-4 text-sm text-ink-800 leading-relaxed">
-        {paused ? (
-          <>
-            <span className="font-semibold">Your profile is paused.</span> You&apos;re hidden from Browse and won&apos;t
-            receive new Match Requests. Your existing matches and chats stay open, and your approval status
-            doesn&apos;t change.
-          </>
-        ) : (
-          <>
-            <span className="font-semibold">Your profile is active.</span> Approved members can find you in Browse
-            and send you Match Requests.
-          </>
-        )}
-      </p>
-      {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
+
+      <div className="flex items-start gap-3 rounded-2xl bg-[#fde8f1] px-4 py-4">
+        <svg className="mt-0.5 shrink-0 text-[#e12d72]" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 11v5M12 8h.01" />
+        </svg>
+        <div>
+          <p className="text-sm font-semibold text-ink-950">Paused mode hides your profile from Browse</p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-ink-700/75">
+            You can still access your existing chats and requests, and subscription billing continues while paused.
+          </p>
+        </div>
+      </div>
+
+      {error ? <p className="text-sm text-rose-700">{error}</p> : null}
     </div>
   );
 }

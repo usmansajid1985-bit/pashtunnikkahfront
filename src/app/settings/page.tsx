@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView, statusLabel } from "@/lib/profile";
 import { SettingsRow, SettingsShell } from "@/components/settings/settings-ui";
 import { MobileNavStyleSettings } from "@/components/settings/mobile-nav-style-settings";
-import { CommunicationModeSettings } from "@/components/settings/communication-mode-settings";
 import { EmailVerificationBanner } from "@/components/settings/email-verification-banner";
 import { GoldBadgeSettings } from "@/components/settings/gold-badge-settings";
 import { ReferralsSettings } from "@/components/settings/referrals-settings";
@@ -32,7 +31,7 @@ export default async function SettingsPage() {
   if (!session) redirect("/login");
 
   const userId = BigInt(session.userId);
-  const [user, profile, unreadCount, hideGoldBadge, blockedCount, warnings] = await Promise.all([
+  const [user, profile, unreadCount, hideGoldBadge, blockedCount, warnings, waliLinks] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId } }),
     prisma.profiles.findUnique({ where: { user_id: userId } }),
     getUnreadMessageCount(userId),
@@ -42,12 +41,27 @@ export default async function SettingsPage() {
       SELECT id, message, created_at FROM member_warnings WHERE user_id = ${userId}
       ORDER BY created_at DESC LIMIT 10
     `.catch(() => [] as { id: bigint; message: string; created_at: Date }[]),
+    prisma.wali_links.findMany({ where: { user_id: userId, revoked_at: null }, select: { accepted_at: true } }),
   ]);
   if (!user || !profile) redirect("/signup");
 
   const view = await withOwnerPhotoUrls(mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge }));
   const planLabel = view.plan === "gold" ? "Gold" : "Basic";
   const approved = view.status === "approved";
+  const isSister = view.gender?.toLowerCase().startsWith("f") ?? false;
+  const waliState = waliLinks.some((l) => l.accepted_at)
+    ? "connected"
+    : waliLinks.length > 0
+      ? "invited"
+      : "none";
+  const waliLabel = !isSister
+    ? "Family ready"
+    : waliState === "connected"
+      ? "Wali Connected"
+      : waliState === "invited"
+        ? "Wali Invited"
+        : "No Wali Connected";
+  const waliOk = !isSister || waliState === "connected";
 
   return (
     <SettingsShell title="Settings" backHref="/browse" profileCode={view.profileCode} unreadCount={unreadCount} userId={session.userId}>
@@ -104,16 +118,18 @@ export default async function SettingsPage() {
           <p className="mt-2 text-[12px] font-bold text-ink-950">{view.credits} Credits</p>
         </div>
         <div className="text-center px-1 py-2">
-          <span className="mx-auto w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+          <span
+            className={`mx-auto w-10 h-10 rounded-full flex items-center justify-center ${
+              waliOk ? "bg-emerald-100 text-emerald-700" : "bg-ink-900/[0.06] text-ink-700/60"
+            }`}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <circle cx="12" cy="8" r="3.2" />
               <path d="M5 19c0-3.2 3-5.2 7-5.2s7 2 7 5.2" />
               <path d="M17 8h3M18.5 6.5v3" />
             </svg>
           </span>
-          <p className="mt-2 text-[10px] font-semibold text-ink-950 leading-tight">
-            {view.gender?.toLowerCase() === "female" ? "Wali Connected" : "Family ready"}
-          </p>
+          <p className="mt-2 text-[10px] font-semibold text-ink-950 leading-tight">{waliLabel}</p>
         </div>
       </div>
 
@@ -162,9 +178,6 @@ export default async function SettingsPage() {
       </SettingsGroup>
 
       <SettingsGroup title="Wali">
-        <div id="wali-settings" className="px-1 pb-1">
-          <CommunicationModeSettings initialMode={view.communicationMode} gender={view.gender} />
-        </div>
         {view.gender?.toLowerCase() === "female" ? (
           <SettingsRow
             href="/profile/edit#wali"
@@ -240,6 +253,14 @@ export default async function SettingsPage() {
       <MobileNavStyleSettings />
 
       <SettingsGroup title="Support">
+        <SettingsRow
+          href="/settings/feedback"
+          title="Give us feedback"
+          description="Suggestions, bug reports and ideas"
+          iconBg="#fdf2f8"
+          iconColor="#e0306f"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 5h16v11H9l-5 4Z" /><path d="M8 9.5h8M8 12.5h5" /></svg>}
+        />
         <SettingsRow
           href="mailto:support@pashtunnikah.com"
           title="Help &amp; support"

@@ -23,8 +23,8 @@ export default async function VisibilitySettingsPage() {
       unreadCount={unreadCount}
       userId={session.userId}
     >
-      <h2 className="text-2xl font-bold text-ink-950">Profile visibility</h2>
-      <p className="mt-1 text-sm text-ink-700/65">Take a break any time — pausing only hides you from Browse.</p>
+      <h2 className="text-[28px] font-bold leading-tight text-ink-950">Profile visibility</h2>
+      <p className="mt-1.5 text-sm text-ink-700/65">Control who can see your profile when browsing on Pashtun Nikah.</p>
       <VisibilityToggle initialPaused={Boolean(profile?.is_hidden)} />
     </SettingsShell>
   );
