@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { GOLD_MONTHLY_CREDITS } from "@/lib/stripe-constants";
 import { GoldFeatureIcon, type GoldFeatureIconName } from "@/components/settings/membership-icons";
 
@@ -73,15 +74,16 @@ export function PremiumBanner({
           </div>
         </div>
       </div>
-      <a
-        href="/settings/membership?upgrade=1"
+      <button
+        type="button"
+        onClick={() => openGoldUpsell("upgrade")}
         className="shrink-0 inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-gradient-to-r from-[#e12d72] to-[#ec407a] text-white text-sm font-semibold shadow-[0_10px_24px_-12px_rgba(225,45,114,0.8)] hover:brightness-105 transition"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="white" aria-hidden>
           <path d="M12 2l1.6 5.6L19 9l-5.4 1.4L12 16l-1.6-5.6L5 9l5.4-1.4L12 2Z" />
         </svg>
         Upgrade to Gold
-      </a>
+      </button>
     </div>
   );
 }

@@ -41,6 +41,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error: `Free members can save up to ${settings.savedProfileLimit} profiles. Upgrade to Gold to save unlimited profiles.`,
+          code: "saved_limit",
         },
         { status: 403 }
       );

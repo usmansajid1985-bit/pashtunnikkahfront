@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import {
   FormEvent,
   Fragment,
@@ -1163,6 +1164,10 @@ export function ChatApp({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.code === "out_of_tokens") {
+          openGoldUpsell("out_of_tokens");
+          return;
+        }
         setToast(data.error || "Could not request a rematch");
         return;
       }

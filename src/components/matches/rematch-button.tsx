@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { useRouter } from "next/navigation";
 
 export function RematchButton({ profileCode }: { profileCode: string }) {
@@ -18,6 +19,7 @@ export function RematchButton({ profileCode }: { profileCode: string }) {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "out_of_tokens") return openGoldUpsell("out_of_tokens");
         setError(data.error || "Could not request rematch");
         return;
       }

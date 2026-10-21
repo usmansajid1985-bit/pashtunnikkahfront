@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
 import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
@@ -80,6 +81,10 @@ export function BrowseInfiniteGrid({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (data.code === "saved_limit") {
+          openGoldUpsell("saved_limit");
+          return;
+        }
         showToast(data.error || "Could not update saved profiles.");
         return;
       }

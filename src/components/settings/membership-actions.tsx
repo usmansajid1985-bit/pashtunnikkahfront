@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TOPUP_CREDITS, TOPUP_AMOUNT_PENCE } from "@/lib/stripe-constants";
-import { GoldFeatureIcon, type GoldFeature } from "@/components/settings/membership-icons";
+import { type GoldFeature } from "@/components/settings/membership-icons";
+import { UpgradeModal } from "@/components/billing/gold-upsell";
 
 export function MembershipActions({
   isGold,
@@ -155,108 +156,6 @@ export function MembershipActions({
           }}
         />
       ) : null}
-    </div>
-  );
-}
-
-function UpgradeModal({
-  priceLabel,
-  features,
-  pending,
-  onUpgrade,
-  onClose,
-}: {
-  priceLabel: string;
-  features: GoldFeature[];
-  pending: boolean;
-  onUpgrade: () => void;
-  onClose: () => void;
-}) {
-  const monthly = features.find((f) => f.icon === "tokens");
-  return (
-    <div
-      className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-ink-950/40 p-0 sm:p-4"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="upgrade-gold-title"
-      onClick={onClose}
-    >
-      <div
-        className="w-full sm:max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-6 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 id="upgrade-gold-title" className="text-[28px] font-bold leading-tight text-ink-950">
-              Upgrade to <span className="text-[#e12d72]">Gold</span>
-            </h2>
-            <p className="mt-1.5 text-[15px] text-ink-700/65">Unlock more ways to continue your search for marriage.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 h-10 w-10 rounded-full border border-ink-900/12 flex items-center justify-center text-ink-700 hover:bg-ink-900/5"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M6 6l12 12M18 6 6 18" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="relative mt-7 rounded-2xl border border-[#e12d72]/40 bg-gradient-to-br from-[#fbcfe0] via-[#fde2e4] to-[#fde9b8] p-5">
-          <span className="absolute -top-3.5 left-4 inline-flex items-center gap-1.5 rounded-full bg-[#e12d72] px-3 py-1 text-xs font-semibold text-white shadow">
-            ✦ Most popular
-          </span>
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="text-[28px] font-bold text-ink-950">Gold</p>
-              {monthly ? (
-                <p className="mt-1 flex items-center gap-2 text-[14px] text-ink-900">
-                  <GoldFeatureIcon icon="tokens" className="h-4 w-4 text-[#e12d72]" />
-                  {monthly.title}
-                </p>
-              ) : null}
-              <p className="mt-1 flex items-center gap-2 text-[14px] text-ink-700/70">
-                <GoldFeatureIcon icon="calendar" className="h-4 w-4 text-[#e12d72]" />
-                Cancel anytime
-              </p>
-            </div>
-            <div className="text-right border-l border-[#e12d72]/25 pl-4">
-              <p className="text-[26px] font-bold text-ink-950">{priceLabel}</p>
-              <p className="text-sm text-ink-700/60">/ month</p>
-            </div>
-          </div>
-        </div>
-
-        <h3 className="mt-6 text-lg font-bold text-ink-950">What&apos;s included</h3>
-        <ul className="mt-3 space-y-2.5">
-          {features.map((f) => (
-            <li key={f.title} className="flex items-center gap-3 text-[15px] text-ink-900">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-50 text-[#e12d72]">
-                <GoldFeatureIcon icon={f.icon} className="h-[18px] w-[18px]" />
-              </span>
-              {f.title}
-            </li>
-          ))}
-        </ul>
-
-        <button
-          type="button"
-          disabled={pending}
-          onClick={onUpgrade}
-          className="mt-6 w-full h-14 rounded-full bg-gradient-to-r from-[#c2185b] via-[#ec407a] to-[#ffb74d] text-[17px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(225,45,114,0.8)] hover:brightness-105 disabled:opacity-60"
-        >
-          {pending ? "Redirecting…" : "Upgrade to Gold →"}
-        </button>
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-[13px] text-ink-700/60">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <rect x="5" y="11" width="14" height="9" rx="2" />
-            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-          </svg>
-          Secure monthly subscription · Cancel anytime.
-        </p>
-      </div>
     </div>
   );
 }

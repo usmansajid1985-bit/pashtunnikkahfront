@@ -9,10 +9,10 @@ import { GoldFeatureIcon, type GoldFeature } from "@/components/settings/members
 import { getPlanSettings } from "@/lib/plan-settings";
 import { resolveTopupPriceId } from "@/lib/stripe";
 import { getUnreadMessageCount } from "@/lib/dashboard";
+import { GOLD_PRICE_LABEL, goldFeatures } from "@/lib/gold-offer";
 
 export const dynamic = "force-dynamic";
 
-const GOLD_PRICE_LABEL = "£9.99";
 
 const LEDGER_LABELS: Record<string, string> = {
   monthly_free_allowance: "Monthly tokens reset",
@@ -109,25 +109,7 @@ export default async function MembershipPage({
     resetLine = `Resets on ${formatDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)))}`;
   }
 
-  const features: GoldFeature[] = [
-    {
-      icon: "tokens",
-      title: `${goldSettings.monthlyCredits} Match Tokens monthly`,
-      detail: "Send more Match Requests every month.",
-    },
-    { icon: "filters", title: "Advanced browse filters", detail: "Be more specific in your search." },
-    { icon: "insights", title: "AI Match Insights", detail: "See your compatibility and shared values." },
-    ...(goldSettings.rolloverCap > 0
-      ? [
-          {
-            icon: "rollover" as const,
-            title: `Up to ${goldSettings.rolloverCap} unused tokens roll over`,
-            detail: "Don't lose unused Gold tokens (next month only).",
-          },
-        ]
-      : []),
-    { icon: "eye", title: "See who viewed your profile", detail: "Find out who's interested in you." },
-  ];
+  const features: GoldFeature[] = goldFeatures(goldSettings);
 
   const ring = allowance > 0 ? used / allowance : 0;
 

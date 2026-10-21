@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { ProfileViewsData } from "@/lib/dashboard";
@@ -24,6 +25,7 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
       });
       const body = await res.json().catch(() => ({}));
       setBusyId(null);
+      if (!res.ok && body.code === "out_of_tokens") return openGoldUpsell("out_of_tokens");
       if (body.status === "accepted") router.push(`/chats/${body.requestId}`);
       else router.refresh();
     });
@@ -48,9 +50,9 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
           <p className="text-[13px] text-ink-700/75 leading-snug">
             Upgrade to Gold to see who viewed your profile and get more visibility.
           </p>
-          <Link href="/settings/membership?upgrade=1" className="text-[13px] font-semibold text-rose-600 hover:text-rose-700 whitespace-nowrap">
+          <button type="button" onClick={() => openGoldUpsell("profile_views")} className="text-[13px] font-semibold text-rose-600 hover:text-rose-700 whitespace-nowrap">
             Upgrade to Gold →
-          </Link>
+          </button>
         </div>
       ) : data.viewers.length === 0 ? (
         <p className="mt-3 text-sm text-ink-700/55">No one has viewed your profile yet.</p>

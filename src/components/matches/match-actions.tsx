@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { FormEvent, useState, useTransition } from "react";
 import type { MatchRelationStatus } from "@/lib/matches";
 
@@ -39,6 +40,11 @@ export function MatchActions({
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.code === "out_of_tokens") {
+          setShowSendModal(false);
+          openGoldUpsell("out_of_tokens");
+          return;
+        }
         setError(data.error || "Could not send request");
         return;
       }

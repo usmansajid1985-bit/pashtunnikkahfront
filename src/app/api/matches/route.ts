@@ -242,7 +242,10 @@ export async function POST(req: Request) {
   const credits = refreshed?.requests_remaining ?? meUser.requests_remaining ?? 0;
   if (credits <= 0) {
     return NextResponse.json(
-      { error: "No match credits left. Upgrade to Gold or wait for a top-up." },
+      {
+        error: "You've used all your Match Tokens. Upgrade to Gold or buy more Match Tokens to keep sending requests.",
+        code: "out_of_tokens",
+      },
       { status: 402 }
     );
   }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { useEffect, useState, useTransition } from "react";
 import {
   BrowseFilters,
@@ -87,9 +88,16 @@ function GoldTag({ locked }: { locked?: boolean }) {
   const pill = "text-[10px] uppercase tracking-wide bg-amber-50 text-amber-700 border border-amber-200/70 px-1.5 py-px rounded font-bold";
   if (locked) {
     return (
-      <a href="/settings/membership" className={`${pill} hover:bg-amber-100`}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          openGoldUpsell("gold_filter");
+        }}
+        className={`${pill} hover:bg-amber-100`}
+      >
         Gold · Upgrade
-      </a>
+      </button>
     );
   }
   return <span className={pill}>Gold</span>;
@@ -164,9 +172,23 @@ function Field({
         {label}
         {gold ? <GoldTag locked={locked} /> : null}
       </span>
-      <fieldset disabled={locked} className={locked ? "opacity-50" : undefined}>
-        {children}
-      </fieldset>
+      <span className="relative block">
+        <fieldset disabled={locked} className={locked ? "opacity-50" : undefined}>
+          {children}
+        </fieldset>
+        {/* Locked Gold filter: the disabled control can't be tapped, so this opens the upgrade popup. */}
+        {locked ? (
+          <button
+            type="button"
+            aria-label={`${label} is a Gold filter — upgrade to use it`}
+            onClick={(e) => {
+              e.preventDefault();
+              openGoldUpsell("gold_filter");
+            }}
+            className="absolute inset-0 cursor-pointer rounded-xl"
+          />
+        ) : null}
+      </span>
     </label>
   );
 }
@@ -338,7 +360,7 @@ export function BrowseFiltersBar({
         </Pill>
 
         {locked ? (
-          <a href="/settings/membership" className="pill-btn" title="Distance search is a Gold feature">
+          <button type="button" onClick={() => openGoldUpsell("gold_filter")} className="pill-btn" title="Distance search is a Gold feature">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
               <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
               <circle cx="12" cy="10.5" r="2" />
@@ -347,7 +369,7 @@ export function BrowseFiltersBar({
             <span className="text-[10px] uppercase tracking-wide bg-amber-100 text-amber-900 px-1.5 py-0.5 rounded font-bold">
               Gold
             </span>
-          </a>
+          </button>
         ) : (
           <Pill active={filters.near} onClick={() => openPanel(true)}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8">
@@ -602,13 +624,14 @@ export function BrowseFiltersBar({
                         </span>
                       </h3>
                       {locked ? (
-                        <a
-                          href="/settings/membership"
-                          className="mt-2.5 block rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5 text-xs text-amber-900"
+                        <button
+                          type="button"
+                          onClick={() => openGoldUpsell("gold_filter")}
+                          className="mt-2.5 block w-full text-left rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5 text-xs text-amber-900 hover:bg-white"
                         >
                           <span className="font-bold">Upgrade to Gold</span> to search by distance, tribe, faith,
                           education and more. Age, country and marital status are always available.
-                        </a>
+                        </button>
                       ) : null}
                     </div>
 
