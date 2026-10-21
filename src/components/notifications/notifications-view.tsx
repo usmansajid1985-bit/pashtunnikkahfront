@@ -268,7 +268,7 @@ export function NotificationsView({
                               </span>
                             ) : null}
                           </p>
-                          {n.body ? (
+                          {n.body && n.category !== "profile_view" ? (
                             <p className="text-[13px] text-ink-700/70 mt-0.5 line-clamp-2">{n.body}</p>
                           ) : null}
                           <p className="text-[12px] text-ink-700/45 mt-1">{timeAgo(n.createdAt)}</p>

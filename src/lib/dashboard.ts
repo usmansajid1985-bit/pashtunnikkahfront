@@ -128,7 +128,9 @@ export async function getRecentActivity(userId: bigint, isGold: boolean, limit =
         : !r.title || r.title === "Pashtun Nikah"
           ? LEGACY_TITLES[r.type] || "Update"
           : r.title,
-      body: masked ? "" : r.body,
+      // The folded "Viewed N times today" line can disagree with the row's date, so profile
+      // views show the title and the time only.
+      body: kind === "view" ? "" : r.body,
       url: masked ? "/settings/membership" : r.url,
       createdAt: r.created_at.toISOString(),
       avatarUrl: kind === "view" && r.actor_user_id ? (avatars.get(r.actor_user_id.toString()) ?? null) : null,

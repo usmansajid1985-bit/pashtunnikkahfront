@@ -185,7 +185,6 @@ export default async function PublicProfilePage({
           actorUserId: viewerId,
           groupKey: `profile_view:${viewerId}:${day}`,
           groupedTitle: () => `${viewerCode} viewed your profile`,
-          groupedBody: (n) => `Viewed ${n} times today`,
         }).catch(() => undefined);
       }
     })

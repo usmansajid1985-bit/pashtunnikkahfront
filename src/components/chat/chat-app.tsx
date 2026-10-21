@@ -1629,13 +1629,7 @@ export function ChatApp({
                 </svg>
               </Link>
               <h1 className="font-bold text-[17px] text-ink-950">Chats</h1>
-              <span
-                className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
-                  connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                }`}
-              >
-                {connected ? "Live" : "Connecting…"}
-              </span>
+              <span className="w-10 h-10 lg:hidden" aria-hidden />
             </div>
 
             {/* Only shown over the inbox list — an open thread needs the full mobile viewport
