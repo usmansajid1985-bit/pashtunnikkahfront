@@ -142,7 +142,10 @@ export default async function PublicProfilePage({
     });
   }
 
-  void prisma.profile_views
+  // Profile views only count between members who could match — a same-gender visit is neither
+  // recorded nor notified.
+  const { sameGender } = await import("@/lib/gender");
+  if (!sameGender(viewerProfile?.gender, profile.gender)) void prisma.profile_views
     .findFirst({
       where: { viewer_id: viewerId, viewed_id: profile.user_id },
       orderBy: { viewed_at: "desc" },

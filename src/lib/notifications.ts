@@ -291,11 +291,15 @@ export async function getActivityFeed(
 ): Promise<ActivityNotification[]> {
   await ensureNotificationsSchema();
   const since = new Date(Date.now() - NOTIFICATION_TTL_DAYS * 24 * 60 * 60 * 1000);
-  const rows = await prisma.notifications.findMany({
-    where: { recipient_user_id: userId, created_at: { gte: since } },
-    orderBy: { created_at: "desc" },
-    take: opts.limit ?? 60,
-  });
+  const { withoutSameGenderViews } = await import("@/lib/gender");
+  const rows = await withoutSameGenderViews(
+    await prisma.notifications.findMany({
+      where: { recipient_user_id: userId, created_at: { gte: since } },
+      orderBy: { created_at: "desc" },
+      take: opts.limit ?? 60,
+    }),
+    userId
+  );
 
   const actorIds = [...new Set(rows.map((r) => r.actor_user_id).filter(Boolean) as bigint[])];
   const actors =

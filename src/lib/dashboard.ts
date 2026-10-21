@@ -85,11 +85,17 @@ const obscuredAvatar = unstable_cache(
  * requests and everything else keep their real titles on every plan.
  */
 export async function getRecentActivity(userId: bigint, isGold: boolean, limit = 5): Promise<ActivityItem[]> {
-  const rows = await prisma.notifications.findMany({
-    where: { recipient_user_id: userId },
-    orderBy: { created_at: "desc" },
-    take: limit,
-  });
+  const { withoutSameGenderViews } = await import("@/lib/gender");
+  const rows = (
+    await withoutSameGenderViews(
+      await prisma.notifications.findMany({
+        where: { recipient_user_id: userId },
+        orderBy: { created_at: "desc" },
+        take: limit * 3,
+      }),
+      userId
+    )
+  ).slice(0, limit);
 
   const viewerIds = [
     ...new Set(rows.filter((r) => r.type === "profile_view" && r.actor_user_id).map((r) => r.actor_user_id as bigint)),
@@ -188,6 +194,11 @@ export type ProfileViewItem = {
   place: string;
   viewedAt: string;
   avatarSeed: number;
+  /**
+   * Where the two members stand, so the card shows the right button: matched → Open chat,
+   * a request either way → Request sent / Respond, an ended match → View profile, else Send request.
+   */
+  relation: { state: "none" | "accepted" | "sent" | "received" | "ended"; requestId: string | null };
 };
 
 export type ProfileViewsData = {
@@ -200,18 +211,37 @@ export type ProfileViewsData = {
 
 /** Overview's "Profile Views" section — moved here from the old Requests → Views tab. */
 export async function getProfileViews(userId: bigint, isGold: boolean): Promise<ProfileViewsData> {
-  const viewRows = await prisma.profile_views.findMany({
-    where: { viewed_id: userId },
-    orderBy: { viewed_at: "desc" },
-    take: 60,
+  const [viewRows, me] = await Promise.all([
+    prisma.profile_views.findMany({
+      where: { viewed_id: userId },
+      orderBy: { viewed_at: "desc" },
+      take: 120,
+    }),
+    prisma.profiles.findUnique({ where: { user_id: userId }, select: { gender: true } }),
+  ]);
+
+  // Only members of the opposite gender count as profile views — same-gender visitors are left
+  // out of the list and the numbers entirely.
+  const viewerIdsAll = [...new Set(viewRows.map((v) => v.viewer_id.toString()))].map((id) => BigInt(id));
+  const profiles = viewerIdsAll.length
+    ? await prisma.profiles.findMany({
+        where: { user_id: { in: viewerIdsAll } },
+        select: { id: true, user_id: true, profile_code: true, city: true, country: true, gender: true },
+      })
+    : [];
+  const { sameGender } = await import("@/lib/gender");
+  const byUserId = new Map(profiles.map((p) => [p.user_id.toString(), p]));
+  const eligible = viewRows.filter((v) => {
+    const p = byUserId.get(v.viewer_id.toString());
+    return Boolean(p) && !sameGender(me?.gender, p!.gender);
   });
 
   const now = Date.now();
   const day = 24 * 60 * 60 * 1000;
   const summary = {
-    total: viewRows.length,
-    last7d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
-    last30d: viewRows.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
+    total: eligible.length,
+    last7d: eligible.filter((v) => now - v.viewed_at.getTime() <= 7 * day).length,
+    last30d: eligible.filter((v) => now - v.viewed_at.getTime() <= 30 * day).length,
   };
 
   if (!isGold) {
@@ -220,15 +250,39 @@ export async function getProfileViews(userId: bigint, isGold: boolean): Promise<
   }
 
   const blocked = new Set((await blockedUserIds(userId)).map((id) => id.toString()));
-  const visibleRows = viewRows.filter((v) => !blocked.has(v.viewer_id.toString()));
+  // One row per viewer (their latest visit).
+  const seen = new Set<string>();
+  const visibleRows = eligible.filter((v) => {
+    const id = v.viewer_id.toString();
+    if (blocked.has(id) || seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+
+  // Every request between me and these viewers, newest first — the live one decides the button.
   const viewerIds = visibleRows.map((v) => v.viewer_id);
-  const profiles = viewerIds.length
-    ? await prisma.profiles.findMany({
-        where: { user_id: { in: viewerIds } },
-        select: { id: true, user_id: true, profile_code: true, city: true, country: true },
+  const requests = viewerIds.length
+    ? await prisma.match_requests.findMany({
+        where: {
+          OR: [
+            { sender_id: userId, receiver_id: { in: viewerIds } },
+            { receiver_id: userId, sender_id: { in: viewerIds } },
+          ],
+        },
+        select: { id: true, sender_id: true, receiver_id: true, status: true },
+        orderBy: { id: "desc" },
       })
     : [];
-  const byUserId = new Map(profiles.map((p) => [p.user_id.toString(), p]));
+  const relationOf = (peer: bigint): ProfileViewItem["relation"] => {
+    const rows = requests.filter((r) => r.sender_id === peer || r.receiver_id === peer);
+    const accepted = rows.find((r) => r.status === "accepted");
+    if (accepted) return { state: "accepted", requestId: accepted.id.toString() };
+    const pending = rows.find((r) => r.status === "pending");
+    if (pending) return { state: pending.sender_id === userId ? "sent" : "received", requestId: pending.id.toString() };
+    const ended = rows.find((r) => r.status === "ended");
+    if (ended && rows[0] === ended) return { state: "ended", requestId: ended.id.toString() };
+    return { state: "none", requestId: null };
+  };
 
   const viewers: ProfileViewItem[] = visibleRows
     .map((v): ProfileViewItem | null => {
@@ -241,6 +295,7 @@ export async function getProfileViews(userId: bigint, isGold: boolean): Promise<
         place: [p.city, p.country].filter(Boolean).join(", "),
         viewedAt: v.viewed_at.toISOString(),
         avatarSeed: Number(p.id % BigInt(70)),
+        relation: relationOf(v.viewer_id),
       };
     })
     .filter((v): v is ProfileViewItem => v !== null);

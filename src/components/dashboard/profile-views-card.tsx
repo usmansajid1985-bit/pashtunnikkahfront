@@ -71,14 +71,41 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
                 </Link>
                 {v.place ? <p className="text-[11px] text-ink-700/45 truncate">{v.place}</p> : null}
               </div>
-              <button
-                type="button"
-                disabled={pending && busyId === v.peerUserId}
-                onClick={() => sendRequest(v.peerUserId, v.code)}
-                className="shrink-0 px-3 py-1.5 rounded-full bg-rose-600 text-white text-xs font-semibold disabled:opacity-50"
-              >
-                Send request
-              </button>
+              {v.relation.state === "accepted" && v.relation.requestId ? (
+                <Link
+                  href={`/chats/${v.relation.requestId}`}
+                  className="shrink-0 px-3 py-1.5 rounded-full bg-rose-600 text-white text-xs font-semibold"
+                >
+                  Open chat
+                </Link>
+              ) : v.relation.state === "sent" ? (
+                <span className="shrink-0 px-3 py-1.5 rounded-full bg-ink-900/5 text-ink-700/70 text-xs font-semibold">
+                  Request sent
+                </span>
+              ) : v.relation.state === "received" ? (
+                <Link
+                  href="/requests?tab=received"
+                  className="shrink-0 px-3 py-1.5 rounded-full border border-rose-300 text-rose-600 text-xs font-semibold hover:bg-rose-50"
+                >
+                  Respond
+                </Link>
+              ) : v.relation.state === "ended" ? (
+                <Link
+                  href={`/p/${v.code}`}
+                  className="shrink-0 px-3 py-1.5 rounded-full border border-ink-900/12 text-ink-900 text-xs font-semibold hover:bg-ink-900/[0.03]"
+                >
+                  View profile
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={pending && busyId === v.peerUserId}
+                  onClick={() => sendRequest(v.peerUserId, v.code)}
+                  className="shrink-0 px-3 py-1.5 rounded-full bg-rose-600 text-white text-xs font-semibold disabled:opacity-50"
+                >
+                  Send request
+                </button>
+              )}
             </div>
           ))}
         </div>
