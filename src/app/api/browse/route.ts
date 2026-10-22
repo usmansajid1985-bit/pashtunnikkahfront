@@ -111,6 +111,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ userIds: fresh.map((f) => f.user_id.toString()) });
   }
 
+  // Admin usage counts: one Advanced Filter use per first-page search with a Gold-only filter set.
+  if (isGold && !filters.page && !url.searchParams.get("x") && JSON.stringify(stripGoldFilters(filters)) !== JSON.stringify(filters)) {
+    void import("@/lib/billing-schema").then(({ recordUsage }) => recordUsage(userId, "advanced_filter"));
+  }
+
   // B12/B21/B22 — expanded discovery once the member's own filters are exhausted.
   const stageParam = Number(url.searchParams.get("x") || 0);
   if (stageParam > 0) {

@@ -123,6 +123,7 @@ export default async function PublicProfilePage({
     const fingerprint = compatFingerprint(meSide, themSide);
     const summary = await cachedCompatSummary(viewerId, profile.user_id, fingerprint);
     viewerCompat = { breakdown, summary };
+    void import("@/lib/billing-schema").then(({ recordUsage }) => recordUsage(viewerId, "ai_insight"));
     after(async () => {
       try {
         // The short AI note is generated once per pair + profile data, off the request path.
