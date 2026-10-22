@@ -22,6 +22,7 @@ import {
 } from "@/lib/signup";
 import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
+import { ISLAMIC_SECTS } from "@/lib/islamic-background";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { WaliAccessManager } from "@/components/profile/wali-access-manager";
 import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
@@ -573,13 +574,23 @@ export function ProfileEditForm({
               </option>
             ))}
           </select>
-          <label className="block text-xs font-semibold">Islamic background</label>
-          <input
+          <label className="block text-xs font-semibold">Islamic background (sect)</label>
+          <select
             className={field}
             value={form.islamicBackground}
             onChange={(e) => patch("islamicBackground", e.target.value)}
-            placeholder="e.g. Sunni — Hanafi"
-          />
+          >
+            <option value="">Select…</option>
+            {form.islamicBackground &&
+            !(ISLAMIC_SECTS as readonly string[]).includes(form.islamicBackground) ? (
+              <option value={form.islamicBackground}>{form.islamicBackground}</option>
+            ) : null}
+            {ISLAMIC_SECTS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
           <label htmlFor="edit-islamic-practice" className="block text-xs font-semibold">
             Describe your Islamic practice <span className="font-normal text-ink-700/55">(optional)</span>
           </label>

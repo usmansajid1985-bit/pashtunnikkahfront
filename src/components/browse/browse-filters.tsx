@@ -14,6 +14,7 @@ import { LocationFilter, locationNarrows, locationSummary, type LocationChoice }
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
+import { ISLAMIC_SECTS } from "@/lib/islamic-background";
 import { TribePicker } from "@/components/tribe/tribe-picker";
 import { formatTribeList, parseTribeList } from "@/lib/tribes";
 import {
@@ -340,7 +341,7 @@ export function BrowseFiltersBar({
   );
   const shownRegions = ANCESTRAL_REGIONS.filter((r) => r.toLowerCase().includes(regionQuery.trim().toLowerCase()));
 
-  // Minimum height slider: position 0 is "Any", then one stop per height step.
+  // Minimum height runs from the shortest step to the tallest — never an "Any" stop.
   const heightIdx = (() => {
     const cm = Number(draft.height);
     if (!draft.height || !Number.isFinite(cm) || cm <= 0) return 0;
@@ -348,9 +349,9 @@ export function BrowseFiltersBar({
     HEIGHT_FILTER_STEPS.forEach((h, i) => {
       if (Math.abs(h.cm - cm) < Math.abs(HEIGHT_FILTER_STEPS[best].cm - cm)) best = i;
     });
-    return best + 1;
+    return best;
   })();
-  const heightStep = heightIdx > 0 ? HEIGHT_FILTER_STEPS[heightIdx - 1] : null;
+  const heightStep = HEIGHT_FILTER_STEPS[heightIdx];
 
   return (
     <>
@@ -596,14 +597,14 @@ export function BrowseFiltersBar({
                       </select>
                     </Field>
 
-                    <Field label="Islamic background (sect)" gold locked={locked}>
+                    <Field label="Islamic background (sect)">
                       <select
                         className={selectClass}
                         value={draft.sect}
                         onChange={(e) => setDraft({ ...draft, sect: e.target.value })}
                       >
                         <option value="">Any</option>
-                        {options.sects.map((c) => (
+                        {ISLAMIC_SECTS.map((c) => (
                           <option key={c} value={c}>
                             {c}
                           </option>
@@ -614,12 +615,9 @@ export function BrowseFiltersBar({
 
                   <div className="rounded-2xl border border-amber-200/60 bg-gradient-to-b from-amber-50/70 to-rose-50/40 p-4 space-y-5">
                     <div>
-                      <h3 className="flex items-center gap-2 text-base font-bold text-rose-600">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                          <path d="M10 3l1.8 4.7L16.5 9.5l-4.7 1.8L10 16l-1.8-4.7L3.5 9.5l4.7-1.8L10 3Zm8 10 .9 2.3 2.3.9-2.3.9L18 19.5l-.9-2.4-2.3-.9 2.3-.9L18 13Z" />
-                        </svg>
+                      <h3 className="flex items-center gap-2 text-base font-bold text-[#e12d72]">
                         Advanced filters
-                        <span className="rounded-full bg-gradient-to-r from-rose-300 via-amber-300 to-amber-400 px-3.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-amber-950 shadow-sm">
+                        <span className="rounded-full bg-gradient-to-r from-[#c2185b] via-[#ec407a] to-[#ffb74d] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
                           Gold
                         </span>
                       </h3>
@@ -637,7 +635,7 @@ export function BrowseFiltersBar({
 
                     <section className="space-y-3">
                       <h4 className="text-sm font-bold text-ink-950">Location</h4>
-                      <Field label="Distance" gold locked={locked}>
+                      <Field label="Distance" locked={locked}>
                         <button
                           type="button"
                           onClick={() => setLocationOpen(true)}
@@ -661,7 +659,7 @@ export function BrowseFiltersBar({
                           Remove location filter
                         </button>
                       ) : null}
-                      <Field label="Relocation plans" gold locked={locked}>
+                      <Field label="Relocation plans" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.relocate}
@@ -679,30 +677,28 @@ export function BrowseFiltersBar({
 
                     <section className="space-y-3 border-t border-ink-900/8 pt-4">
                       <h4 className="text-sm font-bold text-ink-950">About them</h4>
-                      <Field label="Minimum height" gold locked={locked}>
+                      <Field label="Minimum height" locked={locked}>
                         <input
                           type="range"
                           min={0}
-                          max={HEIGHT_FILTER_STEPS.length}
+                          max={HEIGHT_FILTER_STEPS.length - 1}
                           step={1}
                           value={heightIdx}
                           onChange={(e) => {
                             const i = Number(e.target.value);
-                            setDraft({ ...draft, height: i === 0 ? "" : String(HEIGHT_FILTER_STEPS[i - 1].cm) });
+                            setDraft({ ...draft, height: String(HEIGHT_FILTER_STEPS[i].cm) });
                           }}
                           className="pn-range w-full mt-1"
-                          style={{ "--pn-fill": `${(heightIdx / HEIGHT_FILTER_STEPS.length) * 100}%` } as React.CSSProperties}
-                          aria-valuetext={heightStep ? `${heightStep.label} or taller` : "Any height"}
+                          style={{ "--pn-fill": `${(heightIdx / (HEIGHT_FILTER_STEPS.length - 1)) * 100}%` } as React.CSSProperties}
+                          aria-valuetext={`${heightStep.label} or taller`}
                         />
                         <span className="mt-1 flex justify-between text-xs text-ink-700/60">
-                          <span>Any</span>
-                          <span className="font-semibold text-ink-950">
-                            {heightStep ? `${heightStep.label} or taller` : "Any height"}
-                          </span>
+                          <span>{shortHeight(HEIGHT_FILTER_STEPS[0].label)}</span>
+                          <span className="font-semibold text-ink-950">{shortHeight(heightStep.label)} or taller</span>
                           <span>{shortHeight(HEIGHT_FILTER_STEPS[HEIGHT_FILTER_STEPS.length - 1].label)}</span>
                         </span>
                       </Field>
-                      <Field label="Education" gold locked={locked}>
+                      <Field label="Education" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.education}
@@ -716,7 +712,7 @@ export function BrowseFiltersBar({
                           ))}
                         </select>
                       </Field>
-                      <Field label="Profession" gold locked={locked}>
+                      <Field label="Profession" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.occupation}
@@ -730,7 +726,7 @@ export function BrowseFiltersBar({
                           ))}
                         </select>
                       </Field>
-                      <Field label="Pashto dialect" gold locked={locked}>
+                      <Field label="Pashto dialect" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.dialect}
@@ -744,7 +740,7 @@ export function BrowseFiltersBar({
                           ))}
                         </select>
                       </Field>
-                      <Field label="Tribe" gold locked={locked}>
+                      <Field label="Tribe" locked={locked}>
                         <button
                           type="button"
                           onClick={() => setTribeOpen(true)}
@@ -762,7 +758,7 @@ export function BrowseFiltersBar({
                           </svg>
                         </button>
                       </Field>
-                      <Field label="Ancestral region" gold locked={locked}>
+                      <Field label="Ancestral region" locked={locked}>
                         <button
                           type="button"
                           onClick={() => {
@@ -777,7 +773,7 @@ export function BrowseFiltersBar({
                           </svg>
                         </button>
                       </Field>
-                      <Field label="Language" gold locked={locked}>
+                      <Field label="Language" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.language}
@@ -795,7 +791,7 @@ export function BrowseFiltersBar({
 
                     <section className="space-y-3 border-t border-ink-900/8 pt-4">
                       <h4 className="text-sm font-bold text-ink-950">Faith &amp; appearance</h4>
-                      <Field label="Religious practice" gold locked={locked}>
+                      <Field label="Religious practice" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.practice}
@@ -809,7 +805,7 @@ export function BrowseFiltersBar({
                           ))}
                         </select>
                       </Field>
-                      <Field label={browsingBrothers ? "Beard" : "Islamic dress"} gold locked={locked}>
+                      <Field label={browsingBrothers ? "Beard" : "Islamic dress"} locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.dress}
@@ -824,7 +820,7 @@ export function BrowseFiltersBar({
                         </select>
                       </Field>
                       {browsingBrothers ? null : (
-                        <Field label="Dress style" gold locked={locked}>
+                        <Field label="Dress style" locked={locked}>
                           <select
                             className={selectClass}
                             value={draft.appearance}
@@ -839,7 +835,7 @@ export function BrowseFiltersBar({
                           </select>
                         </Field>
                       )}
-                      <Field label="Salah pattern" gold locked={locked}>
+                      <Field label="Salah pattern" locked={locked}>
                         <select
                           className={selectClass}
                           value={draft.salah}

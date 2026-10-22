@@ -7,7 +7,7 @@ import {
   parseBrowseFilters,
   stripGoldFilters,
 } from "@/lib/browse-filters";
-import { savedLocationFilter } from "@/lib/browse-location";
+import { countryOnlyProfileIds, savedLocationFilter } from "@/lib/browse-location";
 import {
   BEST_MATCH_POOL,
   BROWSE_PROFILE_SELECT,
@@ -69,6 +69,10 @@ export async function GET(req: Request) {
   // (PN-BROWSE-006).
   const wantsDistance = filters.near;
   const { ids: radiusIds, needsLocation } = await savedLocationFilter(me, wantsDistance);
+  // "Limit to this country" stays on even when distance is Any, and on later pages that
+  // relax the radius. Turning the location filter off is what drops it.
+  const keepCountry = Boolean(filters.near && me?.location_country_only);
+  const countryIds = keepCountry && me ? await countryOnlyProfileIds(me) : undefined;
 
   const whereFor = (f: typeof filters, useDistance: boolean) =>
     buildProfileWhere(f, {
@@ -76,7 +80,7 @@ export async function GET(req: Request) {
       excludeUserIds: blockedIds,
       viewerGender: me?.gender,
       isGold,
-      locationIds: useDistance ? radiusIds : undefined,
+      locationIds: useDistance ? radiusIds : keepCountry ? countryIds : undefined,
     });
 
   const where = whereFor(filters, wantsDistance);

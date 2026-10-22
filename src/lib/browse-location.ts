@@ -58,14 +58,20 @@ export async function locationRadiusIds(opts: {
   if (opts.countryOnly) {
     const code = opts.countryCode || toCountryCode(opts.country);
     const country = countryByCode(code);
+    // Match the country code, or the name with flags and punctuation stripped. A loose
+    // "contains" match was pulling in other countries. If we cannot tell which country was
+    // asked for, match nobody — never the whole world.
     if (country) {
-      const names = [country.name, ...(country.aliases ?? [])];
+      const names = [country.name, ...(country.aliases ?? [])].map((n) => n.toLowerCase());
       const nameOrs = names.map(
-        (n) => Prisma.sql`lower(trim(coalesce(country, ''))) LIKE ${"%" + n.toLowerCase() + "%"}`
+        (n) =>
+          Prisma.sql`lower(trim(regexp_replace(coalesce(country, ''), '[^a-zA-Z ]', '', 'g'))) = ${n}`
       );
-      countryClause = Prisma.sql`AND (country_code = ${country.code} OR ${Prisma.join(nameOrs, " OR ")})`;
+      countryClause = Prisma.sql`AND (upper(coalesce(country_code, '')) = ${country.code} OR ${Prisma.join(nameOrs, " OR ")})`;
     } else if (opts.country && opts.country.trim()) {
-      countryClause = Prisma.sql`AND lower(trim(coalesce(country, ''))) = ${opts.country.trim().toLowerCase()}`;
+      countryClause = Prisma.sql`AND lower(trim(regexp_replace(coalesce(country, ''), '[^a-zA-Z ]', '', 'g'))) = ${opts.country.trim().toLowerCase()}`;
+    } else {
+      return [];
     }
   }
 
@@ -118,4 +124,24 @@ export async function savedLocationFilter(
     countryCode: me.location_country_code,
   });
   return { ids, needsLocation: false };
+}
+
+/**
+ * Every approved profile in the member's locked country, with no radius.
+ * Used when distance is "Any" and when later Browse pages must not drop the country limit.
+ */
+export async function countryOnlyProfileIds(me: {
+  location_lat: number | null;
+  location_lng: number | null;
+  location_country: string | null;
+  location_country_code: string | null;
+}): Promise<bigint[]> {
+  return locationRadiusIds({
+    lat: me.location_lat ?? 0,
+    lng: me.location_lng ?? 0,
+    radiusMiles: null,
+    countryOnly: true,
+    country: me.location_country,
+    countryCode: me.location_country_code,
+  });
 }

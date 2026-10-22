@@ -5,6 +5,7 @@ import { normalizeRelocation } from "@/lib/relocation";
 import { countryByCode, toCountryCode } from "@/lib/country";
 import { parseTribeList, tribeSpellings } from "@/lib/tribes";
 import { professionGroup } from "@/lib/professions";
+import { sectSpellings } from "@/lib/islamic-background";
 
 export {
   BROWSE_PAGE_SIZE,
@@ -106,6 +107,14 @@ export function buildProfileWhere(
 
   eq("marital_status", f.marital);
 
+  // Basic filter — not part of Gold. Match hyphen and dash spellings already on profiles.
+  const sects = sectSpellings(f.sect);
+  if (sects.length) {
+    and.push({
+      OR: sects.map((v) => ({ religious_methodology: { equals: v, mode: "insensitive" as const } })),
+    });
+  }
+
   if (!opts.isGold) return { AND: and };
 
   // B09: religious practice + relocation are Gold-only (client decision, V2 QA 19 Sep).
@@ -131,7 +140,6 @@ export function buildProfileWhere(
 
   eq("city", f.city);
 
-  eq("religious_methodology", f.sect);
   // Tribe: one or more listed tribes. Known V1 spellings are matched too, so members who
   // haven't confirmed their tribe yet still appear under the right one.
   const tribes = parseTribeList(f.tribe).flatMap(tribeSpellings);
