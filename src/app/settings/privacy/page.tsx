@@ -37,25 +37,28 @@ export default async function PrivacySettingsPage() {
   }));
 
   return (
-    <SettingsShell title="Privacy" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
-      <h2 className="text-2xl font-bold text-ink-950">Privacy &amp; safety</h2>
-      <p className="mt-1 text-sm text-ink-700/65">Blocked members and safety tools.</p>
+    <SettingsShell title="Privacy & data" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
+      <h2 className="text-[28px] font-bold leading-tight text-ink-950">Privacy &amp; data</h2>
+      <p className="mt-1 text-sm text-ink-700/65">Manage blocked members and download your account data.</p>
 
-      <div id="blocked" className="mt-6 card p-4 scroll-mt-20">
-        <h3 className="font-semibold text-ink-950">Blocked members</h3>
+      <div id="blocked" className="mt-6 scroll-mt-20 rounded-2xl border border-ink-900/8 bg-white p-5">
+        <h3 className="font-bold text-ink-950">Blocked members</h3>
         <BlockedProfiles initial={blockedRows} />
-        <p className="mt-3 text-xs text-ink-700/50">
-          Block someone when declining an incoming request, or from a chat&apos;s menu.
-          They&apos;ll disappear from Browse and Requests until you unblock them here.
+        <p className="mt-3 text-[13px] leading-relaxed text-ink-700/55">
+          Block members from a chat&apos;s menu or when declining a request. They stay hidden from Browse and Requests
+          until you unblock them here.
         </p>
       </div>
 
-      <div className="mt-6 card p-4">
-        <h3 className="font-semibold text-ink-950">Download your data</h3>
-        <p className="mt-1 text-sm text-ink-700/65">Export profile, credits, and ledger as JSON.</p>
+      <div className="mt-4 rounded-2xl border border-ink-900/8 bg-white p-5">
+        <h3 className="font-bold text-ink-950">Download your data</h3>
+        <p className="mt-1 text-sm text-ink-700/65">
+          Download your profile details, Match Token balance and transaction history in a JSON file.
+        </p>
+        <p className="mt-1 text-[13px] text-ink-700/50">JSON is a structured file format for storing data.</p>
         <a
           href="/api/account/export"
-          className="mt-3 inline-flex px-4 py-2 rounded-full border border-ink-900/12 text-sm font-semibold hover:border-rose-300"
+          className="mt-4 inline-flex h-11 items-center rounded-full border border-[#e12d72] px-5 text-sm font-semibold text-[#e12d72] hover:bg-rose-50"
         >
           Download data
         </a>

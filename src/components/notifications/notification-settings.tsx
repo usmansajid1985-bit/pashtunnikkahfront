@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IN_APP_BANNERS_EVENT } from "@/components/notifications/live-updates";
+import { NOTIFY_ALL_EVENT } from "@/components/notifications/notification-category-toggles";
 import {
   getExistingSubscription,
   getPushSupport,
@@ -18,19 +20,38 @@ type Status =
   | "subscribed"
   | "not_subscribed";
 
-async function setServerPreference(pushEnabled: boolean) {
-  await fetch("/api/push/preferences", {
+const ALL_KEYS = {
+  notify_requests: true,
+  notify_messages: true,
+  notify_profile_views: true,
+  notify_wali: true,
+  notify_updates: true,
+  in_app_banners: true,
+};
+
+async function setAllAlerts(on: boolean) {
+  const flags = Object.fromEntries(Object.keys(ALL_KEYS).map((key) => [key, on]));
+  const res = await fetch("/api/push/preferences", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pushEnabled }),
-  }).catch(() => {});
+    body: JSON.stringify({ pushEnabled: on, ...flags }),
+  }).catch(() => null);
+  if (!res?.ok) return false;
+  window.dispatchEvent(new CustomEvent(NOTIFY_ALL_EVENT, { detail: { on } }));
+  window.dispatchEvent(new CustomEvent(IN_APP_BANNERS_EVENT, { detail: { on } }));
+  if (typeof BroadcastChannel !== "undefined") {
+    const channel = new BroadcastChannel("pn-prefs");
+    channel.postMessage({ inAppBanners: on });
+    channel.close();
+  }
+  return true;
 }
 
 export function NotificationSettings() {
   const [status, setStatus] = useState<Status>("loading");
+  const [masterOn, setMasterOn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -49,6 +70,7 @@ export function NotificationSettings() {
       }
       const existing = await getExistingSubscription();
       setStatus(existing ? "subscribed" : "not_subscribed");
+      if (existing) setMasterOn(true);
     })();
   }, []);
 
@@ -58,7 +80,6 @@ export function NotificationSettings() {
     try {
       const result = await subscribeToPush();
       if (result.ok) {
-        await setServerPreference(true);
         setStatus("subscribed");
       } else if (result.reason === "denied") {
         setStatus("denied");
@@ -80,126 +101,70 @@ export function NotificationSettings() {
   async function onDisable() {
     setBusy(true);
     setError(null);
-    const ok = await unsubscribeFromPush();
-    await setServerPreference(false);
-    setStatus(ok ? "not_subscribed" : "not_subscribed");
+    await unsubscribeFromPush();
+    setStatus("not_subscribed");
     setBusy(false);
   }
 
-  async function onTest() {
+  async function onMaster(next: boolean) {
     setBusy(true);
-    setTestResult(null);
-    try {
-      const res = await fetch("/api/push/test", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setTestResult(data.error || "Couldn't send test notification.");
-      } else if (data.delivered > 0) {
-        setTestResult("Test notification sent — check your device.");
-      } else if (data.reason === "no_subscriptions") {
-        setTestResult("No device is registered yet. Try disabling and re-enabling notifications.");
-      } else if (data.reason === "push_disabled") {
-        setTestResult("Push is turned off in your preferences.");
-      } else if (data.reason === "not_configured") {
-        setTestResult(
-          data.detail
-            ? `Push isn't configured on the server: ${data.detail}`
-            : "Push isn't configured on the server yet."
-        );
-      } else if (data.failed > 0) {
-        setTestResult(
-          data.detail
-            ? `Delivery failed: ${data.detail}`
-            : "Delivery failed. Try disabling and re-enabling notifications."
-        );
-      } else {
-        setTestResult("Couldn't send test notification.");
-      }
-    } catch {
-      setTestResult("Couldn't send test notification.");
+    setError(null);
+    const saved = await setAllAlerts(next);
+    if (!saved) {
+      setError("Couldn't update your notification settings. Please try again.");
+      setBusy(false);
+      return;
     }
-    setBusy(false);
+    setMasterOn(next);
+    if (next) await onEnable();
+    else await onDisable();
   }
 
   return (
-    <div className="mt-5 bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-5">
-      <h3 className="font-bold text-ink-950">Notifications</h3>
-
-      {status === "loading" && <p className="mt-2 text-sm text-ink-700/60">Checking device support…</p>}
-
-      {status === "ios_not_installed" && (
-        <div className="mt-2 space-y-2 text-sm text-ink-700/75 leading-relaxed">
-          <p>To receive notifications on iPhone:</p>
-          <ol className="list-decimal list-inside space-y-1">
-            <li>Tap the Share button in Safari</li>
-            <li>Choose &quot;Add to Home Screen&quot;</li>
-            <li>Open Pashtun Nikah from your Home Screen</li>
-            <li>Return here and enable notifications</li>
-          </ol>
-        </div>
-      )}
-
-      {status === "unsupported" && (
-        <p className="mt-2 text-sm text-ink-700/60">
-          Notifications aren&apos;t available here yet. On Chrome and Android they work in the
-          browser. On iPhone, add this site to your Home Screen first. If you just set up
-          Firebase, restart the web app so the keys load.
-        </p>
-      )}
-
-      {status === "denied" && (
-        <div className="mt-2 text-sm text-ink-700/70 leading-relaxed">
-          <p>
-            Notifications are blocked for this site in your browser. You can still use in-app
-            notifications, but to receive push alerts:
+    <div className="mt-5 bg-white rounded-2xl border border-ink-900/8 shadow-[0_8px_30px_-20px_rgba(15,13,14,0.3)] p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h3 className="font-bold text-ink-950">Push notifications</h3>
+          <p className="mt-0.5 text-[13px] text-ink-700/60">
+            Device and browser alerts, including when you&apos;re away from the app.
           </p>
-          <ol className="mt-2 list-decimal list-inside space-y-1">
-            <li>Click the lock/info icon next to the address bar</li>
-            <li>Set &quot;Notifications&quot; to Allow</li>
-            <li>Reload this page and try again</li>
-          </ol>
+          {status === "subscribed" ? (
+            <p className="mt-2 flex items-center gap-1.5 text-[13px] font-medium text-emerald-700">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+              Enabled on this browser
+            </p>
+          ) : null}
+          <p className="mt-1 text-[13px] text-ink-700/50">Turn all alerts below on or off together.</p>
         </div>
-      )}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={masterOn}
+          aria-label="Push notifications"
+          disabled={busy || status === "loading"}
+          onClick={() => void onMaster(!masterOn)}
+          className={`relative mt-0.5 h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
+            masterOn ? "bg-[#e12d72]" : "bg-ink-900/15"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${
+              masterOn ? "left-[22px]" : "left-0.5"
+            }`}
+          />
+        </button>
+      </div>
 
-      {status === "not_subscribed" && (
-        <>
-          <p className="mt-1 text-sm text-ink-700/65">Get notified when you receive a new message.</p>
-          <button
-            type="button"
-            onClick={onEnable}
-            disabled={busy}
-            className="mt-3 px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
-          >
-            {busy ? "Enabling…" : "Enable Notifications"}
-          </button>
-        </>
-      )}
-
-      {status === "subscribed" && (
-        <>
-          <p className="mt-1 text-sm font-semibold text-emerald-700">Notifications enabled ✓</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onDisable}
-              disabled={busy}
-              className="px-4 py-2 rounded-full border border-ink-900/12 text-sm font-semibold hover:border-rose-300 disabled:opacity-60"
-            >
-              Disable Notifications
-            </button>
-            <button
-              type="button"
-              onClick={onTest}
-              disabled={busy}
-              className="px-4 py-2 rounded-full border border-ink-900/12 text-sm font-semibold hover:border-rose-300 disabled:opacity-60"
-            >
-              Send Test Notification
-            </button>
-          </div>
-          {testResult ? <p className="mt-2 text-xs text-ink-700/70">{testResult}</p> : null}
-        </>
-      )}
-
+      {status === "ios_not_installed" && masterOn ? (
+        <div className="mt-3 space-y-1 text-[13px] text-ink-700/70 leading-relaxed">
+          <p>To receive alerts on iPhone, add Pashtun Nikah to your Home Screen, then turn this on again.</p>
+        </div>
+      ) : null}
+      {status === "denied" && masterOn ? (
+        <p className="mt-3 text-[13px] text-ink-700/70">
+          This browser is blocking alerts. Allow notifications for this site, then turn the switch off and on again.
+        </p>
+      ) : null}
       {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
     </div>
   );

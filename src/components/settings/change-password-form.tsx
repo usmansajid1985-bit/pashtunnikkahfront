@@ -44,23 +44,33 @@ export function ChangePasswordForm() {
   if (!open) {
     return (
       <div>
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(true);
-            setSaved(false);
-          }}
-          className="text-sm font-semibold text-rose-600 hover:underline"
-        >
-          Change password
-        </button>
-        {saved ? <p className="mt-2 text-xs text-emerald-700">Password changed.</p> : null}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-semibold text-[#e12d72]">Password</p>
+            <p className="mt-1 text-sm text-ink-700/65">Keep your account secure with a strong password.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(true);
+              setSaved(false);
+            }}
+            className="shrink-0 rounded-full border border-[#e12d72] px-4 py-2 text-sm font-semibold text-[#e12d72] hover:bg-rose-50"
+          >
+            Change password
+          </button>
+        </div>
+        {saved ? <p className="mt-3 text-sm text-emerald-700">Password changed.</p> : null}
       </div>
     );
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">
+      <div>
+        <p className="font-semibold text-[#e12d72]">Password</p>
+        <p className="mt-1 text-sm text-ink-700/65">Keep your account secure with a strong password.</p>
+      </div>
       <div>
         <label className="block text-xs font-semibold mb-1">Current password</label>
         <input
@@ -101,7 +111,7 @@ export function ChangePasswordForm() {
         <button
           type="submit"
           disabled={pending}
-          className="px-4 py-2 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+          className="px-4 py-2 rounded-full bg-[#e12d72] text-white text-sm font-semibold hover:brightness-105 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save new password"}
         </button>

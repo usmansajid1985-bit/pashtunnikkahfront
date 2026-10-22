@@ -33,16 +33,17 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
       {rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between gap-2">
           <span className="min-w-0">
-            <span className="font-medium text-ink-950">{r.code}</span>{" "}
-            <span className="text-xs text-ink-700/45">
-              {new Date(r.blockedAt).toLocaleDateString()}
+            <span className="font-semibold text-ink-950">{r.code}</span>{" "}
+            <span className="text-[13px] text-ink-700/55">
+              Blocked on{" "}
+              {new Date(r.blockedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
             </span>
           </span>
           <button
             type="button"
             disabled={pending}
             onClick={() => unblock(r.peerUserId)}
-            className="shrink-0 px-3 py-1.5 rounded-full border border-ink-900/12 text-xs font-semibold hover:border-rose-300 disabled:opacity-50"
+            className="shrink-0 rounded-full border border-ink-900/15 px-4 py-1.5 text-[13px] font-semibold text-ink-950 hover:border-ink-900/30 disabled:opacity-50"
           >
             Unblock
           </button>

@@ -11,22 +11,41 @@ type Key =
   | "notify_updates"
   | "in_app_banners";
 
-const ROWS: { key: Key; label: string; hint: string }[] = [
+const PUSH_ROWS: { key: Key; label: string; hint: string }[] = [
   { key: "notify_requests", label: "Match requests", hint: "New and accepted requests" },
   { key: "notify_messages", label: "Messages", hint: "New chat messages" },
   { key: "notify_profile_views", label: "Profile views", hint: "When someone views your profile" },
   { key: "notify_wali", label: "Wali & family activity", hint: "Wali handovers and reminders" },
-  { key: "notify_updates", label: "Pashtun Nikah announcements", hint: "Product updates, community news and safety notices" },
-  {
-    key: "in_app_banners",
-    label: "In-app notification banners",
-    hint: "Show a banner at the top while you're using Pashtun Nikah",
-  },
+  { key: "notify_updates", label: "Pashtun Nikah updates", hint: "Announcements and new features" },
 ];
+
+const BANNER_ROW: { key: Key; label: string; hint: string } = {
+  key: "in_app_banners",
+  label: "In-app banners",
+  hint: "Show a banner while you're using Pashtun Nikah.",
+};
+
+export const NOTIFY_ALL_EVENT = "pn-notify-all";
 
 export function NotificationCategoryToggles() {
   const [prefs, setPrefs] = useState<Record<Key, boolean> | null>(null);
   const [saving, setSaving] = useState<Key | null>(null);
+
+  useEffect(() => {
+    const onAll = (ev: Event) => {
+      const on = Boolean((ev as CustomEvent<{ on?: boolean }>).detail?.on);
+      setPrefs({
+        notify_requests: on,
+        notify_messages: on,
+        notify_profile_views: on,
+        notify_wali: on,
+        notify_updates: on,
+        in_app_banners: on,
+      });
+    };
+    window.addEventListener(NOTIFY_ALL_EVENT, onAll);
+    return () => window.removeEventListener(NOTIFY_ALL_EVENT, onAll);
+  }, []);
 
   useEffect(() => {
     fetch("/api/push/preferences")
@@ -71,36 +90,45 @@ export function NotificationCategoryToggles() {
     }
   }
 
-  return (
-    <div className="mt-5 bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-5">
-      <h3 className="font-bold text-ink-950">What you&apos;re notified about</h3>
-      <div className="mt-3 divide-y divide-ink-900/6">
-        {ROWS.map((row) => (
-          <div key={row.key} className="flex items-center justify-between gap-4 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-ink-900">{row.label}</p>
-              <p className="text-xs text-ink-700/55">{row.hint}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={prefs?.[row.key] ?? true}
-              aria-label={row.label}
-              disabled={!prefs || saving === row.key}
-              onClick={() => toggle(row.key)}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition disabled:opacity-50 ${
-                prefs?.[row.key] ?? true ? "bg-rose-600" : "bg-ink-900/15"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
-                  prefs?.[row.key] ?? true ? "left-[22px]" : "left-0.5"
-                }`}
-              />
-            </button>
-          </div>
-        ))}
+  function row(item: { key: Key; label: string; hint: string }) {
+    const on = prefs?.[item.key] ?? true;
+    return (
+      <div key={item.key} className="flex items-center justify-between gap-4 py-3.5">
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-ink-950">{item.label}</p>
+          <p className="text-[13px] text-ink-700/55">{item.hint}</p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-label={item.label}
+          disabled={!prefs || saving === item.key}
+          onClick={() => toggle(item.key)}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition disabled:opacity-50 ${
+            on ? "bg-[#e12d72]" : "bg-ink-900/15"
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${on ? "left-[22px]" : "left-0.5"}`}
+          />
+        </button>
       </div>
-    </div>
+    );
+  }
+
+  const card = "mt-4 bg-white rounded-2xl border border-ink-900/8 shadow-[0_8px_30px_-20px_rgba(15,13,14,0.3)] px-5";
+
+  return (
+    <>
+      <div className={card}>
+        <div className="pt-4">
+          <h3 className="font-bold text-ink-950">Push alerts for</h3>
+          <p className="text-[13px] text-ink-700/55">These switches control push alerts.</p>
+        </div>
+        <div className="mt-1 divide-y divide-ink-900/6">{PUSH_ROWS.map(row)}</div>
+      </div>
+      <div className={`${card} py-1`}>{row(BANNER_ROW)}</div>
+    </>
   );
 }
