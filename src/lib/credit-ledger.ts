@@ -18,11 +18,6 @@ export type CreditReason =
   | "promotional_credit"
   | "referral_reward";
 
-async function nextLedgerId() {
-  const max = await prisma.credit_ledger.aggregate({ _max: { id: true } });
-  return (max._max.id ?? BigInt(0)) + BigInt(1);
-}
-
 /** Append-only audit trail entry for a credit balance change. Does not itself mutate the balance. */
 export async function recordCreditChange(opts: {
   userId: bigint;
@@ -38,7 +33,6 @@ export async function recordCreditChange(opts: {
 }) {
   return prisma.credit_ledger.create({
     data: {
-      id: await nextLedgerId(),
       user_id: opts.userId,
       amount: opts.amount,
       balance_type: opts.balanceType,

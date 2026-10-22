@@ -309,11 +309,8 @@ export async function POST(req: Request) {
           });
 
       if (!resumeIncompleteSignup) {
-        const maxLedger = await tx.credit_ledger.aggregate({ _max: { id: true } });
-        const ledgerId = (maxLedger._max.id ?? 0n) + 1n;
         await tx.credit_ledger.create({
           data: {
-            id: ledgerId,
             user_id: savedUser.id,
             amount: freeSettings.monthlyCredits,
             balance_type: "monthly",

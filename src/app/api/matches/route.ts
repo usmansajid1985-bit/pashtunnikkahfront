@@ -7,8 +7,7 @@ import { isBlockedBetween } from "@/lib/blocking";
 import { profileCodeOf } from "@/lib/notifications";
 import { maybeSendActivityEmail } from "@/lib/notification-email";
 import { getPlanSettings } from "@/lib/plan-settings";
-import { recordCreditChange } from "@/lib/credit-ledger";
-import { maybeRenewMonthlyCredits } from "@/lib/credit-renewal";
+import { ensureBasicAllowance, spendToken, withMemberTokens } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
 import { findPriorEndedMatch } from "@/lib/rematch-tokens";
 import { sendPushNotification } from "@/lib/push/server";
@@ -201,7 +200,7 @@ export async function POST(req: Request) {
     );
   }
 
-  await maybeRenewMonthlyCredits(me);
+  await ensureBasicAllowance(me);
 
   // Q09: a rematch is just a new pending request that costs one normal Match Token — no
   // separate rematch token. A withdrawn or expired request can be sent again straight away.
@@ -265,42 +264,47 @@ export async function POST(req: Request) {
   const id = await nextMatchRequestId();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + settings.requestExpiryDays * 24 * 60 * 60 * 1000);
-  const newBalance = credits - 1;
-
-  const created = await prisma.$transaction(async (tx) => {
-    const row = await tx.match_requests.create({
-      data: {
-        id,
-        sender_id: me,
-        receiver_id: peerUserId,
-        status: "pending",
-        expires_at: expiresAt,
-        created_at: now,
-        updated_at: now,
-      },
+  const OUT_OF_TOKENS = "out_of_tokens";
+  let created;
+  let newBalance = 0;
+  try {
+    // One member transaction: the request row and the token it spends commit together, and the
+    // row lock stops two simultaneous sends from spending the same last token.
+    created = await withMemberTokens(me, async (tx) => {
+      const row = await tx.match_requests.create({
+        data: {
+          id,
+          sender_id: me,
+          receiver_id: peerUserId,
+          status: "pending",
+          expires_at: expiresAt,
+          created_at: now,
+          updated_at: now,
+        },
+      });
+      if (introMessage) {
+        await tx.$executeRaw`UPDATE match_requests SET intro_message = ${introMessage} WHERE id = ${id}`;
+      }
+      if (priorEnded) {
+        await tx.$executeRaw`UPDATE match_requests SET prior_match_id = ${priorEnded.id} WHERE id = ${id}`;
+      }
+      const spent = await spendToken(tx, me, id);
+      if (!spent.ok) throw new Error(OUT_OF_TOKENS);
+      newBalance = spent.balance;
+      return row;
     });
-    if (introMessage) {
-      await tx.$executeRaw`UPDATE match_requests SET intro_message = ${introMessage} WHERE id = ${id}`;
+  } catch (err) {
+    if (err instanceof Error && err.message === OUT_OF_TOKENS) {
+      return NextResponse.json(
+        {
+          error: "You've used all your Match Tokens. Upgrade to Gold or buy more Match Tokens to keep sending requests.",
+          code: "out_of_tokens",
+        },
+        { status: 402 }
+      );
     }
-    if (priorEnded) {
-      await tx.$executeRaw`UPDATE match_requests SET prior_match_id = ${priorEnded.id} WHERE id = ${id}`;
-    }
-    await tx.users.update({
-      where: { id: me },
-      data: { requests_remaining: newBalance, updated_at: now },
-    });
-    return row;
-  });
-
-  await recordCreditChange({
-    userId: me,
-    amount: -1,
-    balanceType: "monthly",
-    reason: "request_sent",
-    previousBalance: credits,
-    newBalance,
-    relatedRequestId: created.id,
-  });
+    throw err;
+  }
 
   // Privacy-safe: no intro text in the payload — it can surface on a locked phone. The profile
   // code is fine (that's what the recipient sees in-app too).

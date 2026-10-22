@@ -7,7 +7,7 @@ import { SettingsShell } from "@/components/settings/settings-ui";
 import { MembershipActions } from "@/components/settings/membership-actions";
 import { GoldFeatureIcon, type GoldFeature } from "@/components/settings/membership-icons";
 import { getPlanSettings } from "@/lib/plan-settings";
-import { resolveTopupPriceId } from "@/lib/stripe";
+import { currentTopupPack } from "@/lib/stripe";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { GOLD_PRICE_LABEL, goldFeatures } from "@/lib/gold-offer";
 
@@ -29,6 +29,11 @@ const LEDGER_LABELS: Record<string, string> = {
   subscription_cancellation: "Gold ended",
   promotional_credit: "Promotional tokens",
   referral_reward: "Referral reward",
+  token_expired: "Unused tokens expired",
+  gold_upgrade_reconciled: "Basic tokens replaced by Gold",
+  gold_ended: "Gold tokens ended",
+  admin_grant: "Added by the PN team",
+  admin_remove: "Removed by the PN team",
 };
 
 const REFUND_REASONS = ["request_withdrawn_refund", "request_expired_refund", "request_blocked_refund"];
@@ -84,10 +89,10 @@ export default async function MembershipPage({
 
   const isGold = (user.plan || "").toLowerCase() === "gold";
   const active = (user.subscription_status || "").toLowerCase() === "active";
-  const [planSettings, goldSettings, topupPriceId] = await Promise.all([
+  const [planSettings, goldSettings, topupPack] = await Promise.all([
     getPlanSettings(user.plan),
     getPlanSettings("gold"),
-    resolveTopupPriceId(),
+    currentTopupPack().catch(() => ({ tokens: 5, pricePence: 699, priceId: "" })),
   ]);
 
   const allowance = planSettings.monthlyCredits;
@@ -222,7 +227,9 @@ export default async function MembershipPage({
                   isGold={isGold}
                   activeSubscription={active || isGold}
                   credits={balance}
-                  topupConfigured={Boolean(topupPriceId)}
+                  topupConfigured={Boolean(topupPack.priceId)}
+                  topupTokens={topupPack.tokens}
+                  topupPricePence={topupPack.pricePence}
                   priceLabel={GOLD_PRICE_LABEL}
                   features={features}
                 />

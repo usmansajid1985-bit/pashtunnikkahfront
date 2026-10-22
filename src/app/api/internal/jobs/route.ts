@@ -3,6 +3,7 @@ import { processFamilyReminders } from "@/lib/family-flow";
 import { processUnreadMessageReminders } from "@/lib/notification-email";
 import { NextResponse } from "next/server";
 import { purgeExpiredDeletions } from "@/lib/account-deletion";
+import { runBillingJobs } from "@/lib/billing-jobs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -31,8 +32,15 @@ async function run(req: Request) {
     return { deleted: 0 };
   });
 
+  // Token expiry + reminders, grace-period downgrades, Stripe reconciliation and credit audits.
+  const billing = await runBillingJobs().catch((err) => {
+    console.error("[billing] jobs failed", err);
+    return null;
+  });
+
   return NextResponse.json({
     ok: true,
+    billing,
     requests,
     family,
     messageReminders,

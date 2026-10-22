@@ -11,6 +11,8 @@ export function MembershipActions({
   activeSubscription,
   credits,
   topupConfigured = true,
+  topupTokens = TOPUP_CREDITS,
+  topupPricePence = TOPUP_AMOUNT_PENCE,
   priceLabel,
   features,
 }: {
@@ -20,6 +22,9 @@ export function MembershipActions({
   /** false when no Stripe price is resolvable for the top-up right now — show the CTA disabled
    * instead of letting it fail at checkout (PN-SETTINGS-006). */
   topupConfigured?: boolean;
+  /** The pack on sale (Admin → Billing). */
+  topupTokens?: number;
+  topupPricePence?: number;
   priceLabel: string;
   features: GoldFeature[];
 }) {
@@ -48,7 +53,7 @@ export function MembershipActions({
         }
         setMessage(
           data.type === "topup"
-            ? `${TOPUP_CREDITS} Match Tokens added to your account.`
+            ? `${topupTokens} Match Tokens added to your account.`
             : "Welcome to Gold — your membership is active."
         );
         router.replace("/settings/membership");
@@ -101,7 +106,7 @@ export function MembershipActions({
     });
   }
 
-  const topupLabel = `Buy ${TOPUP_CREDITS} Match Tokens — £${(TOPUP_AMOUNT_PENCE / 100).toFixed(2)}`;
+  const topupLabel = `Buy ${topupTokens} Match Tokens — £${(topupPricePence / 100).toFixed(2)}`;
 
   return (
     <div className="space-y-2.5">

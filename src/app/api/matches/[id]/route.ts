@@ -3,7 +3,7 @@ import { inBackground } from "@/lib/background";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { expireStaleRequests } from "@/lib/matches";
-import { recordCreditChange } from "@/lib/credit-ledger";
+import { refundTokenForRequest, withMemberTokens } from "@/lib/tokens";
 import { broadcastChat } from "@/lib/chat-broadcast";
 import { sendPushNotification } from "@/lib/push/server";
 import { profileCodeOf } from "@/lib/notifications";
@@ -173,31 +173,16 @@ export async function POST(
     if (match.status !== "pending") return staleResponse(id);
     // The pending→cancelled transition and the token refund happen together, and only the
     // request that wins the transition refunds — so a double-tap can't refund twice (F01).
-    const refund = await prisma.$transaction(async (tx) => {
+    const refund = await withMemberTokens(me, async (tx) => {
       const cancelled = await tx.match_requests.updateMany({
         where: { id, status: "pending" },
         data: { status: "cancelled", updated_at: new Date() },
       });
       if (cancelled.count === 0) return null;
-      const user = await tx.users.update({
-        where: { id: me },
-        data: { requests_remaining: { increment: 1 }, updated_at: new Date() },
-        select: { requests_remaining: true },
-      });
-      return user.requests_remaining ?? 1;
+      return refundTokenForRequest(tx, me, id, "request_withdrawn_refund");
     });
     if (refund == null) return staleResponse(id);
     notifyRequestChange(match, "cancelled");
-    await recordCreditChange({
-      userId: me,
-      amount: 1,
-      balanceType: "monthly",
-      reason: "request_withdrawn_refund",
-      previousBalance: refund - 1,
-      newBalance: refund,
-      relatedRequestId: id,
-      idempotencyKey: `withdraw-refund-${id}`,
-    }).catch((err) => console.error("[credits] withdraw refund ledger entry failed", err));
     return NextResponse.json({ ok: true, status: "cancelled", requestId: raw, creditsRemaining: refund });
   }
 

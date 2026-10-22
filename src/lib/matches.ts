@@ -13,33 +13,19 @@ export async function closePendingWithRefund(
   to: "expired" | "cancelled",
   reason: "request_expired_refund" | "request_blocked_refund"
 ): Promise<boolean> {
-  const result = await prisma.$transaction(async (tx) => {
-    const row = await tx.match_requests.findUnique({ where: { id: requestId }, select: { sender_id: true } });
-    if (!row) return null;
-    const closed = await tx.match_requests.updateMany({
+  const row = await prisma.match_requests.findUnique({ where: { id: requestId }, select: { sender_id: true } });
+  if (!row) return false;
+  const { refundTokenForRequest, withMemberTokens } = await import("@/lib/tokens");
+  const closed = await withMemberTokens(row.sender_id, async (tx) => {
+    const res = await tx.match_requests.updateMany({
       where: { id: requestId, status: "pending" },
       data: { status: to, updated_at: new Date() },
     });
-    if (closed.count === 0) return null;
-    const user = await tx.users.update({
-      where: { id: row.sender_id },
-      data: { requests_remaining: { increment: 1 }, updated_at: new Date() },
-      select: { requests_remaining: true },
-    });
-    return { senderId: row.sender_id, balance: user.requests_remaining ?? 1 };
+    if (res.count === 0) return false;
+    await refundTokenForRequest(tx, row.sender_id, requestId, reason);
+    return true;
   });
-  if (!result) return false;
-  const { recordCreditChange } = await import("@/lib/credit-ledger");
-  await recordCreditChange({
-    userId: result.senderId,
-    amount: 1,
-    balanceType: "monthly",
-    reason,
-    previousBalance: result.balance - 1,
-    newBalance: result.balance,
-    relatedRequestId: requestId,
-    idempotencyKey: `${reason}-${requestId}`,
-  }).catch((err) => console.error("[credits] refund ledger entry failed", err));
+  if (!closed) return false;
   return true;
 }
 

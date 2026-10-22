@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  appUrl,
-  ensureStripeCustomer,
-  getStripe,
-  resolveTopupPriceId,
-  TOPUP_AMOUNT_PENCE,
-} from "@/lib/stripe";
+import { appUrl, currentTopupPack, ensureStripeCustomer, getStripe } from "@/lib/stripe";
+import { raiseAdminAlert } from "@/lib/billing-events";
 
 export const dynamic = "force-dynamic";
 
@@ -20,9 +15,21 @@ export async function POST() {
 
   try {
     const stripe = getStripe();
-    const priceId = await resolveTopupPriceId();
+    const pack = await currentTopupPack();
+    const priceId = pack.priceId;
     if (!priceId) {
       return NextResponse.json({ error: "Top-up price is not configured." }, { status: 500 });
+    }
+    // Never charge a price that disagrees with what the member was shown.
+    const price = await stripe.prices.retrieve(priceId);
+    if (price.unit_amount !== pack.pricePence || !price.active) {
+      await raiseAdminAlert({
+        kind: "config_error",
+        severity: "critical",
+        message: `Top-up checkout blocked: Stripe price ${priceId} is ${price.active ? `£${((price.unit_amount ?? 0) / 100).toFixed(2)}` : "inactive"} but Admin → Billing says £${(pack.pricePence / 100).toFixed(2)}. Re-save the top-up settings to resync.`,
+        dedupeKey: `topupmismatch_${priceId}_${pack.pricePence}`,
+      });
+      return NextResponse.json({ error: "Top-ups are temporarily unavailable. Please try again later." }, { status: 503 });
     }
 
     const customerId = await ensureStripeCustomer(user);
@@ -32,7 +39,7 @@ export async function POST() {
       mode: "payment",
       customer: customerId,
       client_reference_id: user.id.toString(),
-      metadata: { userId: user.id.toString(), checkoutType: "topup" },
+      metadata: { userId: user.id.toString(), checkoutType: "topup", tokens: String(pack.tokens) },
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/settings/membership?topup=1&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/settings/membership?canceled=1`,
@@ -47,8 +54,8 @@ export async function POST() {
         user_id: user.id,
         stripe_session_id: checkout.id,
         type: "topup",
-        plan_or_pack: "5_credits",
-        amount_pence: checkout.amount_total ?? TOPUP_AMOUNT_PENCE,
+        plan_or_pack: `${pack.tokens}_credits`,
+        amount_pence: checkout.amount_total ?? pack.pricePence,
         currency: (checkout.currency || "gbp").toLowerCase(),
         status: "pending",
         created_at: new Date(),
