@@ -5,6 +5,7 @@ import { ensureBillingSchema } from "@/lib/billing-schema";
 import {
   applyGoldCycle,
   closeGoldTokens,
+  ensureTokenLots,
   extendGoldLotsTo,
   getTokenSettings,
   grantTokens,
@@ -234,6 +235,7 @@ export async function handleGoldInvoicePaid(inv: InvoiceLike, metaUserId?: strin
     WHERE id = ${paymentId}
   `;
 
+  await ensureTokenLots(member.id);
   await prisma.users.update({
     where: { id: member.id },
     data: {
@@ -320,6 +322,7 @@ export async function activateGoldFromCheckout(opts: {
     });
   }
 
+  await ensureTokenLots(opts.userId);
   await prisma.users.update({
     where: { id: opts.userId },
     data: {

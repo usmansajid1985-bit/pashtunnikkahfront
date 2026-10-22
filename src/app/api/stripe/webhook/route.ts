@@ -51,6 +51,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  if (!event?.id || !event.type) return NextResponse.json({ error: "Invalid event" }, { status: 400 });
+
   await ensureP1Schema();
   await ensureStripeWebhookSchema();
 

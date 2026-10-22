@@ -229,6 +229,14 @@ async function openLots(tx: Db, userId: bigint, sources: TokenSource[]): Promise
   `;
 }
 
+/**
+ * Move a member's old flat balance into lots NOW, while their plan is still what it was — call
+ * before changing the plan (e.g. Basic → Gold), or the leftover Basic tokens would be read as Gold.
+ */
+export async function ensureTokenLots(userId: bigint) {
+  await withMemberTokens(userId, async () => undefined);
+}
+
 /** Grant outside an existing transaction. */
 export async function grantTokens(g: GrantInput): Promise<{ granted: boolean; lotId: bigint | null; balance: number }> {
   return withMemberTokens(g.userId, async (tx) => {

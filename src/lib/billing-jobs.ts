@@ -146,6 +146,7 @@ async function auditCredits(): Promise<number> {
   const unpaid = await prisma.$queryRaw<{ id: bigint; user_id: bigint; type: string; stripe_session_id: string; stripe_invoice_id: string | null }[]>`
     SELECT p.id, p.user_id, p.type, p.stripe_session_id, p.stripe_invoice_id FROM payments p
     WHERE p.status = 'completed' AND p.created_at > NOW() - INTERVAL '14 days' AND p.created_at < NOW() - INTERVAL '15 minutes'
+      AND p.created_at > (SELECT engine_started_at FROM token_settings WHERE id = 1)
       AND p.type IN ('topup', 'subscription')
       AND NOT EXISTS (
         SELECT 1 FROM token_lots l WHERE l.user_id = p.user_id
