@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { LogoTile } from "@/components/home/cta-footer";
 
 type Me = {
   id: string;
@@ -12,7 +12,6 @@ type Me = {
 
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
-  const [showBanner, setShowBanner] = useState(true);
   const [me, setMe] = useState<Me>(null);
   const [meLoaded, setMeLoaded] = useState(false);
 
@@ -56,42 +55,19 @@ export function SiteHeader() {
 
   return (
     <>
-      {showBanner && (
-        <div className="relative bg-rose-600 text-white text-sm">
-          <div className="max-w-7xl mx-auto px-5 sm:px-8 py-2.5 flex items-center justify-center gap-2 text-center pr-10">
-            <span>We&apos;re in early access — register now and be among our founding members.</span>
-            {!loggedIn ? (
-              <Link href="/signup" className="underline font-semibold whitespace-nowrap hover:no-underline">
-                Join today
-              </Link>
-            ) : null}
-          </div>
-          <button
-            aria-label="Dismiss"
-            onClick={() => setShowBanner(false)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center text-white/80 hover:text-white"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="5" y1="5" x2="19" y2="19" />
-              <line x1="19" y1="5" x2="5" y2="19" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-ink-900/5">
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
           <Link href={loggedIn ? "/browse" : "/"} className="flex items-center gap-2.5">
-            <Image src="/images/logo.jpeg" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
-            <span className="text-lg font-semibold tracking-tight text-ink-950">Pashtun Nikah</span>
+            <LogoTile size={40} />
+            <span className="font-display text-[19px] font-medium text-ink-950">Pashtun Nikah</span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-9 text-sm font-medium text-ink-700">
-            <a href="#how-it-works" className="hover:text-rose-600 transition">How It Works</a>
-            <a href="#trust" className="hover:text-rose-600 transition">Why Us</a>
-            <a href="#about" className="hover:text-rose-600 transition">About</a>
-            <a href="#stories" className="hover:text-rose-600 transition">Stories</a>
-            <a href="#faq" className="hover:text-rose-600 transition">FAQ</a>
+          <nav className="hidden lg:flex items-center gap-8 text-[13px] text-ink-700">
+            <a href="#how-it-works" className="hover:text-brand transition">How It Works</a>
+            <a href="#privacy" className="hover:text-brand transition">Why Us</a>
+            <a href="#why-us" className="hover:text-brand transition">About</a>
+            <a href="#stories" className="hover:text-brand transition">Stories</a>
+            <a href="#faq" className="hover:text-brand transition">FAQ</a>
           </nav>
 
           <div className="hidden lg:flex items-center gap-4">
@@ -99,13 +75,13 @@ export function SiteHeader() {
               <span className="text-sm text-ink-700/40">…</span>
             ) : loggedIn ? (
               <>
-                <Link href="/browse" className="text-sm font-medium text-ink-900 hover:text-rose-600 transition">
+                <Link href="/browse" className="text-sm font-medium text-ink-900 hover:text-brand transition">
                   Browse
                 </Link>
-                <Link href="/chats" className="text-sm font-medium text-ink-900 hover:text-rose-600 transition">
+                <Link href="/chats" className="text-sm font-medium text-ink-900 hover:text-brand transition">
                   Chats
                 </Link>
-                <Link href="/profile" className="text-sm font-semibold text-rose-600">
+                <Link href="/profile" className="text-sm font-semibold text-brand">
                   {me?.profileCode || me?.displayName || "My Profile"}
                 </Link>
                 <button
@@ -118,14 +94,14 @@ export function SiteHeader() {
               </>
             ) : (
               <>
-                <Link href="/login" className="text-sm font-medium text-ink-900 hover:text-rose-600 transition">
-                  Login
+                <Link href="/login" className="text-sm font-medium text-ink-900 hover:text-brand transition">
+                  Log in
                 </Link>
                 <Link
                   href="/signup"
-                  className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 transition"
+                  className="px-5 py-2.5 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand-700 transition"
                 >
-                  Register
+                  Sign up
                 </Link>
               </>
             )}
@@ -158,8 +134,8 @@ export function SiteHeader() {
       >
         <div className="flex items-center justify-between px-5 h-16 border-b border-ink-900/5">
           <div className="flex items-center gap-2.5">
-            <Image src="/images/logo.jpeg" alt="Pashtun Nikah logo" width={32} height={32} className="rounded-lg object-cover" />
-            <span className="text-lg font-semibold text-ink-950">Pashtun Nikah</span>
+            <LogoTile size={40} />
+            <span className="font-display text-lg font-medium text-ink-950">Pashtun Nikah</span>
           </div>
           <button aria-label="Close menu" onClick={close} className="w-9 h-9 flex items-center justify-center text-ink-900">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -171,8 +147,8 @@ export function SiteHeader() {
         <nav className="flex-1 flex flex-col gap-1 px-5 pt-8">
           {[
             ["#how-it-works", "How It Works"],
-            ["#trust", "Why Us"],
-            ["#about", "About"],
+            ["#privacy", "Why Us"],
+            ["#why-us", "About"],
             ["#stories", "Stories"],
             ["#faq", "FAQ"],
           ].map(([href, label]) => (
@@ -180,7 +156,7 @@ export function SiteHeader() {
               key={href}
               href={href}
               onClick={close}
-              className="py-4 border-b border-ink-900/5 text-2xl font-serif text-ink-950"
+              className="py-4 border-b border-ink-900/5 text-2xl font-display font-medium text-ink-950"
             >
               {label}
             </a>
@@ -189,7 +165,7 @@ export function SiteHeader() {
         <div className="px-5 pb-10 pt-4 flex flex-col gap-3">
           {loggedIn ? (
             <>
-              <Link href="/browse" onClick={close} className="text-center px-5 py-3.5 rounded-full bg-rose-600 text-white font-semibold">
+              <Link href="/browse" onClick={close} className="text-center px-5 py-3.5 rounded-full bg-brand text-white font-semibold">
                 Browse profiles
               </Link>
               <Link href="/chats" onClick={close} className="text-center px-5 py-3.5 rounded-full border border-ink-900/15 text-ink-900 font-semibold">
@@ -202,10 +178,10 @@ export function SiteHeader() {
           ) : (
             <>
               <Link href="/login" onClick={close} className="text-center px-5 py-3.5 rounded-full border border-ink-900/15 text-ink-900 font-semibold">
-                Login
+                Log in
               </Link>
-              <Link href="/signup" onClick={close} className="text-center px-5 py-3.5 rounded-full bg-rose-600 text-white font-semibold">
-                Register
+              <Link href="/signup" onClick={close} className="text-center px-5 py-3.5 rounded-full bg-brand text-white font-semibold">
+                Sign up
               </Link>
             </>
           )}

@@ -13,6 +13,10 @@
   --cream: #fdf6f3;
   --sand: #faf8f6;
   --gold: #cfa25d;
+  /* Landing page brand pink and tinted section background. */
+  --brand: #e12d72;
+  --brand-700: #c41d5e;
+  --blush: #fffafa;
   /* Height reserved for the sticky mobile bottom nav; 0 unless that style is active (see
      useMobileNavStyle, which toggles this class) and always 0 on desktop. */
   --pn-bottom-nav-h: 0px;
@@ -41,6 +45,10 @@ body.pn-has-bottom-nav {
   --color-cream: var(--cream);
   --color-sand: var(--sand);
   --color-gold: var(--gold);
+  --color-brand: var(--brand);
+  --color-brand-700: var(--brand-700);
+  --color-blush: var(--blush);
+  --font-display: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
 }
@@ -291,7 +299,7 @@ body {
   transition: max-height 0.4s ease;
 }
 .faq-item.open .faq-a {
-  max-height: 240px;
+  max-height: 420px;
 }
 .faq-plus {
   transition: transform 0.3s ease;

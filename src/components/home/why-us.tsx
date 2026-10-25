@@ -1,58 +1,111 @@
+import Link from "next/link";
+import type { ReactNode } from "react";
+import { SectionHeading } from "@/components/home/section-heading";
+
+function IconTile({ children }: { children: ReactNode }) {
+  return (
+    <span className="w-[60px] h-[60px] rounded-xl bg-[#fdeef3] flex items-center justify-center">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--brand)" strokeWidth="1.5">
+        {children}
+      </svg>
+    </span>
+  );
+}
+
+const features: { title: string; body: string; badge: ReactNode; link?: boolean }[] = [
+  {
+    title: "Chat for Free",
+    body: "Browse profiles, send free monthly match requests and chat with your matches at no extra cost.",
+    badge: (
+      <IconTile>
+        <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20l1.1-4.3A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5Z" />
+      </IconTile>
+    ),
+  },
+  {
+    title: "Wali involvement",
+    body: "We strongly encourage wali (guardian) involvement throughout the marriage process.",
+    badge: (
+      <IconTile>
+        <circle cx="12" cy="7.5" r="2.6" />
+        <circle cx="5.5" cy="10" r="2" />
+        <circle cx="18.5" cy="10" r="2" />
+        <path d="M7.5 19c0-2.8 2-4.8 4.5-4.8s4.5 2 4.5 4.8M2.5 18c0-2 1.3-3.5 3-3.5 1 0 1.8.4 2.3 1M21.5 18c0-2-1.3-3.5-3-3.5-1 0-1.8.4-2.3 1" />
+      </IconTile>
+    ),
+  },
+  {
+    title: "Every profile reviewed",
+    body: "Every profile is individually reviewed by our team before approval, helping to keep our community genuine and safe.",
+    badge: (
+      <IconTile>
+        <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" />
+        <path d="m9 12 2 2 4-4" />
+      </IconTile>
+    ),
+  },
+  {
+    title: "Dedicated wali oversight",
+    body: "Give your wali read-only access to chats, so they can stay informed and support you throughout.",
+    badge: (
+      <IconTile>
+        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+        <circle cx="12" cy="12" r="3" />
+      </IconTile>
+    ),
+  },
+  {
+    title: "Culturally appropriate",
+    body: "Designed for Pashtun Muslims, our platform celebrates our culture while upholding Islamic values.",
+    badge: (
+      <IconTile>
+        <path d="M12 7.2s-2.6-1.7-2.6-3.3A1.4 1.4 0 0 1 12 3.3a1.4 1.4 0 0 1 2.6.6c0 1.6-2.6 3.3-2.6 3.3Z" fill="var(--brand)" />
+        <circle cx="12" cy="11.5" r="2.2" />
+        <circle cx="6" cy="13" r="1.8" />
+        <circle cx="18" cy="13" r="1.8" />
+        <path d="M8 21c0-2.6 1.8-4.5 4-4.5s4 1.9 4 4.5M2.8 20c0-1.8 1.3-3.2 3.2-3.2M21.2 20c0-1.8-1.3-3.2-3.2-3.2" />
+      </IconTile>
+    ),
+  },
+  {
+    title: "More with Gold",
+    body: "Upgrade to Gold for 10 monthly Match Tokens, personalised Match Insights and more premium features.",
+    link: true,
+    badge: (
+      <span className="font-display inline-flex items-center h-[38px] px-4 rounded-full bg-gradient-to-r from-[#f9cfe0] to-[#fbe3c4] text-[15px] font-medium text-ink-950">
+        Gold
+      </span>
+    ),
+  },
+];
+
 export function WhyUs() {
   return (
-    <section id="trust" className="max-w-7xl mx-auto px-5 sm:px-8 py-24 sm:py-32">
-      <div className="reveal max-w-lg">
-        <span className="text-rose-600 text-xs font-semibold uppercase tracking-widest">Why Us</span>
-        <h2 className="font-serif mt-3 text-4xl sm:text-5xl font-medium text-ink-950 tracking-tight">
-          Built on trust &amp; principle
-        </h2>
-      </div>
+    <section id="why-us" className="bg-blush scroll-mt-20 py-20 sm:py-28">
+      <SectionHeading
+        title={
+          <>
+            Nikah, the <span className="text-brand">Pashtun</span> way.
+          </>
+        }
+        subtitle="Built for our people."
+      />
 
-      <div className="reveal mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="lg:col-span-2 lg:row-span-2 p-8 rounded-3xl bg-rose-600 text-white card-hover flex flex-col justify-between min-h-[220px]">
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.6">
-            <path d="M12 21c-4.97-2.5-8-6.5-8-10.5A5.5 5.5 0 0 1 9.5 5c1.03 0 2.02.35 2.5 1 0 0 1.47-1 2.5-1A5.5 5.5 0 0 1 20 10.5c0 4-3.03 8-8 10.5Z" />
-          </svg>
-          <div>
-            <h3 className="font-serif text-2xl mt-6">Shariah Compliant</h3>
-            <p className="mt-2 text-white/75 text-sm leading-relaxed">
-              Every step is designed in accordance with Islamic principles. Wali involvement is encouraged and the
-              process remains halal throughout.
-            </p>
-          </div>
-        </div>
-        <div className="p-7 rounded-3xl border border-ink-900/8 card-hover">
-          <h3 className="font-semibold text-ink-950">Guaranteed Anonymity</h3>
-          <p className="mt-2 text-sm text-ink-700 leading-relaxed">
-            Contact details are never publicly displayed — shared only through verified channels.
-          </p>
-        </div>
-        <div className="p-7 rounded-3xl border border-ink-900/8 card-hover">
-          <h3 className="font-semibold text-ink-950">100% Verified</h3>
-          <p className="mt-2 text-sm text-ink-700 leading-relaxed">
-            Every profile is manually reviewed before going live. Zero fake profiles.
-          </p>
-        </div>
-        <div className="p-7 rounded-3xl border border-ink-900/8 card-hover">
-          <h3 className="font-semibold text-ink-950">Family Involvement</h3>
-          <p className="mt-2 text-sm text-ink-700 leading-relaxed">
-            Wali (guardian) involvement is encouraged at every stage — not a dating app.
-          </p>
-        </div>
-        <div className="p-7 rounded-3xl border border-ink-900/8 card-hover">
-          <h3 className="font-semibold text-ink-950">Profile ID Verification</h3>
-          <p className="mt-2 text-sm text-ink-700 leading-relaxed">
-            Every approved member gets a unique ID anyone can verify.
-          </p>
-        </div>
-        <div className="lg:col-span-2 p-7 rounded-3xl border border-ink-900/8 card-hover flex items-center justify-between gap-4">
-          <div>
-            <h3 className="font-semibold text-ink-950">Free to Register</h3>
-            <p className="mt-2 text-sm text-ink-700 leading-relaxed">
-              No hidden fees — accessible to all Pashtun families worldwide.
-            </p>
-          </div>
-          <span className="font-serif text-4xl text-ink-950/10 shrink-0">£0</span>
+      {/* The 1px gap over a tinted background draws the dividers between cells. */}
+      <div className="reveal max-w-6xl mx-auto px-5 sm:px-8 mt-14 sm:mt-24">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-px bg-ink-900/8">
+          {features.map((f) => (
+            <div key={f.title} className="bg-blush py-7 sm:px-6 lg:px-8">
+              <div className="h-[60px] flex items-center">{f.badge}</div>
+              <h3 className="font-display mt-5 text-[22px] sm:text-[24px] font-semibold text-ink-950">{f.title}</h3>
+              <p className="mt-2 text-[16px] leading-relaxed text-[#8b8e95]">{f.body}</p>
+              {f.link ? (
+                <Link href="/settings/membership" className="mt-2 inline-block text-[16px] text-brand hover:underline">
+                  Learn more about Gold →
+                </Link>
+              ) : null}
+            </div>
+          ))}
         </div>
       </div>
     </section>

@@ -1,115 +1,97 @@
-"use client";
+import Image from "next/image";
+import { SectionHeading } from "@/components/home/section-heading";
 
-import { useEffect, useState } from "react";
+// Screenshots of real member messages, shared with permission (names as given in the design).
+const marriageMessages = [
+  { img: "/images/landing/msg-waleed.webp", w: 984, h: 536, name: "Waleed", side: "left" },
+  { img: "/images/landing/msg-anon.webp", w: 1096, h: 392, name: "Anonymous member", side: "right" },
+  { img: "/images/landing/msg-sara.webp", w: 1216, h: 432, name: "Sara", side: "left" },
+] as const;
 
-const stories = [
-  {
-    quote:
-      "We connected through Wali Oversight mode and it made the whole process feel respectful and comfortable for my family.",
-    name: "Placeholder Member · Manchester",
-    img: "https://images.unsplash.com/photo-1522389903690-657f5318cf1b?q=80&w=300&auto=format&fit=crop",
-  },
-  {
-    quote: "The verification process gave us real peace of mind before we even started chatting.",
-    name: "Placeholder Member · Birmingham",
-    img: "https://images.unsplash.com/photo-1634858215875-ea5cf1b49bd5?q=80&w=300&auto=format&fit=crop",
-  },
-  {
-    quote: "Simple, respectful, and built around our values — exactly what we were looking for.",
-    name: "Placeholder Member · Bradford",
-    img: "https://images.unsplash.com/photo-1706471406001-cb671b29cc7f?q=80&w=300&auto=format&fit=crop",
-  },
+const kindWords = [
+  { img: "/images/landing/kind-1.webp", w: 888, h: 272 },
+  { img: "/images/landing/kind-2.webp", w: 1064, h: 240 },
+  { img: "/images/landing/kind-3.webp", w: 856, h: 360 },
+  { img: "/images/landing/kind-4.webp", w: 1104, h: 296 },
+  { img: "/images/landing/kind-5.webp", w: 1112, h: 328 },
 ];
 
-function StoryCard({ quote, name, img }: (typeof stories)[0]) {
+function Screenshot({ img, w, h, alt }: { img: string; w: number; h: number; alt: string }) {
   return (
-    <div className="bg-white border border-ink-900/8 rounded-3xl p-7 shadow-sm h-full">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={img} alt="Placeholder success story" className="w-14 h-14 rounded-full object-cover grayscale" />
-      <p className="font-serif italic text-lg text-ink-950 leading-relaxed mt-4">&ldquo;{quote}&rdquo;</p>
-      <p className="mt-4 font-semibold text-rose-600 text-sm">{name}</p>
-    </div>
+    <Image
+      src={img}
+      alt={alt}
+      width={w}
+      height={h}
+      className="w-full h-auto rounded-[14px] sm:rounded-[18px] shadow-[0_10px_30px_-18px_rgba(0,0,0,0.6)]"
+    />
   );
 }
 
 export function Stories() {
-  const [index, setIndex] = useState(0);
-
-  useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % stories.length), 6000);
-    return () => clearInterval(id);
-  }, []);
-
   return (
-    <section id="stories" className="bg-[#faf6f1] border-y border-ink-900/5 overflow-hidden">
-      <div className="max-w-6xl mx-auto px-5 sm:px-8 py-20 sm:py-28">
-        <div className="reveal text-center max-w-xl mx-auto">
-          <span className="text-rose-600 text-xs font-semibold uppercase tracking-widest">Success Stories</span>
-          <h2 className="font-serif mt-3 text-4xl sm:text-5xl font-medium text-ink-950 tracking-tight">
-            Real families, real matches
-          </h2>
-          <p className="mt-2 text-xs text-ink-900/35">
-            (Placeholder photos &amp; quotes for design preview — to be replaced with real member stories)
-          </p>
-        </div>
+    <>
+      <section id="stories" className="bg-white scroll-mt-20 py-20 sm:py-28">
+        <SectionHeading
+          title={
+            <>
+              Real marriages. <span className="text-brand">Real messages.</span>
+            </>
+          }
+          subtitle="Genuine messages from our users."
+        />
 
-        <div className="reveal hidden sm:grid mt-12 sm:grid-cols-3 gap-5">
-          {stories.map((s) => (
-            <StoryCard key={s.name} {...s} />
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 mt-12 sm:mt-20 flex flex-col gap-6 sm:gap-3">
+          {marriageMessages.map((m) => (
+            <figure
+              key={m.name}
+              className={`reveal flex flex-col gap-3 sm:items-center sm:gap-5 ${
+                m.side === "left" ? "sm:flex-row" : "sm:flex-row-reverse"
+              }`}
+            >
+              <div className={m.name === "Sara" ? "sm:w-[62%]" : m.side === "left" ? "sm:w-[50%]" : "sm:w-[55%]"}>
+                <Screenshot img={m.img} w={m.w} h={m.h} alt={`Message from ${m.name}`} />
+              </div>
+              <figcaption
+                className={`font-display text-[22px] sm:text-[32px] font-semibold text-brand ${
+                  m.side === "right" ? "sm:text-right text-right" : ""
+                }`}
+              >
+                {m.side === "left" ? (
+                  <>
+                    <span className="text-black">– </span>
+                    {m.name}
+                  </>
+                ) : (
+                  <>
+                    {m.name}
+                    <span className="text-black"> –</span>
+                  </>
+                )}
+              </figcaption>
+            </figure>
           ))}
         </div>
+      </section>
 
-        <div className="reveal sm:hidden mt-10 relative">
-          <div className="overflow-hidden rounded-3xl">
-            <div
-              className="flex transition-transform duration-500"
-              style={{
-                transform: `translateX(-${index * 100}%)`,
-                transitionTimingFunction: "cubic-bezier(.16,1,.3,1)",
-              }}
-            >
-              {stories.map((s) => (
-                <div key={s.name} className="min-w-full px-1">
-                  <StoryCard {...s} />
-                </div>
-              ))}
+      <section className="bg-blush py-20 sm:py-28">
+        <SectionHeading
+          title={
+            <>
+              What our <span className="text-brand">members</span> say.
+            </>
+          }
+          subtitle="Kind words from our community."
+        />
+
+        <div className="reveal max-w-6xl mx-auto px-5 sm:px-8 mt-12 sm:mt-20 columns-1 md:columns-2 gap-3 [&>*]:mb-3">
+          {kindWords.map((k, i) => (
+            <div key={k.img} className="break-inside-avoid">
+              <Screenshot img={k.img} w={k.w} h={k.h} alt={`Message from a member ${i + 1}`} />
             </div>
-          </div>
-          <div className="flex justify-center gap-3 mt-6">
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i - 1 + stories.length) % stories.length)}
-              className="w-9 h-9 rounded-full border border-ink-900/10 flex items-center justify-center"
-              aria-label="Previous story"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f0d0e" strokeWidth="2">
-                <path d="m15 18-6-6 6-6" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIndex((i) => (i + 1) % stories.length)}
-              className="w-9 h-9 rounded-full border border-ink-900/10 flex items-center justify-center"
-              aria-label="Next story"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0f0d0e" strokeWidth="2">
-                <path d="m9 18 6-6-6-6" />
-              </svg>
-            </button>
-          </div>
-          <div className="flex justify-center gap-2 mt-4">
-            {stories.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Go to story ${i + 1}`}
-                className={`story-dot ${i === index ? "active" : ""}`}
-                onClick={() => setIndex(i)}
-              />
-            ))}
-          </div>
+          ))}
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
