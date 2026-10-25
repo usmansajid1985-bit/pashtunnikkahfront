@@ -48,7 +48,7 @@ const steps = [
   },
 ];
 
-export function HowItWorks() {
+export function HowItWorks({ loggedIn }: { loggedIn: boolean }) {
   return (
     <section id="how-it-works" className="bg-blush scroll-mt-20 py-20 sm:py-28">
       <SectionHeading title="How Pashtun Nikah works" subtitle="The first Pashtun marriage app." />
@@ -93,10 +93,10 @@ export function HowItWorks() {
 
       <div className="mt-12 flex justify-center">
         <Link
-          href="/signup"
+          href={loggedIn ? "/browse" : "/signup"}
           className="font-display inline-flex items-center gap-3 px-10 h-[48px] rounded-full bg-brand text-white text-[15px] font-medium shadow-[0_8px_20px_-8px_rgba(225,45,114,0.6)] hover:bg-brand-700 transition"
         >
-          Get Started
+          {loggedIn ? "Find your match" : "Get Started"}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
             <path d="M5 12h14M13 6l6 6-6 6" />
           </svg>

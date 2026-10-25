@@ -2,21 +2,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { GetAppButton } from "@/components/home/get-app-button";
 
-export function SignupAndAppButtons() {
+/** Members already have an account, so the primary CTA takes them to Browse instead of Sign up. */
+export function SignupAndAppButtons({ loggedIn }: { loggedIn: boolean }) {
   return (
     <div className="flex flex-col items-center gap-[18px]">
       <Link
-        href="/signup"
-        className="font-display inline-flex items-center justify-center w-[175px] h-[46px] rounded-full bg-brand text-white text-[16px] font-medium shadow-[0_6px_18px_-6px_rgba(225,45,114,0.6)] hover:bg-brand-700 transition"
+        href={loggedIn ? "/browse" : "/signup"}
+        className="font-display inline-flex items-center justify-center min-w-[175px] px-6 h-[46px] rounded-full bg-brand text-white text-[16px] font-medium shadow-[0_6px_18px_-6px_rgba(225,45,114,0.6)] hover:bg-brand-700 transition"
       >
-        Sign up
+        {loggedIn ? "Find your match" : "Sign up"}
       </Link>
       <GetAppButton />
     </div>
   );
 }
 
-export function Hero() {
+export function Hero({ loggedIn }: { loggedIn: boolean }) {
   return (
     <section className="bg-white">
       <div className="max-w-5xl mx-auto px-5 pt-14 pb-20 sm:pt-20 sm:pb-24 text-center">
@@ -35,7 +36,7 @@ export function Hero() {
           Where <span className="text-brand">Pashtuns</span> marry.
         </p>
         <div className="mt-12 sm:mt-14">
-          <SignupAndAppButtons />
+          <SignupAndAppButtons loggedIn={loggedIn} />
         </div>
       </div>
     </section>

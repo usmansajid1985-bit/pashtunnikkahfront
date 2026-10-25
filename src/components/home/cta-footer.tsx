@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignupAndAppButtons } from "@/components/home/hero";
 
-export function FinalCTA() {
+export function FinalCTA({ loggedIn }: { loggedIn: boolean }) {
   return (
     <section className="bg-blush py-24 sm:py-32 text-center">
       <h2 className="reveal font-display font-semibold tracking-[-0.02em] leading-[1.05]">
@@ -10,7 +10,7 @@ export function FinalCTA() {
         <span className="block text-[44px] sm:text-[76px] text-brand">Pashtun Nikah</span>
       </h2>
       <div className="mt-12 sm:mt-14">
-        <SignupAndAppButtons />
+        <SignupAndAppButtons loggedIn={loggedIn} />
       </div>
     </section>
   );

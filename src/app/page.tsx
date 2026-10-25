@@ -8,24 +8,27 @@ import { Stories } from "@/components/home/stories";
 import { FAQ } from "@/components/home/faq";
 import { FinalCTA, SiteFooter } from "@/components/home/cta-footer";
 import { poppins } from "@/components/home/landing-font";
+import { getSession } from "@/lib/auth";
 
 export const metadata = {
   title: "Pashtun Nikah — Where Pashtuns marry",
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const loggedIn = Boolean(await getSession());
+
   return (
     <div className={poppins.variable}>
       <RevealObserver />
       <SiteHeader />
       <main>
-        <Hero />
-        <HowItWorks />
+        <Hero loggedIn={loggedIn} />
+        <HowItWorks loggedIn={loggedIn} />
         <PrivacyReveal />
         <WhyUs />
         <Stories />
         <FAQ />
-        <FinalCTA />
+        <FinalCTA loggedIn={loggedIn} />
       </main>
       <SiteFooter />
     </div>
