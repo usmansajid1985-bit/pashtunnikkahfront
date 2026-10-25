@@ -45,6 +45,13 @@ export function SiteHeader() {
   }, []);
 
   const close = () => setOpen(false);
+  // Drawer items slide in one after another as the panel opens, and all leave together on close.
+  const stagger = (i: number) => ({
+    className: `transition-[opacity,transform] duration-500 ease-[cubic-bezier(.16,1,.3,1)] motion-reduce:transition-none ${
+      open ? "opacity-100 translate-x-0" : "opacity-0 translate-x-10"
+    }`,
+    style: { transitionDelay: open ? `${120 + i * 55}ms` : "0ms" },
+  });
   const loggedIn = Boolean(me);
 
   async function logout() {
@@ -122,16 +129,16 @@ export function SiteHeader() {
       </header>
 
       <div
-        className={`fixed inset-0 z-50 bg-ink-950/50 lg:hidden transition-opacity duration-350 ${
+        className={`fixed inset-0 z-50 bg-ink-950/50 backdrop-blur-[2px] lg:hidden transition-opacity duration-500 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={close}
       />
       <div
-        className={`fixed inset-y-0 right-0 z-50 w-full bg-white lg:hidden flex flex-col transition-transform duration-400 ${
+        className={`fixed inset-y-0 right-0 z-50 w-full bg-white lg:hidden flex flex-col transition-transform duration-[550ms] motion-reduce:transition-none ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
-        style={{ transitionTimingFunction: "cubic-bezier(.16,1,.3,1)" }}
+        style={{ transitionTimingFunction: "cubic-bezier(.22,1,.36,1)" }}
       >
         <div className="flex items-center justify-between px-5 h-16 border-b border-ink-900/5">
           <div className="flex items-center gap-2.5">
@@ -153,18 +160,22 @@ export function SiteHeader() {
             ["/#stories", "Stories"],
             ["/#faq", "FAQ"],
             ["/support", "Support"],
-          ].map(([href, label]) => (
-            <a
-              key={href}
-              href={href}
-              onClick={close}
-              className="py-4 border-b border-ink-900/5 text-2xl font-display font-medium text-ink-950"
-            >
-              {label}
-            </a>
-          ))}
+          ].map(([href, label], i) => {
+            const s = stagger(i);
+            return (
+              <Link
+                key={href}
+                href={href}
+                onClick={close}
+                style={s.style}
+                className={`py-4 border-b border-ink-900/5 text-2xl font-display font-medium text-ink-950 ${s.className}`}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="px-5 pb-10 pt-4 flex flex-col gap-3">
+        <div style={stagger(6).style} className={`px-5 pb-10 pt-4 flex flex-col gap-3 ${stagger(6).className}`}>
           {loggedIn ? (
             <>
               <Link href="/browse" onClick={close} className="text-center px-5 py-3.5 rounded-full bg-brand text-white font-semibold">
