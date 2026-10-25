@@ -262,9 +262,9 @@ export default async function SettingsPage() {
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 5h16v11H9l-5 4Z" /><path d="M8 9.5h8M8 12.5h5" /></svg>}
         />
         <SettingsRow
-          href="mailto:support@pashtunnikah.com"
+          href="/support"
           title="Help &amp; support"
-          description="Contact our team"
+          description="Contact our team with a reference number"
           iconBg="#f3f4f6"
           iconColor="#374151"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a3 3 0 1 1 5 2c0 2-3 2-3 4M12 17h.01" /></svg>}

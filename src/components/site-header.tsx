@@ -63,11 +63,12 @@ export function SiteHeader() {
           </Link>
 
           <nav className="hidden lg:flex items-center gap-8 text-[13px] text-ink-700">
-            <a href="#how-it-works" className="hover:text-brand transition">How It Works</a>
-            <a href="#privacy" className="hover:text-brand transition">Why Us</a>
-            <a href="#why-us" className="hover:text-brand transition">About</a>
-            <a href="#stories" className="hover:text-brand transition">Stories</a>
-            <a href="#faq" className="hover:text-brand transition">FAQ</a>
+            <Link href="/#how-it-works" className="hover:text-brand transition">How It Works</Link>
+            <Link href="/#privacy" className="hover:text-brand transition">Why Us</Link>
+            <Link href="/#why-us" className="hover:text-brand transition">About</Link>
+            <Link href="/#stories" className="hover:text-brand transition">Stories</Link>
+            <Link href="/#faq" className="hover:text-brand transition">FAQ</Link>
+            <Link href="/support" className="hover:text-brand transition">Support</Link>
           </nav>
 
           <div className="hidden lg:flex items-center gap-4">
@@ -146,11 +147,12 @@ export function SiteHeader() {
         </div>
         <nav className="flex-1 flex flex-col gap-1 px-5 pt-8">
           {[
-            ["#how-it-works", "How It Works"],
-            ["#privacy", "Why Us"],
-            ["#why-us", "About"],
-            ["#stories", "Stories"],
-            ["#faq", "FAQ"],
+            ["/#how-it-works", "How It Works"],
+            ["/#privacy", "Why Us"],
+            ["/#why-us", "About"],
+            ["/#stories", "Stories"],
+            ["/#faq", "FAQ"],
+            ["/support", "Support"],
           ].map(([href, label]) => (
             <a
               key={href}

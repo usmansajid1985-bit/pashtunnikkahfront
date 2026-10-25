@@ -59,7 +59,7 @@ const columns: { title: string; links: [string, string][] }[] = [
   {
     title: "Help & Support",
     links: [
-      ["mailto:info@pashtunnikah.com", "Support"],
+      ["/support", "Support"],
       ["/settings/delete-account", "Account deletion"],
     ],
   },
