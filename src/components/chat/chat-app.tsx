@@ -27,6 +27,7 @@ import {
   type FamilyModalState,
 } from "@/components/chat/family-involvement";
 import { outboxAdd, outboxAll, outboxFor, outboxRemove, readDrafts, saveDraft } from "@/lib/chat-outbox";
+import { hasVisibleText } from "@/lib/chat-safety";
 import type { ChatMessageDTO, ChatThreadDTO, PhotoOnceStatus, ReactionSummary } from "@/lib/chat";
 import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
@@ -550,9 +551,9 @@ export function ChatApp({
   useEffect(() => {
     activeIdRef.current = activeId;
   }, [activeId]);
-  useEffect(() => setDrafts(readDrafts()), []);
+  useEffect(() => setDrafts(readDrafts(userId)), [userId]);
   function clearDraft(requestId: string) {
-    setDrafts(saveDraft(requestId, ""));
+    setDrafts(saveDraft(userId, requestId, ""));
   }
   const [replyTo, setReplyTo] = useState<ChatMessageDTO | null>(null);
   const [peerTyping, setPeerTyping] = useState(false);
@@ -781,7 +782,7 @@ export function ChatApp({
     async (requestId: string, opts?: { soft?: boolean }) => {
       if (!opts?.soft) setLoadingThread(true);
       // K08/C12: restore this conversation's unsent draft when switching to it.
-      if (requestId !== activeIdRef.current) setText(readDrafts()[requestId] ?? "");
+      if (requestId !== activeIdRef.current) setText(readDrafts(userId)[requestId] ?? "");
       // Guidelines prompt: known on this device → instant; otherwise wait for the server's answer.
       setChatConsent(localStorage.getItem(`chat-consent-${requestId}`) === "1" ? true : null);
       setTab("chat");
@@ -1253,6 +1254,12 @@ export function ChatApp({
       outboxRemove(clientId);
       setFor(() => null);
       setChatWarning(sent.error);
+      // CH-06: give the rejected text back so the member can edit it, unless they've already
+      // started typing something new.
+      if (item.requestId === activeIdRef.current) {
+        setText((current) => (current.trim() ? current : item.body));
+        setDrafts(saveDraft(userId, item.requestId, item.body));
+      }
       return false;
     }
     // Network/server hiccup: keep it queued on the device with a clock — never show ticks
@@ -1266,7 +1273,7 @@ export function ChatApp({
     e.preventDefault();
     if (matchEnded || !chatConsent) return;
     const body = text.trim();
-    if (!body || !activeId || !peer) return;
+    if (!hasVisibleText(body) || !activeId || !peer) return;
     const clientId = `c_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const optimistic: ChatMessageDTO & { clientId: string } = {
       id: clientId,
@@ -1383,7 +1390,7 @@ export function ChatApp({
   function onTextChange(value: string) {
     setText(value);
     if (!activeId) return;
-    setDrafts(saveDraft(activeId, value));
+    setDrafts(saveDraft(userId, activeId, value));
     emitTyping(activeId, true);
     if (typingTimer.current) clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => emitTyping(activeId, false), 1000);
@@ -2333,8 +2340,9 @@ export function ChatApp({
                           ) : null}
 
                           {chatWarning ? (
-                            <p className="mb-2 text-[13px] font-semibold text-red-600 leading-snug">
-                              {chatWarning}
+                            <p role="alert" className="mb-2 text-[13px] font-semibold text-red-600 leading-snug">
+                              {chatWarning}{" "}
+                              <span className="font-normal text-red-600/80">Your message is still in the box so you can edit it.</span>
                             </p>
                           ) : null}
 
@@ -2419,7 +2427,7 @@ export function ChatApp({
                             </div>
                             <button
                               type="submit"
-                              disabled={!text.trim()}
+                              disabled={!hasVisibleText(text)}
                               className="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-rose-700 transition shadow-[0_8px_20px_-10px_rgba(170,25,69,0.7)]"
                               aria-label="Send"
                             >

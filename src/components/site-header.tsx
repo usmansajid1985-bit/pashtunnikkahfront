@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LogoTile } from "@/components/home/cta-footer";
+import { clearChatDeviceState } from "@/lib/chat-outbox";
 
 type Me = {
   id: string;
@@ -56,6 +57,7 @@ export function SiteHeader() {
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    clearChatDeviceState();
     setMe(null);
     window.location.href = "/";
   }

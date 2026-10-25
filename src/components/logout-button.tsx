@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { writeSessionMarker } from "@/lib/session-marker";
+import { clearChatDeviceState } from "@/lib/chat-outbox";
 
 export function LogoutButton() {
   const router = useRouter();
@@ -12,6 +13,7 @@ export function LogoutButton() {
     setLoading(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      clearChatDeviceState();
       writeSessionMarker(null);
       router.push("/login");
       router.refresh();

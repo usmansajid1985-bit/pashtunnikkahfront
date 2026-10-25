@@ -45,24 +45,43 @@ export function outboxRemove(clientId: string) {
 }
 
 /* ---------- Drafts (K08 / C12): unsent text per conversation, kept on the device. ---------- */
-const DRAFTS_KEY = "pn_chat_drafts_v1";
+// SEC-03: drafts are stored per signed-in account, so switching accounts in the same browser never
+// shows the previous member's text. The old shared key couldn't be attributed, so it is dropped.
+const DRAFTS_PREFIX = "pn_chat_drafts_v2:";
+const LEGACY_DRAFTS_KEY = "pn_chat_drafts_v1";
 
-export function readDrafts(): Record<string, string> {
+function draftsKey(userId: string) {
+  return `${DRAFTS_PREFIX}${userId}`;
+}
+
+export function readDrafts(userId: string): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem(DRAFTS_KEY) || "{}") as Record<string, string>;
+    localStorage.removeItem(LEGACY_DRAFTS_KEY);
+    return JSON.parse(localStorage.getItem(draftsKey(userId)) || "{}") as Record<string, string>;
   } catch {
     return {};
   }
 }
 
-export function saveDraft(requestId: string, text: string) {
-  const all = readDrafts();
+export function saveDraft(userId: string, requestId: string, text: string) {
+  const all = readDrafts(userId);
   if (text.trim()) all[requestId] = text;
   else delete all[requestId];
   try {
-    localStorage.setItem(DRAFTS_KEY, JSON.stringify(all));
+    localStorage.setItem(draftsKey(userId), JSON.stringify(all));
   } catch {
     /* ignore */
   }
   return all;
+}
+
+/** On logout: forget this device's drafts and queued messages so the next account starts clean. */
+export function clearChatDeviceState() {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(DRAFTS_PREFIX) || key === LEGACY_DRAFTS_KEY || key === KEY) localStorage.removeItem(key);
+    }
+  } catch {
+    /* storage unavailable — nothing stored */
+  }
 }

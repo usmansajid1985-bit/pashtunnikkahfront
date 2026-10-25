@@ -515,7 +515,9 @@ export async function createMessage(opts: {
   }
 
   const body = opts.body.trim().slice(0, 4000);
-  if (!body) throw new Error("Empty message");
+  // SEC-02: zero-width spaces survive trim(), so check for something a person can actually see.
+  const { hasVisibleText } = await import("@/lib/chat-safety");
+  if (!hasVisibleText(body)) throw new Error("Empty message");
 
   const { screenOutgoingMessage } = await import("@/lib/moderation");
   await screenOutgoingMessage({

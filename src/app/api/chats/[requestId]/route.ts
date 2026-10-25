@@ -225,7 +225,7 @@ export async function POST(
   } catch (e) {
     if (e instanceof ChatBlockedError) {
       return NextResponse.json(
-        { error: e.message, warning: true },
+        { error: e.message, warning: true, category: e.category },
         { status: 400 }
       );
     }

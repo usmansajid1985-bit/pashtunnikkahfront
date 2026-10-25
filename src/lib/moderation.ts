@@ -1,15 +1,36 @@
 import { prisma } from "@/lib/prisma";
 import { geminiJson } from "@/lib/gemini";
-import { inspectLeak } from "@/lib/chat-safety";
+import { inspectLeak, type BlockCategory } from "@/lib/chat-safety";
+
+/** What the member sees when a message is rejected — one reason per category, never a guess. */
+const BLOCK_MESSAGES: Record<BlockCategory, string> = {
+  contact:
+    "Not sent: sharing or asking for contact details (numbers, emails, social media or other apps) isn't allowed here.",
+  abuse: "Not sent: please keep the conversation respectful — that message contains offensive language.",
+  threat: "Not sent: threatening or pressuring messages aren't allowed.",
+  sexual: "Not sent: sexual content and requests aren't allowed here.",
+};
 
 export class ChatBlockedError extends Error {
-  constructor(
-    message = "That message wasn't sent. Sharing numbers, emails, social media, or dating-app links isn't allowed here — you can keep chatting otherwise."
-  ) {
-    super(message);
+  readonly category: BlockCategory;
+  constructor(category: BlockCategory = "contact") {
+    super(BLOCK_MESSAGES[category]);
     this.name = "ChatBlockedError";
+    this.category = category;
   }
 }
+
+const AI_CATEGORY: Record<string, BlockCategory> = {
+  contact: "contact",
+  phone: "contact",
+  email: "contact",
+  social: "contact",
+  dating_app: "contact",
+  off_platform: "contact",
+  abuse: "abuse",
+  threat: "threat",
+  sexual: "sexual",
+};
 
 const CONTACT_PATTERNS: { reason: string; re: RegExp }[] = [
   { reason: "phone", re: /(?:\+?\d[\d\s().-]{7,}\d)/ },
@@ -35,6 +56,7 @@ export function filterMessageBody(raw: string) {
 
 type GeminiScreen = {
   action?: "allow" | "redact" | "block";
+  category?: string;
   categories?: string[];
   reason?: string;
 };
@@ -91,21 +113,33 @@ export async function screenOutgoingMessage(opts: {
     .slice(-7);
   const current = inspectLeak([opts.body]);
   const watching = current.suspect;
-  const combined = watching && prior.length ? inspectLeak([...prior, opts.body]) : current;
+  // Earlier messages were already judged on their own; the combined run only looks for contact
+  // details split across messages (e.g. a phone number sent in three parts).
+  const combined =
+    watching && prior.length ? inspectLeak([...prior, opts.body], { contactOnly: true }) : current;
 
   let hit = current.hit || (current.suspect && combined.hit);
   let reasons = hit ? (current.hit ? current.reasons : combined.reasons) : [];
+  let category: BlockCategory = (current.hit ? current.category : combined.category) ?? "contact";
 
   const allowAi = watch?.use_ai !== false && !hit && current.suspect;
   if (allowAi) {
     const ai = await geminiJson<GeminiScreen>({
       timeoutMs: 2500,
-      system: `You check if these chat fragments are trying to share a phone number, email, social handle/link, dating-app profile, or abuse — including split across messages. Block Instagram, TikTok, Snapchat, Facebook, WhatsApp, Telegram, Discord, Twitter/X, YouTube, and dating apps (Tinder, Bumble, Hinge, Muzmatch/Muzz, Salams, Shaadi, Badoo, Grindr, etc.). Return JSON {"action":"allow"|"block","categories":["phone"|"email"|"social"|"dating_app"|"abuse"],"reason":"short"}.`,
+      system: [
+        "You moderate messages between two people on a Muslim marriage app. Messages may be English, Pashto, Urdu or Dari, in any script, and may hide words with spacing, symbols or digit swaps.",
+        "Judge what the LAST message is doing, using the earlier fragments only to spot details split across messages.",
+        "BLOCK when it: shares or asks for a phone number, email, social media/messaging handle or link, or dating-app profile; asks to move the conversation off this app; threatens or pressures the other person; or asks for or offers sexual content (including indirect requests like photos without clothes).",
+        "ALLOW ordinary conversation, including simply mentioning an app (\"I watched a cooking video on Instagram\", \"my family has a WhatsApp group\", \"I don't use Snapchat\"), harmless numbers (age, siblings, years), and statements that refuse or condemn bad behaviour (\"I do not want anyone asking for nude photos\").",
+        'Return JSON {"action":"allow"|"block","category":"contact"|"abuse"|"threat"|"sexual","reason":"short"}.',
+      ].join("\n"),
       user: [...prior, opts.body].join("\n---\n").slice(0, 3000),
     });
     if (ai?.action === "block") {
       hit = true;
-      reasons = [...new Set([...reasons, ...((ai.categories || []).map((c) => c.toLowerCase()))])];
+      const aiCategories = [ai.category, ...(ai.categories || [])].filter(Boolean).map((c) => String(c).toLowerCase());
+      reasons = [...new Set([...reasons, ...aiCategories])];
+      category = aiCategories.map((c) => AI_CATEGORY[c]).find(Boolean) ?? "contact";
     }
   }
 
@@ -123,7 +157,7 @@ export async function screenOutgoingMessage(opts: {
       remaining: 0,
       useAi: false,
     }).catch(() => undefined);
-    throw new ChatBlockedError();
+    throw new ChatBlockedError(category);
   }
 
   if (watching) {

@@ -7,7 +7,8 @@
     "dev:web": "next dev --turbopack -p 3001",
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:moderation": "node --experimental-strip-types --no-warnings scripts/test-chat-moderation.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { writeSessionMarker } from "@/lib/session-marker";
+import { clearChatDeviceState } from "@/lib/chat-outbox";
 
 export function LogoutRow() {
   const [busy, setBusy] = useState(false);
@@ -11,6 +12,7 @@ export function LogoutRow() {
     setBusy(true);
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      clearChatDeviceState();
     } finally {
       writeSessionMarker(null);
       window.location.href = "/login";
