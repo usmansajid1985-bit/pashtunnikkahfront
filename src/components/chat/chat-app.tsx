@@ -1993,7 +1993,9 @@ export function ChatApp({
                           peerTyping ? "text-emerald-600 italic font-medium" : "text-ink-700/55"
                         }`}
                       >
-                        {peerTyping
+                        {matchEnded
+                          ? "Match ended"
+                          : peerTyping
                           ? `${displayName} is typing…`
                           : !connected
                             ? "Connecting to chat…"
@@ -2234,7 +2236,8 @@ export function ChatApp({
                         onScroll={onScrollThread}
                         className={`flex-1 overflow-y-auto px-3 sm:px-5 pt-3 space-y-3 scroll-smooth ${peerTyping ? "pb-14" : "pb-4"}`}
                       >
-                      <ChatNotifyBanner />
+                      {/* No point asking for notifications in a chat that can't receive new messages. */}
+                      {matchEnded ? null : <ChatNotifyBanner />}
 
                       {loadingThread ? (
                         <p className="text-center text-sm text-ink-700/50 py-10">Loading…</p>
@@ -2354,14 +2357,14 @@ export function ChatApp({
                               type="button"
                               disabled={rematchBusy}
                               onClick={() => void requestRematch()}
-                              className="shrink-0 flex items-center justify-center gap-3 px-5 py-2 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white shadow-sm disabled:opacity-60 transition"
+                              className="shrink-0 flex items-center justify-center gap-3 px-5 py-2 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white shadow-sm disabled:opacity-60 transition"
                             >
                               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
                                 <path d="M12 21s-7.5-4.6-9.7-9.3C.8 8.4 2.7 4.5 6.5 4.5c2.2 0 3.6 1.2 4.5 2.6.9-1.4 2.3-2.6 4.5-2.6 3.8 0 5.7 3.9 4.2 7.2C19.5 16.4 12 21 12 21Z" />
                               </svg>
                               <span className="text-left leading-tight">
                                 <span className="block text-[14px] font-semibold">{rematchBusy ? "Sending…" : "Request Rematch"}</span>
-                                <span className="block text-[11.5px] text-white/85">Costs 1 match token</span>
+                                <span className="block text-[11.5px] text-white/85">Costs 1 Match Token</span>
                               </span>
                             </button>
                           </div>
