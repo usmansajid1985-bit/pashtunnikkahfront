@@ -16,6 +16,7 @@ import {
   LANGUAGES_ORDERED,
   PASHTO_LEVELS,
   SALAH_OPTIONS,
+  salahDisplay,
   occupationPrompt,
   textQualityIssue,
   wordCount,
@@ -24,8 +25,6 @@ import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I, LIFESTY
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { ISLAMIC_SECTS } from "@/lib/islamic-background";
 import { BrowseAppNav } from "@/components/browse/app-nav";
-import { WaliAccessManager } from "@/components/profile/wali-access-manager";
-import { GuardianContactManager } from "@/components/profile/guardian-contact-manager";
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
 import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
@@ -570,7 +569,7 @@ export function ProfileEditForm({
             <option value="">Select…</option>
             {optionsWithCurrent([...SALAH_OPTIONS], form.salah).map((o) => (
               <option key={o} value={o}>
-                {o}
+                {salahDisplay(o, !isSister)}
               </option>
             ))}
           </select>
@@ -923,12 +922,6 @@ export function ProfileEditForm({
         </section>
         </div>
 
-        <div data-tab="personal" className={paneClass("personal")}>
-        {isSister ? <GuardianContactManager /> : null}
-        </div>
-        <div data-tab="personal" className={paneClass("personal")}>
-        {isSister ? <WaliAccessManager /> : null}
-        </div>
 
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">

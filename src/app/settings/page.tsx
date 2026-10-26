@@ -12,6 +12,7 @@ import { LogoutRow } from "@/components/settings/logout-row";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { withOwnerPhotoUrls } from "@/lib/photos";
+import { getPlanSettings } from "@/lib/plan-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function SettingsPage() {
   if (!user || !profile) redirect("/signup");
 
   const view = await withOwnerPhotoUrls(mapProfileView(profile, { ...user, hide_gold_badge: hideGoldBadge }));
-  const planLabel = view.plan === "gold" ? "Gold" : "Basic";
+  const { monthlyCredits: allowance } = await getPlanSettings(user.plan);
   const approved = view.status === "approved";
   const isSister = view.gender?.toLowerCase().startsWith("f") ?? false;
   const waliState = waliLinks.some((l) => l.accepted_at)
@@ -54,83 +55,112 @@ export default async function SettingsPage() {
     : waliLinks.length > 0
       ? "invited"
       : "none";
-  const waliLabel = !isSister
-    ? "Family ready"
-    : waliState === "connected"
-      ? "Wali Connected"
-      : waliState === "invited"
-        ? "Wali Invited"
-        : "No Wali Connected";
-  const waliOk = !isSister || waliState === "connected";
+  const waliLabel =
+    waliState === "connected" ? "Wali Connected" : waliState === "invited" ? "Wali Invited" : "Wali Not Connected";
+
+  const tokenBalance = view.credits;
+  const isGold = view.plan === "gold";
 
   return (
     <SettingsShell title="Settings" backHref="/browse" profileCode={view.profileCode} unreadCount={unreadCount} userId={session.userId}>
       <div className="pt-2 pb-6 lg:pt-0">
-        <p className="hidden lg:block text-xs font-semibold uppercase tracking-widest text-rose-600 mb-2">
-          Dashboard
-        </p>
-        <h2 className="text-[28px] lg:text-[34px] leading-tight font-bold text-ink-950 tracking-tight">
-          Account &amp; Profile
-        </h2>
+        <h2 className="text-[28px] lg:text-[34px] leading-tight font-bold text-ink-950 tracking-tight">Settings</h2>
         <p className="mt-1.5 text-sm text-ink-700/65">Manage your account and profile preferences.</p>
       </div>
 
-      {/* Status strip */}
-      <div className="bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] p-3 lg:p-5 grid grid-cols-4 gap-1 lg:gap-3">
-        <div className="text-center px-1 py-2">
-          <span
-            className={`mx-auto w-10 h-10 rounded-full flex items-center justify-center ${
-              approved ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
-            }`}
-          >
-            {approved ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
-                <path d="M20 6 9 17l-5-5" />
+      {/* Dashboard: profile status · plan · Match Tokens · wali (sisters). */}
+      <div
+        className={`bg-white rounded-2xl border border-ink-900/6 shadow-[0_8px_30px_-18px_rgba(15,13,14,0.35)] px-2 py-4 lg:px-4 lg:py-5 grid divide-x divide-ink-900/6 ${
+          isSister ? "grid-cols-4" : "grid-cols-3"
+        }`}
+      >
+        <div className="flex flex-col items-center text-center px-1">
+          {approved ? (
+            <span className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-[#e7f8ef] text-[#1fa463] flex items-center justify-center shadow-[0_0_0_6px_rgba(31,164,99,0.06)]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="m8.3 12.2 2.5 2.5 5-5.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="8" />
-                <path d="M12 8v4M12 16h.01" />
+            </span>
+          ) : (
+            <span className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-[#fff3e0] text-[#f59e0b] flex items-center justify-center shadow-[0_0_0_6px_rgba(245,158,11,0.07)]">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5V12l3 2" strokeLinecap="round" />
               </svg>
-            )}
-          </span>
-          <p className="mt-2 text-[10px] font-semibold text-ink-950 leading-tight">
-            {approved ? "Profile Approved" : statusLabel(view.status)}
+            </span>
+          )}
+          <p className="mt-2.5 text-[11.5px] lg:text-[13px] font-semibold text-ink-950 leading-tight">
+            {approved ? "Profile Approved" : view.status === "pending" ? "Pending Approval" : statusLabel(view.status)}
           </p>
         </div>
-        <div className="text-center px-1 py-2">
-          <span className="mx-auto w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l2.2 4.5L19 7.3l-3.5 3.4.8 4.8L12 13.8 7.7 15.5l.8-4.8L5 7.3l4.8-.8L12 2Z" />
-            </svg>
-          </span>
-          <p className="mt-2 text-[10px] text-ink-700/60">Plan</p>
-          <p className={`text-[12px] font-bold ${view.plan === "gold" ? "text-amber-700" : "text-ink-950"}`}>
-            {planLabel}
-          </p>
+
+        <div className="flex flex-col items-center text-center px-1">
+          {isGold ? (
+            <span className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-br from-[#f9b8d3] via-[#fcd3c4] to-[#fde3a7] flex items-center justify-center" aria-hidden>
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="#e12d72">
+                <path d="M14 6l1.6 4.4L20 12l-4.4 1.6L14 18l-1.6-4.4L8 12l4.4-1.6L14 6Z" />
+                <path d="M7 3l.8 2.2L10 6l-2.2.8L7 9l-.8-2.2L4 6l2.2-.8L7 3Z" />
+              </svg>
+            </span>
+          ) : (
+            <span className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-ink-900/[0.05] text-ink-700/60 flex items-center justify-center" aria-hidden>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="12" cy="8" r="3.5" />
+                <path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" />
+              </svg>
+            </span>
+          )}
+          <p className="mt-1.5 text-[10.5px] text-ink-700/55">Plan</p>
+          {isGold ? (
+            <span className="mt-0.5 rounded-full bg-gradient-to-r from-[#f9b8d3] to-[#fde3a7] px-3 py-0.5 text-[11px] font-bold tracking-wide text-ink-950">
+              GOLD
+            </span>
+          ) : (
+            <span className="mt-0.5 rounded-full bg-ink-900/[0.06] px-3 py-0.5 text-[11px] font-semibold text-ink-700">Basic</span>
+          )}
         </div>
-        <div className="text-center px-1 py-2">
-          <span className="mx-auto w-10 h-10 rounded-full bg-sky-100 text-sky-700 flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l1.6 5.6L19 9l-5.4 1.4L12 16l-1.6-5.6L5 9l5.4-1.4L12 2Z" />
-            </svg>
-          </span>
-          <p className="mt-2 text-[12px] font-bold text-ink-950">{view.credits} Credits</p>
-        </div>
-        <div className="text-center px-1 py-2">
+
+        <Link href="/settings/membership" className="flex flex-col items-center text-center px-1">
           <span
-            className={`mx-auto w-10 h-10 rounded-full flex items-center justify-center ${
-              waliOk ? "bg-emerald-100 text-emerald-700" : "bg-ink-900/[0.06] text-ink-700/60"
-            }`}
+            className="relative w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center"
+            style={{
+              background: isGold
+                ? "conic-gradient(#e12d72 360deg, #e12d72 0deg)"
+                : `conic-gradient(#9ca3af ${Math.min(tokenBalance / Math.max(allowance, 1), 1) * 360}deg, #ece9ea 0deg)`,
+            }}
+            aria-hidden
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="8" r="3.2" />
-              <path d="M5 19c0-3.2 3-5.2 7-5.2s7 2 7 5.2" />
-              <path d="M17 8h3M18.5 6.5v3" />
-            </svg>
+            <span className="absolute inset-[3px] rounded-full bg-white flex items-center justify-center text-[14px] lg:text-[15px] font-bold text-ink-950 tabular-nums">
+              {isGold ? tokenBalance : `${tokenBalance}/${allowance}`}
+            </span>
           </span>
-          <p className="mt-2 text-[10px] font-semibold text-ink-950 leading-tight">{waliLabel}</p>
-        </div>
+          <p className="mt-2.5 text-[11.5px] lg:text-[13px] font-semibold text-ink-950 leading-tight">Match Tokens</p>
+        </Link>
+
+        {isSister ? (
+          <div className="flex flex-col items-center text-center px-1">
+            <span
+              className={`w-12 h-12 lg:w-14 lg:h-14 rounded-full flex items-center justify-center ${
+                waliState === "connected" ? "bg-[#e7f8ef] text-[#1fa463]" : "bg-[#fff3e0] text-[#f59e0b]"
+              }`}
+              aria-hidden
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="9" cy="8" r="3" />
+                <circle cx="17" cy="9" r="2.3" />
+                <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.5c2.8-.4 5.5 1.2 5.5 4.5" />
+              </svg>
+            </span>
+            <p className="mt-2 text-[11.5px] lg:text-[13px] font-semibold text-ink-950 leading-tight">{waliLabel}</p>
+            <Link
+              href="/settings/wali"
+              className="mt-1 rounded-full border border-ink-900/10 bg-white px-2.5 py-0.5 text-[10.5px] font-semibold text-ink-900 hover:border-ink-900/25"
+            >
+              {waliState === "connected" ? "Edit →" : "Connect wali →"}
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       {!user.email_verified ? (
@@ -139,98 +169,65 @@ export default async function SettingsPage() {
         </div>
       ) : null}
 
-      {/* S01: grouped, not one long list. View Profile / Profile Status live in My Profile. */}
-
       <SettingsGroup title="Account &amp; Membership">
         <SettingsRow
-          href="/profile/edit"
-          title="Account details"
-          description="Your name, details and profile information"
-          iconBg="#eef2ff"
-          iconColor="#4338ca"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" /></svg>}
-        />
-        <SettingsRow
           href="/settings/membership"
-          title="Membership & credits"
+          title="Membership & billing"
           description={
-            view.plan === "gold"
-              ? `Gold · ${view.credits} Match Tokens · ${approved ? "Approved" : statusLabel(view.status)}`
-              : `Basic · ${view.credits} Match Tokens · Upgrade to Gold`
+            isGold
+              ? `Gold · ${tokenBalance} Match Tokens`
+              : `Basic · ${tokenBalance} Match Tokens · Upgrade to Gold`
           }
-          iconBg="#fef3c7"
-          iconColor="#b45309"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.2 4.5L19 7.3l-3.5 3.4.8 4.8L12 13.8 7.7 15.5l.8-4.8L5 7.3l4.8-.8L12 2Z" /></svg>}
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="3" y="5.5" width="18" height="13" rx="2.5" /><path d="M3 10h18M7 15h3" /></svg>}
         />
+        <ReferralsSettings />
       </SettingsGroup>
-      <GoldBadgeSettings initialHide={hideGoldBadge} isGold={view.plan === "gold"} />
-      <ReferralsSettings />
+      <GoldBadgeSettings initialHide={hideGoldBadge} isGold={isGold} />
 
       <SettingsGroup title="Notifications">
         <SettingsRow
           href="/settings/notifications"
           title="Notifications"
           description="Choose what you're alerted about"
-          iconBg="#e0f2fe"
-          iconColor="#0369a1"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></svg>}
         />
       </SettingsGroup>
 
-      <SettingsGroup title="Wali">
-        {view.gender?.toLowerCase() === "female" ? (
+      {isSister ? (
+        <SettingsGroup title="Wali">
           <SettingsRow
-            href="/profile/edit#wali"
-            title="Wali access &amp; activity log"
-            description="Invite your wali, choose notifications, see their activity"
-            iconBg="#eef2ff"
-            iconColor="#4338ca"
+            href="/settings/wali"
+            title="Wali access"
+            description="Your wali's contact card and chat oversight"
             icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="9" cy="8" r="3" /><circle cx="17" cy="9" r="2.3" /><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M14.5 14.5c2.8-.4 5.5 1.2 5.5 4.5" /></svg>}
           />
-        ) : null}
-      </SettingsGroup>
+        </SettingsGroup>
+      ) : null}
 
-      {/* Close account sits last here, directly after Pause profile. */}
       <SettingsGroup title="Privacy &amp; Security">
         <SettingsRow
           href="/settings/security"
           title="Security"
           description="Password and recent sign-ins"
-          iconBg="#ecfdf5"
-          iconColor="#059669"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>}
         />
         <SettingsRow
           href="/settings/privacy"
           title="Privacy &amp; data"
           description="Privacy controls and data export"
-          iconBg="#eff6ff"
-          iconColor="#2563eb"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>}
         />
         <SettingsRow
           href="/settings/privacy#blocked"
           title="Blocked members"
           description={blockedCount === 0 ? "You haven't blocked anyone" : `${blockedCount} blocked · manage or unblock`}
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>}
         />
         <SettingsRow
           href="/settings/visibility"
           title="Pause profile"
           description={profile.is_hidden ? "Paused — hidden from Browse" : "Temporarily hide your profile"}
-          iconBg={profile.is_hidden ? "#fef3c7" : "#ecfdf5"}
-          iconColor={profile.is_hidden ? "#b45309" : "#059669"}
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2.5 12S6 6.5 12 6.5 21.5 12 21.5 12 18 17.5 12 17.5 2.5 12 2.5 12Z" /><circle cx="12" cy="12" r="2.5" /></svg>}
-        />
-        <SettingsRow
-          href="/settings/delete-account"
-          title="Close account"
-          description="Permanently remove your account"
-          iconBg="#fef2f2"
-          iconColor="#dc2626"
-          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6v14H5V6" /></svg>}
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></svg>}
         />
       </SettingsGroup>
       {warnings.length ? (
@@ -249,24 +246,30 @@ export default async function SettingsPage() {
         </div>
       ) : null}
 
-
       <MobileNavStyleSettings />
+
+      <SettingsGroup title="Danger zone">
+        <SettingsRow
+          href="/settings/delete-account"
+          title="Delete account"
+          description="Permanently remove your account"
+          iconBg="#fdf0f3"
+          iconColor="#dc2626"
+          icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6v14H5V6M10 11v5M14 11v5" /></svg>}
+        />
+      </SettingsGroup>
 
       <SettingsGroup title="Support">
         <SettingsRow
           href="/settings/feedback"
           title="Give us feedback"
           description="Suggestions, bug reports and ideas"
-          iconBg="#fdf2f8"
-          iconColor="#e0306f"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="M4 5h16v11H9l-5 4Z" /><path d="M8 9.5h8M8 12.5h5" /></svg>}
         />
         <SettingsRow
           href="/support"
           title="Help &amp; support"
-          description="Contact our team with a reference number"
-          iconBg="#f3f4f6"
-          iconColor="#374151"
+          description="Contact our team"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M9.5 9a3 3 0 1 1 5 2c0 2-3 2-3 4M12 17h.01" /></svg>}
         />
         <LogoutRow />
@@ -275,7 +278,7 @@ export default async function SettingsPage() {
       <div className="mt-6 flex gap-3">
         <Link
           href="/profile"
-          className="flex-1 text-center py-3 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700"
+          className="flex-1 text-center py-3 rounded-full bg-[#e12d72] text-white text-sm font-semibold hover:bg-[#c41d5e]"
         >
           Preview my profile
         </Link>

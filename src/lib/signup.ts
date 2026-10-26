@@ -403,6 +403,14 @@ export const SALAH_OPTIONS = [
   "Never / One-offs – I do not pray consistently, or only on very isolated occasions",
 ] as const;
 
+/**
+ * The Salah answer as a member reads it. Stored values stay the shared wording above (the filter
+ * matches on them); men just don't see the menstrual-cycle example.
+ */
+export function salahDisplay(option: string, isMale: boolean) {
+  return isMale ? option.replace(/menstrual cycle,\s*/i, "") : option;
+}
+
 /** Short label for a Salah answer (text before the dash). */
 export function salahShortLabel(v: string) {
   return v.split("–")[0].trim();

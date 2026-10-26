@@ -4,6 +4,7 @@ import { iconFor } from "@/lib/profile-optional";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
+import { RelocationIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
@@ -68,11 +69,11 @@ function salahLabel(v: string | null) {
   const head = v.split("–")[0].trim().toLowerCase();
   const map: Record<string, string> = {
     consistently: "Prays 5 daily prayers",
-    "almost always": "Prays 5 daily prayers (most days)",
-    regularly: "Prays most prayers",
+    "almost always": "Almost always prays",
+    regularly: "Prays regularly",
     sometimes: "Prays sometimes",
-    rarely: "Prays rarely",
-    "never / one-offs": "Doesn't pray regularly",
+    rarely: "Rarely prays",
+    "never / one-offs": "Doesn't currently pray",
   };
   return map[head] ?? v.split("–")[0].trim();
 }
@@ -157,9 +158,8 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
   const hasFaithPractice = profile.islamicBackground || profile.religiousPractice || salah || profile.bornMuslim;
   const hasLifestyle = smoking || vaping;
   const hasFaith = hasFaithPractice || hasLifestyle || profile.islamicPractice;
-  const livesIn = [profile.city, profile.country].filter(Boolean).join(", ");
   const hasLanguages = profile.languages.length > 0 || profile.dialect || pashtoLevel;
-  const hasHeritageGroup = tribeLabel(profile.tribe) || profile.ancestralRegion || livesIn || profile.relocation;
+  const hasHeritageGroup = tribeLabel(profile.tribe) || profile.ancestralRegion || profile.relocation;
 
   return (
     <>
@@ -311,8 +311,9 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
                     {profile.ancestralRegion.toLowerCase().startsWith("roots") ? profile.ancestralRegion : `Roots in ${profile.ancestralRegion}`}
                   </Chip>
                 ) : null}
-                {livesIn ? <Chip icon="📍">Lives in {livesIn}</Chip> : null}
-                {profile.relocation ? <Chip icon="✈️">{profile.relocation}</Chip> : null}
+                {profile.relocation ? (
+                  <Chip icon={<RelocationIcon open={profile.relocation === "Open to relocation"} />}>{profile.relocation}</Chip>
+                ) : null}
               </div>
             </Group>
           ) : null}
@@ -322,11 +323,15 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
       {interests.length > 0 ? (
         <Section title="Interests">
           <div className={chips}>
-            {interests.map((i) => (
-              <Chip key={i} icon={iconFor(i)}>
-                {i}
-              </Chip>
-            ))}
+            {interests.map((i) => {
+              // Interests from the old site carry their own emoji ("🤲 Dua"); newer ones use our icon set.
+              const own = i.match(/^([\p{Extended_Pictographic}\u200d\ufe0f]+)\s+(.+)$/u);
+              return (
+                <Chip key={i} icon={own ? own[1] : iconFor(i)}>
+                  {own ? own[2] : i}
+                </Chip>
+              );
+            })}
           </div>
         </Section>
       ) : null}

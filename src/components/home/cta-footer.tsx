@@ -44,7 +44,7 @@ const columns: { title: string; links: [string, string][] }[] = [
     title: "Product",
     links: [
       ["/signup", "Sign up"],
-      ["/settings/membership", "Gold"],
+      ["/gold", "Gold"],
     ],
   },
   {

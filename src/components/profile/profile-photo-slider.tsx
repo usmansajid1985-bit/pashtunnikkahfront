@@ -14,12 +14,15 @@ export function ProfilePhotoSlider({
   showPhoto,
   fallbackSrc,
   arrows = false,
+  countPill = false,
 }: {
   slides: ProfileSlide[];
   showPhoto: boolean;
   fallbackSrc: string;
   /** Previous / next buttons at the sides, for pointer devices (desktop). */
   arrows?: boolean;
+  /** A small "1/3" pill (own profile) showing which photo is in view. */
+  countPill?: boolean;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const tap = useRef<{ x: number; y: number } | null>(null);
@@ -121,13 +124,19 @@ export function ProfilePhotoSlider({
           })
         : null}
 
+      {countPill && slides.length > 0 ? (
+        <span className="absolute top-7 right-3 z-20 rounded-full bg-[#3d3836]/60 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm tabular-nums">
+          {index + 1}/{images.length}
+        </span>
+      ) : null}
+
       {current?.status === "pending" ? (
-        <span className="absolute top-3 right-3 z-20 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+        <span className="absolute top-3 left-3 z-20 rounded-full bg-black/50 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
           In review
         </span>
       ) : null}
       {current?.status === "rejected" ? (
-        <span className="absolute top-3 right-3 z-20 rounded-full bg-rose-700/80 px-2 py-0.5 text-[10px] font-semibold text-white">
+        <span className="absolute top-3 left-3 z-20 rounded-full bg-rose-700/80 px-2 py-0.5 text-[10px] font-semibold text-white">
           Rejected
         </span>
       ) : null}

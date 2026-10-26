@@ -67,6 +67,10 @@ export type ChatThreadDTO = {
   /** N53: the match has ended — the thread stays readable under "Past matches". */
   ended: boolean;
   endedAt: string | null;
+  /** Past matches: did this member end it? (false = the other member did) */
+  endedByMe: boolean;
+  /** Only the member who ended a match may ask for a rematch (older matches without a record: either). */
+  canRematch: boolean;
 };
 
 export type PhotoOnceStatus = "none" | "pending" | "viewed";
@@ -458,6 +462,8 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       photoVisible: meta.photoVisible,
       ended: req.status === "ended",
       endedAt: req.status === "ended" ? (req.ended_at ?? req.updated_at).toISOString() : null,
+      endedByMe: req.status === "ended" && req.ended_by === userId,
+      canRematch: req.status === "ended" && (req.ended_by == null || req.ended_by === userId),
       };
     })
   );

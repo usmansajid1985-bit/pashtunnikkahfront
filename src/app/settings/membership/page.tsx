@@ -36,7 +36,6 @@ const LEDGER_LABELS: Record<string, string> = {
   admin_remove: "Removed by the PN team",
 };
 
-const REFUND_REASONS = ["request_withdrawn_refund", "request_expired_refund", "request_blocked_refund"];
 
 function formatDate(d: Date) {
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -47,6 +46,17 @@ function formatDateTime(d: Date) {
 }
 
 const card = "bg-white rounded-2xl border border-ink-900/6";
+
+/** "Gold · Subscription" / "5 Match Tokens · Top-up" (stored packs look like "5_credits"). */
+function paymentLabel(type: string | null, pack: string | null) {
+  const t = (type || "").toLowerCase();
+  if (t === "topup") {
+    const n = Number.parseInt(pack || "", 10);
+    return `${Number.isFinite(n) ? n : 5} Match Tokens · Top-up`;
+  }
+  if (t.includes("sub") || (pack || "").toLowerCase().includes("gold")) return "Gold · Subscription";
+  return [pack, type].filter(Boolean).join(" · ");
+}
 
 export default async function MembershipPage({
   searchParams,
@@ -61,18 +71,13 @@ export default async function MembershipPage({
 
   const userId = BigInt(session.userId);
   const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const [user, unreadCount, ledger, monthRows, lastGoldGrant, payments] = await Promise.all([
+  const [user, unreadCount, ledger, lastGoldGrant, payments] = await Promise.all([
     prisma.users.findUnique({ where: { id: userId } }),
     getUnreadMessageCount(userId),
     prisma.credit_ledger.findMany({
       where: { user_id: userId, amount: { not: 0 } },
       orderBy: { created_at: "desc" },
       take: allActivity ? 100 : 5,
-    }),
-    prisma.credit_ledger.findMany({
-      where: { user_id: userId, created_at: { gte: monthStart }, reason: { in: ["request_sent", ...REFUND_REASONS] } },
-      select: { reason: true },
     }),
     prisma.credit_ledger.findFirst({
       where: { user_id: userId, reason: "monthly_gold_allowance" },
@@ -96,17 +101,17 @@ export default async function MembershipPage({
   ]);
 
   const allowance = planSettings.monthlyCredits;
-  const sent = monthRows.filter((r) => r.reason === "request_sent").length;
-  const refunded = monthRows.length - sent;
-  const used = Math.min(Math.max(sent - refunded, 0), allowance);
   const balance = user.requests_remaining;
 
   let resetLine: string;
   if (isGold && user.subscription_cancel_at) {
     resetLine = `Gold ends on ${formatDate(user.subscription_cancel_at)}`;
   } else if (isGold && lastGoldGrant) {
+    // Monthly from the last Gold grant — and never a date that has already passed (a late or
+    // missed grant used to leave "Renews on 10 Oct" showing in November).
     const next = new Date(lastGoldGrant.created_at);
-    next.setMonth(next.getMonth() + 1);
+    do next.setMonth(next.getMonth() + 1);
+    while (next <= now);
     resetLine = `Renews on ${formatDate(next)}`;
   } else if (isGold) {
     resetLine = "Renews monthly";
@@ -114,9 +119,12 @@ export default async function MembershipPage({
     resetLine = `Resets on ${formatDate(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)))}`;
   }
 
-  const features: GoldFeature[] = goldFeatures(goldSettings);
+  // Rollover details stay in Membership details / FAQs — not on a Gold member's main card.
+  const features: GoldFeature[] = goldFeatures(goldSettings).filter((f) => !(isGold && f.icon === "rollover"));
 
-  const ring = allowance > 0 ? used / allowance : 0;
+  // Basic: the ring shows what's left (3/3 → 0/3) and shrinks as tokens are used.
+  const remaining = Math.min(balance, allowance);
+  const ring = allowance > 0 ? remaining / allowance : 0;
 
   return (
     <SettingsShell
@@ -147,19 +155,42 @@ export default async function MembershipPage({
             <p className="text-sm text-ink-700/60">{resetLine}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span
-            className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
-            style={{ background: `conic-gradient(#e12d72 ${ring * 360}deg, #ece7e6 0deg)` }}
-          >
-            <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-white text-sm font-semibold text-ink-950 tabular-nums">
-              {used}/{allowance}
+        {isGold ? null : (
+          <div className="flex items-center gap-4">
+            <span
+              className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full"
+              style={{ background: `conic-gradient(#e12d72 ${ring * 360}deg, #ece7e6 0deg)` }}
+            >
+              <span className="flex h-[52px] w-[52px] items-center justify-center rounded-full bg-white text-sm font-semibold text-ink-950 tabular-nums">
+                {remaining}/{allowance}
+              </span>
             </span>
-          </span>
-          <p className="max-w-[200px] text-sm text-ink-700/60">
-            You&apos;ve used {used} of {allowance} {isGold ? "Gold" : "free"} Match Tokens this month.
+            <p className="max-w-[200px] text-sm text-ink-700/60">
+              You have {remaining} of {allowance} free Match Tokens remaining this month.
+            </p>
+          </div>
+        )}
+        {!isGold && balance <= 1 ? (
+          <p className="basis-full flex items-start gap-2 rounded-xl border border-rose-100 bg-rose-50/60 px-3.5 py-2.5 text-[13px] text-ink-900">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="2" className="mt-0.5 shrink-0" aria-hidden>
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v5M12 16h.01" />
+            </svg>
+            <span>
+              {balance <= 0 ? (
+                <>
+                  <span className="font-semibold">You&apos;ve used all your Match Tokens this month.</span> Upgrade to Gold to
+                  unlock exclusive features.
+                </>
+              ) : (
+                <>
+                  <span className="font-semibold">You&apos;re running low on Match Tokens!</span> Only 1 remaining.{" "}
+                  <span className="text-[#e12d72] font-semibold">Upgrade to Gold for more.</span>
+                </>
+              )}
+            </span>
           </p>
-        </div>
+        ) : null}
       </section>
 
       <div className="mt-4 grid gap-4 md:grid-cols-[1.15fr_1fr] items-start">
@@ -214,6 +245,10 @@ export default async function MembershipPage({
               ))}
             </ul>
 
+            <Link href="/gold" className="mt-4 inline-block text-sm font-semibold text-[#e12d72] hover:underline">
+              How Gold works →
+            </Link>
+
             {isGold && user.subscription_cancel_at ? (
               <p className="mt-4 text-sm font-semibold text-amber-700">
                 Gold — cancels on {formatDate(user.subscription_cancel_at)}. Your membership stays active until then
@@ -226,7 +261,6 @@ export default async function MembershipPage({
                 <MembershipActions
                   isGold={isGold}
                   activeSubscription={active || isGold}
-                  credits={balance}
                   topupConfigured={Boolean(topupPack.priceId)}
                   topupTokens={topupPack.tokens}
                   topupPricePence={topupPack.pricePence}
@@ -312,9 +346,7 @@ export default async function MembershipPage({
                 {payments.map((p) => (
                   <li key={p.id.toString()} className="flex justify-between gap-3 px-5 py-3 text-sm">
                     <div>
-                      <p className="font-medium capitalize text-ink-950">
-                        {p.plan_or_pack} · {p.type}
-                      </p>
+                      <p className="font-medium text-ink-950">{paymentLabel(p.type, p.plan_or_pack)}</p>
                       <p className="text-xs text-ink-700/50">{formatDateTime(p.created_at)}</p>
                     </div>
                     <div className="text-right">
@@ -336,11 +368,6 @@ export default async function MembershipPage({
         </div>
       </div>
 
-      <p className="mt-6 text-sm">
-        <Link href="/settings" className="text-rose-600 font-semibold hover:underline">
-          ← Back to settings
-        </Link>
-      </p>
     </SettingsShell>
   );
 }

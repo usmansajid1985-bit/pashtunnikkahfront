@@ -12,6 +12,10 @@ export async function POST() {
 
   const user = await prisma.users.findUnique({ where: { id: BigInt(session.userId) } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  // Top-ups are for Gold members only — refuse direct requests from Basic accounts too.
+  if ((user.plan || "").toLowerCase() !== "gold") {
+    return NextResponse.json({ error: "Buying extra Match Tokens is a Gold benefit. Upgrade to Gold to top up." }, { status: 403 });
+  }
 
   try {
     const stripe = getStripe();

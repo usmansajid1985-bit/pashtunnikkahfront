@@ -34,7 +34,8 @@ type Offer = {
   priceLabel: string;
   features: GoldFeature[];
   isGold: boolean;
-  topup: { tokens: number; priceLabel: string };
+  /** Gold members only — Basic members can't buy top-ups. */
+  topup: { tokens: number; priceLabel: string } | null;
 };
 
 /** Mounted once in the root layout; renders the popup when something asks for it. */

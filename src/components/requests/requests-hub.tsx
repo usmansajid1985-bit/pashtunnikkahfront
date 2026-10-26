@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { MatchedCard, PastMatchRow, ReceivedCard, SentCard, StatusLine } from "@/components/requests/request-cards";
+import { MatchedCard, ReceivedCard, SentCard, StatusLine } from "@/components/requests/request-cards";
 
 type Tab = "incoming" | "sent" | "matched";
 
@@ -30,7 +30,7 @@ function toTab(raw?: string): Tab | null {
   return TAB_IDS.includes(raw as Tab) ? (raw as Tab) : null;
 }
 
-/** Received / Sent / Matched. Sent counts pending requests only. */
+/** Received / Sent / Matched. Only Received shows a count — the requests waiting for your answer. */
 function SegmentedTabs({
   tab,
   onChange,
@@ -42,8 +42,8 @@ function SegmentedTabs({
 }) {
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "incoming", label: "Received", count: counts.incoming },
-    { id: "sent", label: "Sent", count: counts.sent },
-    { id: "matched", label: "Matched", count: counts.matched },
+    { id: "sent", label: "Sent", count: 0 },
+    { id: "matched", label: "Matched", count: 0 },
   ];
   return (
     <div role="tablist" className="grid grid-cols-3 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
@@ -110,7 +110,6 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
   const sentIds = useMemo(() => new Set(data.sent.map((c) => c.id)), [data.sent]);
   const receivedDeclined = data.declined.filter((c) => !sentIds.has(c.id));
   const receivedExpired = data.expired.filter((c) => !sentIds.has(c.id));
-  const ended = data.ended ?? [];
 
   return (
     <div>
@@ -171,7 +170,7 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
 
       {tab !== "sent" ? (
       <div className="mt-4 space-y-3">
-        {list.length === 0 && !(tab === "matched" && ended.length > 0) ? (
+        {list.length === 0 ? (
           <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
             {tab === "incoming" ? "No requests waiting for you right now." : "No matches yet."}
           </p>
@@ -185,17 +184,6 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
           )
         )}
       </div>
-      ) : null}
-
-      {tab === "matched" && ended.length > 0 ? (
-        <section className="mt-8">
-          <h3 className="text-sm font-bold text-ink-950 mb-2">Past matches</h3>
-          <div className="space-y-2">
-            {ended.map((card) => (
-              <PastMatchRow key={card.id} card={card} />
-            ))}
-          </div>
-        </section>
       ) : null}
 
       {tab === "incoming" && (receivedDeclined.length > 0 || receivedExpired.length > 0) ? (

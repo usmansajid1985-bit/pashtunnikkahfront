@@ -15,6 +15,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
+import { PastMatchRow } from "@/components/chat/past-match-row";
 import {
   FamilyIcon,
   FamilyModal,
@@ -33,7 +34,7 @@ import type { ProfileView } from "@/lib/profile";
 import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
-import { PrivatePhotoShare, openPrivatePhotos } from "@/components/chat/private-photo-share";
+import { PrivatePhotoShare, openPrivatePhotos, openSharePicker } from "@/components/chat/private-photo-share";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
@@ -527,6 +528,10 @@ export function ChatApp({
   const [threads, setThreads] = useState(initialThreads);
   const [inboxTab, setInboxTab] = useState<"chats" | "requests">(initialInboxTab);
   const [requestSub, setRequestSub] = useState<RequestSub>(initialRequestSub);
+  // Chats → Active / Past matches. Opening an ended chat (link, refresh) lands on Past matches.
+  const [chatSub, setChatSub] = useState<"active" | "past">(() =>
+    initialThreads.find((t) => t.requestId === initialRequestId)?.ended ? "past" : "active"
+  );
   const [requestLists, setRequestLists] = useState<{ received: HubCard[]; sent: HubCard[] } | null>(null);
   const [openRequestId, setOpenRequestId] = useState<string | null>(initialOpenRequestId);
   const loadRequests = useCallback(async () => {
@@ -567,6 +572,7 @@ export function ChatApp({
   const [photoVisible, setPhotoVisible] = useState(false);
   const [canSharePhoto, setCanSharePhoto] = useState(false);
   const [isFemaleViewer, setIsFemaleViewer] = useState(false);
+  const [composerMenu, setComposerMenu] = useState(false);
   const [peerProfile, setPeerProfile] = useState<ProfileView | null>(null);
   const [photoOnceStatus, setPhotoOnceStatus] = useState<PhotoOnceStatus>("none");
   const [canSendPhotoOnce, setCanSendPhotoOnce] = useState(false);
@@ -1037,7 +1043,11 @@ export function ChatApp({
       if (payload.byUserId === userId) return;
       // N53: the thread moves to "Past matches" (still readable) instead of disappearing.
       setThreads((prev) =>
-        prev.map((t) => (t.requestId === payload.requestId ? { ...t, ended: true, endedAt: new Date().toISOString() } : t))
+        prev.map((t) =>
+          t.requestId === payload.requestId
+            ? { ...t, ended: true, endedAt: new Date().toISOString(), endedByMe: false, canRematch: false }
+            : t
+        )
       );
       if (payload.requestId === activeId) {
         setMatchEnded(true);
@@ -1153,15 +1163,15 @@ export function ChatApp({
   }, [messages, loadingThread, tab]);
 
   /** N43: the member who ended the match can ask again — a new request costing one Match Token. */
-  async function requestRematch() {
-    if (!displayName || rematchBusy) return;
+  async function requestRematch(code: string = displayName) {
+    if (!code || rematchBusy) return;
     setRematchBusy(true);
     setHeaderMenu(null);
     try {
       const res = await fetch("/api/matches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profileCode: displayName, rematch: true }),
+        body: JSON.stringify({ profileCode: code, rematch: true }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -1194,7 +1204,11 @@ export function ChatApp({
       setEndedByMe(true);
       setShowEndConfirm(false);
       setThreads((prev) =>
-        prev.map((t) => (t.requestId === activeId ? { ...t, ended: true, endedAt: new Date().toISOString() } : t))
+        prev.map((t) =>
+          t.requestId === activeId
+            ? { ...t, ended: true, endedAt: new Date().toISOString(), endedByMe: true, canRematch: true }
+            : t
+        )
       );
       setToast("Match ended");
     } finally {
@@ -1496,24 +1510,28 @@ export function ChatApp({
     setReportTarget({ userId: peer.userId, code: peer.code, requestId: activeId });
   }
 
-  async function blockMember(doneMessage = "Member blocked") {
-    if (!peer || moreBusy) return;
+  /** Blocks the open chat's member, or `target` (a Past matches card's ⋮ menu). */
+  async function blockMember(doneMessage = "Member blocked", target?: { userId: string; requestId: string }) {
+    const who = target ?? (peer && activeId ? { userId: peer.userId, requestId: activeId } : null);
+    if (!who || moreBusy) return;
     setMoreBusy(true);
     try {
       const res = await fetch("/api/blocks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: peer.userId }),
+        body: JSON.stringify({ userId: who.userId }),
       });
       if (!res.ok) {
         showToast("Could not block member");
         return;
       }
-      setThreads((prev) => prev.filter((t) => t.requestId !== activeId));
-      if (activeId) leaveThread(activeId);
+      setThreads((prev) => prev.filter((t) => t.requestId !== who.requestId));
+      if (activeId === who.requestId) {
+        leaveThread(activeId);
+        setActiveId(null);
+        if (typeof window !== "undefined") window.history.replaceState(null, "", "/chats");
+      }
       setHeaderMenu(null);
-      setActiveId(null);
-      if (typeof window !== "undefined") window.history.replaceState(null, "", "/chats");
       showToast(doneMessage);
     } catch {
       showToast("Could not block member");
@@ -1562,11 +1580,15 @@ export function ChatApp({
   }, []);
 
   const activeThread = threads.find((t) => t.requestId === activeId) || null;
-  // N53: active chats first, then ended ones under "Past matches" (newest first within each).
-  const orderedThreads = useMemo(
-    () => [...threads.filter((t) => !t.ended), ...threads.filter((t) => t.ended)],
-    [threads]
-  );
+  // When the open match ends (by either member) its card moves to Past matches — follow it there.
+  const activeEnded = Boolean(activeThread?.ended);
+  useEffect(() => {
+    if (activeEnded) setChatSub("past");
+  }, [activeEnded]);
+  // N53: Chats → Active and Chats → Past matches (ended, newest first).
+  const activeThreads = useMemo(() => threads.filter((t) => !t.ended), [threads]);
+  const pastThreads = useMemo(() => threads.filter((t) => t.ended), [threads]);
+  const activeUnread = activeThreads.reduce((sum, t) => sum + t.unread, 0);
   const requestRows = requestLists ? requestLists[requestSub] : [];
   const openRequest =
     openRequestId && requestLists
@@ -1616,9 +1638,15 @@ export function ChatApp({
         onClose={() => setReportTarget(null)}
         onDone={(ok, alsoBlock) => {
           const wasMessage = Boolean(reportTarget?.message);
+          const reported = reportTarget;
           setReportTarget(null);
           if (!ok) return;
-          if (alsoBlock) void blockMember("Reported to the PN team and blocked");
+          if (alsoBlock) {
+            void blockMember(
+              "Reported to the PN team and blocked",
+              reported?.requestId ? { userId: reported.userId, requestId: reported.requestId } : undefined
+            );
+          }
           else showToast(wasMessage ? "Message reported to the PN team" : "Member reported to the PN team");
         }}
       />
@@ -1664,6 +1692,11 @@ export function ChatApp({
                     }`}
                   >
                     {t === "chats" ? "Chats" : "Requests"}
+                    {t === "chats" && activeUnread > 0 ? (
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-bold flex items-center justify-center">
+                        {activeUnread}
+                      </span>
+                    ) : null}
                     {t === "requests" && receivedCount > 0 ? (
                       <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-bold flex items-center justify-center">
                         {receivedCount}
@@ -1672,27 +1705,49 @@ export function ChatApp({
                   </button>
                 ))}
               </div>
-              {inboxTab === "requests" ? (
-                <div className="mt-2.5 flex gap-1.5">
-                  {(["received", "sent"] as const).map((sub) => (
+              {/* Underlined sub-tabs: Chats → Active / Past matches, Requests → Received / Sent. */}
+              <div role="tablist" className="mt-2 grid grid-cols-2 border-b border-ink-900/8">
+                {(inboxTab === "requests"
+                  ? ([
+                      { id: "received", label: "Received", count: receivedCount },
+                      { id: "sent", label: "Sent", count: 0 },
+                    ] as const)
+                  : ([
+                      { id: "active", label: "Active", count: 0 },
+                      { id: "past", label: "Past matches", count: 0 },
+                    ] as const)
+                ).map((sub) => {
+                  const selected = inboxTab === "requests" ? requestSub === sub.id : chatSub === sub.id;
+                  return (
                     <button
-                      key={sub}
+                      key={sub.id}
                       type="button"
+                      role="tab"
+                      aria-selected={selected}
                       onClick={() => {
-                        setRequestSub(sub);
-                        setOpenRequestId(null);
-                        window.history.replaceState(null, "", requestsUrl(sub));
+                        if (inboxTab === "requests") {
+                          setRequestSub(sub.id as RequestSub);
+                          setOpenRequestId(null);
+                          window.history.replaceState(null, "", requestsUrl(sub.id as RequestSub));
+                        } else {
+                          setChatSub(sub.id as "active" | "past");
+                        }
                       }}
-                      className={`px-3.5 py-1.5 rounded-full text-[13px] font-semibold transition ${
-                        requestSub === sub ? "bg-ink-950 text-white" : "bg-white border border-ink-900/10 text-ink-700 hover:border-ink-900/20"
+                      className={`relative h-10 flex items-center justify-center gap-1.5 text-[14px] transition ${
+                        selected ? "font-semibold text-ink-950" : "font-medium text-ink-700/55 hover:text-ink-900"
                       }`}
                     >
-                      {sub === "received" ? "Received" : "Sent"}
-                      {sub === "received" && receivedCount > 0 ? <span className="ml-1.5 opacity-70">{receivedCount}</span> : null}
+                      {sub.label}
+                      {sub.count > 0 ? (
+                        <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[11px] font-bold flex items-center justify-center">
+                          {sub.count}
+                        </span>
+                      ) : null}
+                      {selected ? <span className="absolute -bottom-px left-1/4 right-1/4 h-[2.5px] rounded-full bg-ink-950" /> : null}
                     </button>
-                  ))}
-                </div>
-              ) : null}
+                  );
+                })}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto pb-[var(--pn-bottom-nav-h)]">
@@ -1715,12 +1770,42 @@ export function ChatApp({
                     <RequestListRow
                       key={card.id}
                       card={card}
+                      sent={requestSub === "sent"}
                       active={card.requestId === openRequestId}
                       onOpen={() => openRequestPane(card.requestId!)}
                     />
                   ))
                 )
-              ) : threads.length === 0 ? (
+              ) : chatSub === "past" ? (
+                pastThreads.length === 0 ? (
+                  <div className="px-6 py-16 text-center">
+                    <p className="font-bold text-ink-950">No past matches</p>
+                    <p className="mt-2 text-sm text-ink-700/65">When a match ends, the conversation moves here so you can still read it.</p>
+                  </div>
+                ) : (
+                  <div className="py-1">
+                    {pastThreads.map((t) => (
+                      <PastMatchRow
+                        key={t.requestId}
+                        thread={t}
+                        avatarSrc={avatarUrl(t.peerAvatarSeed)}
+                        active={t.requestId === activeId}
+                        busy={rematchBusy || moreBusy}
+                        onOpen={() => {
+                          setOpenRequestId(null);
+                          startTransition(() => {
+                            void openThread(t.requestId);
+                            window.history.replaceState(null, "", `/chats/${t.requestId}`);
+                          });
+                        }}
+                        onRematch={() => void requestRematch(t.peerCode)}
+                        onReport={() => setReportTarget({ userId: t.peerUserId, code: t.peerCode, requestId: t.requestId })}
+                        onBlock={() => void blockMember("Member blocked", { userId: t.peerUserId, requestId: t.requestId })}
+                      />
+                    ))}
+                  </div>
+                )
+              ) : activeThreads.length === 0 ? (
                 <div className="px-6 py-16 text-center">
                   <p className="font-bold text-ink-950">No conversations yet</p>
                   <p className="mt-2 text-sm text-ink-700/65">
@@ -1734,16 +1819,10 @@ export function ChatApp({
                   </Link>
                 </div>
               ) : (
-                orderedThreads.map((t, i) => {
+                activeThreads.map((t) => {
                   const active = t.requestId === activeId;
-                  const firstPast = t.ended && (i === 0 || !orderedThreads[i - 1].ended);
                   return (
                     <Fragment key={t.requestId}>
-                    {firstPast ? (
-                      <p className="px-4 pt-5 pb-2 text-[12px] font-semibold uppercase tracking-wide text-ink-700/45 border-b border-ink-900/5">
-                        Past matches
-                      </p>
-                    ) : null}
                     <button
                       type="button"
                       onClick={() => {
@@ -1930,27 +2009,19 @@ export function ChatApp({
                     {!matchEnded ? (
                       <button
                         type="button"
-                        onClick={() => setShowEndConfirm(true)}
-                        className="hidden sm:inline-flex text-[12px] font-semibold text-ink-700/55 hover:text-rose-700 px-2 py-1 rounded-lg hover:bg-rose-50"
-                      >
-                        End match
-                      </button>
-                    ) : null}
-                    {!matchEnded ? (
-                      <button
-                        type="button"
                         onClick={() => {
                           setHeaderMenu(null);
                           setFamilyModal({ step: "main", via: "manual" });
                         }}
                         disabled={!family}
-                        className={`relative w-10 h-10 flex items-center justify-center rounded-full transition disabled:opacity-40 ${
-                          family?.shared ? "bg-emerald-50 text-emerald-700" : "text-ink-950 hover:bg-ink-900/5"
+                        className={`relative h-10 flex items-center justify-center gap-2 rounded-full transition disabled:opacity-40 w-10 sm:w-auto sm:px-3.5 ${
+                          family?.shared ? "bg-emerald-50 text-emerald-700" : "bg-ink-900/[0.04] text-ink-950 hover:bg-ink-900/[0.07]"
                         }`}
                         aria-label="Involve family"
                         title="Involve family"
                       >
                         <FamilyIcon />
+                        <span className="hidden sm:inline text-[13px] font-semibold whitespace-nowrap">Involve family</span>
                         {family && !family.shared && family.request.state === "pending" ? (
                           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E12D72] ring-2 ring-white" />
                         ) : null}
@@ -2388,7 +2459,76 @@ export function ChatApp({
                             </div>
                           ) : null}
 
-                          <form onSubmit={onSubmit} className="flex items-end gap-2">
+                          {composerMenu ? (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40 bg-ink-950/20 backdrop-blur-[3px]"
+                                onClick={() => setComposerMenu(false)}
+                                aria-hidden
+                              />
+                              <div className="relative z-50">
+                                <div
+                                  role="menu"
+                                  className="absolute bottom-2 right-12 w-[min(20rem,calc(100vw-5rem))] rounded-2xl border border-ink-900/8 bg-white p-1.5 shadow-[0_18px_40px_-16px_rgba(15,13,14,0.4)]"
+                                >
+                                  {[
+                                    {
+                                      key: "photos",
+                                      title: "Share my photos",
+                                      sub: "Up to 3 photos, viewable for 60 seconds",
+                                      icon: (
+                                        <>
+                                          <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.5-2h5L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-8Z" />
+                                          <circle cx="12" cy="12.5" r="3.2" />
+                                        </>
+                                      ),
+                                      onClick: () => activeId && openSharePicker(activeId),
+                                      disabled: false,
+                                    },
+                                    {
+                                      key: "wali",
+                                      title: isFemaleViewer ? "Share wali details" : "Involve family",
+                                      sub: isFemaleViewer ? "Send your wali's contact card" : "Ask about sharing wali details",
+                                      icon: (
+                                        <>
+                                          <circle cx="12" cy="8" r="3.5" />
+                                          <path d="M5 20c0-4 3.5-6.5 7-6.5s7 2.5 7 6.5" />
+                                        </>
+                                      ),
+                                      onClick: () => setFamilyModal({ step: "main", via: "manual" }),
+                                      disabled: !family,
+                                    },
+                                  ].map((item) => (
+                                    <button
+                                      key={item.key}
+                                      type="button"
+                                      role="menuitem"
+                                      disabled={item.disabled}
+                                      onClick={() => {
+                                        setComposerMenu(false);
+                                        item.onClick();
+                                      }}
+                                      className="w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-ink-900/[0.03] disabled:opacity-50"
+                                    >
+                                      <span className="shrink-0 w-11 h-11 rounded-full bg-rose-50 text-[#e12d72] flex items-center justify-center" aria-hidden>
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+                                          {item.icon}
+                                        </svg>
+                                      </span>
+                                      <span className="min-w-0 flex-1">
+                                        <span className="block text-[15px] font-semibold text-ink-950">{item.title}</span>
+                                        <span className="block text-[12px] text-ink-700/55">{item.sub}</span>
+                                      </span>
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-ink-700/40" aria-hidden>
+                                        <path d="m9 18 6-6-6-6" />
+                                      </svg>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          ) : null}
+                          <form onSubmit={onSubmit} className="relative z-50 flex items-end gap-2">
                             <div className="flex-1 flex items-end rounded-full border border-ink-900/10 bg-[#faf8f7] focus-within:bg-white focus-within:border-rose-300 focus-within:ring-3 focus-within:ring-rose-600/10 pl-4 pr-2 py-1.5 transition">
                               <textarea
                                 ref={inputRef}
@@ -2406,21 +2546,19 @@ export function ChatApp({
                               />
                               <span className="flex items-center gap-0.5 pb-1 text-ink-700/45">
                                 <EmojiPicker onSelect={insertEmoji} />
+                                {/* #57: one tap to share photos or wali details. */}
                                 <button
                                   type="button"
-                                  className="w-8 h-8 rounded-full hover:bg-ink-900/5 flex items-center justify-center"
-                                  aria-label="Attach"
-                                  disabled
+                                  onClick={() => setComposerMenu((m) => !m)}
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                                    composerMenu ? "bg-rose-50 text-[#e12d72] rotate-45" : "text-[#e12d72] hover:bg-rose-50"
+                                  }`}
+                                  aria-label="Share photos or wali details"
+                                  aria-expanded={composerMenu}
+                                  aria-haspopup="menu"
                                 >
-                                  <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.8"
-                                  >
-                                    <path d="m21.4 11.6-8.5 8.5a5 5 0 0 1-7.1-7.1l9.2-9.2a3.2 3.2 0 0 1 4.5 4.5l-9.2 9.1a1.4 1.4 0 1 1-2-2l8.1-8" />
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+                                    <path d="M12 5v14M5 12h14" />
                                   </svg>
                                 </button>
                               </span>

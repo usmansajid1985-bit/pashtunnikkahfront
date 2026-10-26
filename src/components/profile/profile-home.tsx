@@ -5,6 +5,7 @@ import type { ProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
+import { NavBell } from "@/components/browse/nav-notifications";
 
 type PhotoItem = {
   id: string;
@@ -125,9 +126,16 @@ export function ProfileHome({
       {/* Mobile: both panels mounted, dragged directly by the finger. */}
       <div className="lg:hidden bg-white min-h-screen">
         <div className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-ink-900/6">
-          <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="max-w-lg mx-auto px-2 h-14 flex items-center justify-between">
             <a
-              href="/settings"
+              href="/dashboard"
+              onClick={(e) => {
+                // Back to wherever they came from; a direct visit falls back to Overview.
+                if (window.history.length > 1) {
+                  e.preventDefault();
+                  window.history.back();
+                }
+              }}
               className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
               aria-label="Back"
             >
@@ -159,7 +167,20 @@ export function ProfileHome({
                 Edit
               </button>
             </div>
-            <span className="w-10" />
+            {/* Settings moved here from the bottom bar on phones, beside the notifications bell. */}
+            <div className="flex items-center">
+              <NavBell className="!h-10 !w-10" />
+              <a
+                href="/settings"
+                aria-label="Settings"
+                className="w-10 h-10 flex items-center justify-center rounded-full text-ink-700 hover:bg-ink-900/5"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+                </svg>
+              </a>
+            </div>
           </div>
         </div>
 
@@ -188,9 +209,11 @@ export function ProfileHome({
 
           {/* EDIT — slides in over Preview */}
           <div
-            className="absolute inset-0 z-10 bg-[#faf8f7] overflow-y-auto"
+            className="absolute inset-0 z-[25] bg-[#faf8f7] overflow-y-auto"
             style={{
-              transform: `translateX(${editPanelPct}%)`,
+              // Once Edit is fully in place, drop the transform: a transformed ancestor would pin the
+              // "fixed" Save bar to this panel instead of the screen (it ended up mid-page, over the questions).
+              transform: editPanelPct === 0 && !paneDragging ? "none" : `translateX(${editPanelPct}%)`,
               transition: paneDragging ? "none" : "transform 300ms cubic-bezier(0.22,1,0.36,1)",
               pointerEvents: editPanelPct > 99 ? "none" : undefined,
             }}

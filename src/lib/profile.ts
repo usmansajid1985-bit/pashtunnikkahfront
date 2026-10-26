@@ -86,6 +86,10 @@ function parseExtras(traits: string | null | undefined): ProfileExtras {
 
 function splitChips(value: string | null | undefined): string[] {
   if (!value) return [];
+  // Profiles imported from the old site store lists PHP-serialised: a:2:{i:0;s:8:"🤲 Dua";…}
+  if (/^a:\d+:\{/.test(value.trim())) {
+    return [...value.matchAll(/s:\d+:"(.*?)";/g)].map((m) => m[1].trim()).filter(Boolean);
+  }
   return value
     .split(/[,|]/)
     .map((s) => s.trim())

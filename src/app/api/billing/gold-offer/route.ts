@@ -15,10 +15,12 @@ export async function GET() {
     prisma.users.findUnique({ where: { id: BigInt(session.userId) }, select: { plan: true, requests_remaining: true } }),
     getTokenSettings(),
   ]);
+  const isGold = (user?.plan || "").toLowerCase() === "gold";
   return NextResponse.json({
     ...offer,
-    isGold: (user?.plan || "").toLowerCase() === "gold",
+    isGold,
     tokens: user?.requests_remaining ?? 0,
-    topup: { tokens: tokens.topupTokens, priceLabel: `£${(tokens.topupPricePence / 100).toFixed(2)}` },
+    // Top-ups are a Gold benefit — Basic members are offered Gold instead.
+    topup: isGold ? { tokens: tokens.topupTokens, priceLabel: `£${(tokens.topupPricePence / 100).toFixed(2)}` } : null,
   });
 }

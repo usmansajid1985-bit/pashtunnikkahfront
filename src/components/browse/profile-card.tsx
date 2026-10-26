@@ -72,8 +72,7 @@ export function ProfileCard({
     "This member has not written an about section yet. Open the full profile to learn more.";
 
   // B13/B14: simple activity wording only; Just Joined is its own badge, never a replacement.
-  const presenceLabel = p.lastSeenLabel || "Not recently active";
-  const recentlyActive = presenceLabel === "Active today" || presenceLabel === "Active yesterday" || Boolean(p.online);
+  const presenceLabel = p.lastSeenLabel || "Active over a month ago";
   const place = placeLine(p.city, p.country);
   const href = p.profileCode
     ? `/p/${encodeURIComponent(p.profileCode)}${returnQuery ? `?from=${encodeURIComponent(returnQuery)}` : ""}`
@@ -96,7 +95,7 @@ export function ProfileCard({
           <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-sm px-2.5 py-1 text-[11.5px] font-medium text-white">
               <span
-                className={`h-2 w-2 rounded-full ${recentlyActive ? "bg-emerald-400" : "bg-white/50"}`}
+                className="h-2 w-2 rounded-full bg-emerald-400"
                 aria-hidden
               />
               {presenceLabel}

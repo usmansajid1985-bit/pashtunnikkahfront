@@ -33,6 +33,12 @@ export function openPrivatePhotos(requestId: string) {
   window.dispatchEvent(new CustomEvent(OPEN_PRIVATE_PHOTOS_EVENT, { detail: { requestId } }));
 }
 
+/** Opens the "Share photos" picker for this conversation — e.g. from the composer's "+" menu. */
+export const OPEN_SHARE_PICKER_EVENT = "pn:open-share-picker";
+export function openSharePicker(requestId: string) {
+  window.dispatchEvent(new CustomEvent(OPEN_SHARE_PICKER_EVENT, { detail: { requestId } }));
+}
+
 /** Overlays render at <body> — the chat panes are CSS-transformed for the swipe gesture, which
  * would otherwise trap `position: fixed` modals inside the pane (clipped under the header). */
 function Overlay({ children }: { children: ReactNode }) {
@@ -129,8 +135,15 @@ export function PrivatePhotoShare({
     const onOpen = (e: Event) => {
       if ((e as CustomEvent<{ requestId: string }>).detail?.requestId === requestId) tapRef.current();
     };
+    const onSharePicker = (e: Event) => {
+      if ((e as CustomEvent<{ requestId: string }>).detail?.requestId === requestId) void pickerRef.current();
+    };
     window.addEventListener(OPEN_PRIVATE_PHOTOS_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_PRIVATE_PHOTOS_EVENT, onOpen);
+    window.addEventListener(OPEN_SHARE_PICKER_EVENT, onSharePicker);
+    return () => {
+      window.removeEventListener(OPEN_PRIVATE_PHOTOS_EVENT, onOpen);
+      window.removeEventListener(OPEN_SHARE_PICKER_EVENT, onSharePicker);
+    };
   }, [variant, requestId]);
 
   useEffect(() => {
@@ -140,6 +153,8 @@ export function PrivatePhotoShare({
     return () => clearInterval(t);
   }, [refresh, matchEnded]);
 
+  const pickerRef = useRef<() => Promise<void>>(async () => {});
+  pickerRef.current = openPicker;
   async function openPicker() {
     setError(null);
     setPickerOpen(true);
@@ -332,12 +347,35 @@ export function PrivatePhotoShare({
       {/* Photo picker */}
       {pickerOpen ? (
         <Overlay>
-        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
-            <p className="font-bold text-ink-950 text-sm">Share private photos</p>
-            <p className="text-[12px] text-ink-700/60 mt-1">
-              {peerName} will have one 60-second session to view up to 3 of your photos.
+        <div
+          className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-ink-950/30 backdrop-blur-[3px] px-3 pb-3 sm:pb-0"
+          onClick={() => setPickerOpen(false)}
+        >
+          <div className="w-full max-w-sm rounded-[22px] bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3">
+              <p className="font-bold text-ink-950 text-[17px]">Share photos</p>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(false)}
+                aria-label="Close"
+                className="-mr-1 -mt-1 w-8 h-8 flex items-center justify-center rounded-full text-ink-700/60 hover:bg-ink-900/5"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-[12.5px] leading-relaxed text-ink-700/65 mt-1">
+              Select up to 3 photos to share with {peerName}. They&apos;ll stay blurred until the recipient starts a
+              60-second viewing session.
             </p>
+            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-3 py-1 text-[12px] font-semibold text-[#e12d72]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.5-2h5L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-8Z" />
+                <circle cx="12" cy="12.5" r="3" />
+              </svg>
+              Up to 3 photos
+            </span>
             <div className="mt-3 grid grid-cols-3 gap-2">
               {(ownPhotos || []).map((p) => {
                 const isSelected = selected.includes(p.id);
@@ -350,7 +388,7 @@ export function PrivatePhotoShare({
                     disabled={inReview}
                     onClick={() => toggleSelect(p.id)}
                     className={`relative aspect-square rounded-xl overflow-hidden border-2 ${
-                      isSelected ? "border-rose-600" : "border-transparent"
+                      isSelected ? "border-[#e12d72]" : "border-transparent"
                     } ${inReview ? "cursor-not-allowed" : ""}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -361,8 +399,10 @@ export function PrivatePhotoShare({
                       </span>
                     ) : null}
                     {isSelected ? (
-                      <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
-                        {selected.indexOf(p.id) + 1}
+                      <span className="absolute top-1 right-1 w-5 h-5 rounded-full bg-[#e12d72] text-white flex items-center justify-center" aria-label={`Selected ${selected.indexOf(p.id) + 1}`}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" aria-hidden>
+                          <path d="m5 12.5 4.5 4.5L19 7.5" />
+                        </svg>
                       </span>
                     ) : null}
                   </button>
@@ -385,9 +425,9 @@ export function PrivatePhotoShare({
                 type="button"
                 disabled={selected.length === 0 || busy}
                 onClick={() => void confirmShare()}
-                className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white text-sm font-semibold disabled:opacity-50"
               >
-                {busy ? "Sharing…" : "Share Photos"}
+                {busy ? "Sharing…" : "Share photos"}
               </button>
               <button
                 type="button"
@@ -406,28 +446,44 @@ export function PrivatePhotoShare({
       {startPromptOpen && incoming && incoming.status !== "none" ? (
         <Overlay>
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-4 shadow-2xl">
-            <p className="font-bold text-ink-950 text-sm">{peerName} has shared private photos with you</p>
-            <p className="text-[12px] text-ink-700/65 mt-1.5 leading-relaxed">
-              You can view up to {incoming.photoCount} photo{incoming.photoCount === 1 ? "" : "s"} for 1
-              minute. Once you start, the timer will continue even if you close the viewer.
-            </p>
+          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
+            <div className="flex items-start gap-3">
+              <span className="shrink-0 w-11 h-11 rounded-full bg-rose-50 text-[#e12d72] flex items-center justify-center" aria-hidden>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
+                  <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" />
+                </svg>
+              </span>
+              <div className="min-w-0">
+                <p className="font-bold text-ink-950 text-[15px]">{peerName} has shared photos with you</p>
+                <p className="text-[12.5px] text-ink-700/70 mt-0.5 leading-relaxed">
+                  View up to {incoming.photoCount} photo{incoming.photoCount === 1 ? "" : "s"} for 60 seconds. The timer
+                  continues if you close the viewer.
+                </p>
+              </div>
+            </div>
+            <div className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3.5 py-2.5">
+              <p className="text-[12.5px] font-bold text-[#e12d72]">Respect their privacy</p>
+              <p className="mt-0.5 text-[12px] leading-relaxed text-[#c41d5e]">
+                Do not screenshot, record or share these photos. They&apos;ve trusted you with temporary access. Repeated or
+                serious violations may lead to account termination.
+              </p>
+            </div>
             {error ? <p className="text-[11px] text-rose-600 mt-2">{error}</p> : null}
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void startViewing(incoming.shareId)}
-                className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white text-sm font-semibold disabled:opacity-50"
               >
-                {busy ? "Starting…" : "Start Viewing"}
+                {busy ? "Starting…" : "View photos"}
               </button>
               <button
                 type="button"
                 onClick={() => setStartPromptOpen(false)}
                 className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
               >
-                Not Now
+                Not now
               </button>
             </div>
           </div>

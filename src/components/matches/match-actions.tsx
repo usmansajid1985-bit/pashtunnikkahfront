@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import React, { FormEvent, useState, useTransition } from "react";
 import type { MatchRelationStatus } from "@/lib/matches";
+import { INTRO_MAX_CHARS, INTRO_MAX_WORDS, countWords } from "@/lib/intro-message";
 
-const INTRO_MAX = 30;
 
 export function MatchActions({
   profileCode,
@@ -113,7 +113,7 @@ export function MatchActions({
             type="button"
             disabled={pending || Boolean(blockedReason)}
             onClick={() => setShowSendModal(true)}
-            className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)] disabled:hover:bg-rose-600 disabled:shadow-none`}
+            className={`${btn} bg-brand text-white hover:bg-brand-700 shadow-[0_12px_28px_-12px_rgba(225,45,114,0.55)] disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-brand disabled:shadow-none`}
           >
             {pending ? "Sending…" : (
               <>
@@ -143,7 +143,7 @@ export function MatchActions({
               type="button"
               disabled={pending || Boolean(blockedReason)}
               onClick={() => respond("accept")}
-              className={`${btn} bg-rose-600 text-white hover:bg-rose-700`}
+              className={`${btn} bg-brand text-white hover:bg-brand-700`}
             >
               {pending ? "…" : "Accept & chat"}
             </button>
@@ -153,7 +153,7 @@ export function MatchActions({
         {status.state === "accepted" ? (
           <a
             href={`/chats/${status.requestId}`}
-            className={`${btn} bg-rose-600 text-white hover:bg-rose-700`}
+            className={`${btn} bg-brand text-white hover:bg-brand-700`}
           >
             Matched – go to chat
           </a>
@@ -171,7 +171,7 @@ export function MatchActions({
               type="button"
               disabled={pending || Boolean(blockedReason)}
               onClick={() => setShowSendModal(true)}
-              className={`${btn} bg-rose-600 text-white hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)] disabled:hover:bg-rose-600 disabled:shadow-none`}
+              className={`${btn} bg-brand text-white hover:bg-brand-700 shadow-[0_12px_28px_-12px_rgba(225,45,114,0.55)] disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-brand disabled:shadow-none`}
             >
               {pending ? "Sending…" : "Request Rematch"}
             </button>
@@ -197,23 +197,27 @@ export function MatchActions({
               {status.state === "ended" ? "Request Rematch" : "Request Match"}
             </h3>
             <p className="text-sm text-ink-700/70">
-              Uses 1 Match Token. Optional short message ({INTRO_MAX} characters).
+              Uses 1 Match Token. Optional short introduction (up to {INTRO_MAX_WORDS} words).
             </p>
-            <input
+            <textarea
               value={introMessage}
-              onChange={(e) => setIntroMessage(e.target.value.slice(0, INTRO_MAX))}
-              maxLength={INTRO_MAX}
+              onChange={(e) => {
+                const next = e.target.value.slice(0, INTRO_MAX_CHARS);
+                // Stop at 30 words, but still let them delete or edit inside the limit.
+                if (countWords(next) <= INTRO_MAX_WORDS || next.length < introMessage.length) setIntroMessage(next);
+              }}
+              rows={3}
               placeholder="Assalamu alaikum"
-              className="w-full rounded-xl border border-ink-900/10 px-3 py-2 text-sm focus:outline-none focus:border-rose-300"
+              className="w-full resize-none rounded-xl border border-ink-900/10 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:border-rose-300"
             />
             <p className="text-[11px] text-ink-700/45 text-right">
-              {introMessage.length}/{INTRO_MAX}
+              {countWords(introMessage)}/{INTRO_MAX_WORDS} words
             </p>
             <div className="flex gap-2">
               <button
                 type="submit"
                 disabled={pending}
-                className="flex-1 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-50"
+                className="flex-1 py-2.5 rounded-full bg-brand text-white text-sm font-semibold disabled:opacity-50"
               >
                 {pending ? "Sending…" : "Send request"}
               </button>

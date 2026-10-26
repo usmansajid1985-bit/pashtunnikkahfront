@@ -64,15 +64,16 @@ export function SettingsRow({
   title,
   description,
   icon,
-  iconBg,
-  iconColor,
+  iconBg = "#f4f2f3",
+  iconColor = "#e12d72",
 }: {
   href: string;
   title: string;
   description: string;
   icon: ReactNode;
-  iconBg: string;
-  iconColor: string;
+  /** Defaults: PN pink icon in a light-grey circle (the Settings list style). */
+  iconBg?: string;
+  iconColor?: string;
 }) {
   return (
     <Link
@@ -89,7 +90,7 @@ export function SettingsRow({
         <span className="block text-[15px] font-semibold text-ink-950">{title}</span>
         <span className="block text-[12.5px] text-ink-700/65 mt-0.5 leading-snug">{description}</span>
       </span>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c9a227" strokeWidth="2.2" className="shrink-0">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b5b0b3" strokeWidth="2.2" className="shrink-0">
         <path d="m9 6 6 6-6 6" />
       </svg>
     </Link>

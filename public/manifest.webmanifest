@@ -5,7 +5,7 @@
   "start_url": "/browse",
   "display": "standalone",
   "background_color": "#faf8f7",
-  "theme_color": "#aa1945",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "/icons/pn-icon-192.png",

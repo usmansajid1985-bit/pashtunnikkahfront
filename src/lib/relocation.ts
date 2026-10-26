@@ -28,10 +28,14 @@ const LABELS: Record<RelocationValue, string> = {
   no: "Not open to relocation",
 };
 
+/** Label shown on profiles — only a clear yes/no; an old "maybe" answer isn't shown. */
 export function relocationLabel(raw: string | null | undefined): string | null {
   const v = normalizeRelocation(raw);
-  return v ? LABELS[v] : null;
+  return v && v !== "maybe" ? LABELS[v] : null;
 }
 
-export const RELOCATION_OPTIONS: { value: RelocationValue; label: string }[] =
-  RELOCATION_VALUES.map((v) => ({ value: v, label: LABELS[v] }));
+/** What members can choose: open or not open. "Maybe" is no longer offered (older answers stay hidden). */
+export const RELOCATION_OPTIONS: { value: RelocationValue; label: string }[] = (["yes", "no"] as const).map((v) => ({
+  value: v,
+  label: LABELS[v],
+}));

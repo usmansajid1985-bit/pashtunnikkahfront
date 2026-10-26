@@ -12,6 +12,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { findPriorEndedMatch } from "@/lib/rematch-tokens";
 import { sendPushNotification } from "@/lib/push/server";
 import { broadcastChat } from "@/lib/chat-broadcast";
+import { introMessageProblem } from "@/lib/intro-message";
 import {
   allowsPrivateChat,
   effectiveCommMode,
@@ -21,7 +22,6 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const INTRO_MAX = 30;
 
 export async function POST(req: Request) {
   const session = await getSession();
@@ -37,9 +37,10 @@ export async function POST(req: Request) {
   const profileCode = String(body.profileCode ?? "").trim();
   const peerUserIdRaw = body.userId != null ? String(body.userId) : "";
   const introMessageRaw = body.introMessage != null ? String(body.introMessage).trim() : "";
-  if (introMessageRaw.length > INTRO_MAX) {
+  const introProblem = introMessageProblem(introMessageRaw);
+  if (introProblem) {
     return NextResponse.json(
-      { error: `Your introduction message can be at most ${INTRO_MAX} characters.` },
+      { error: introProblem },
       { status: 400 }
     );
   }
@@ -219,16 +220,15 @@ export async function POST(req: Request) {
   }
 
   if (introMessage) {
-    const { filterMessageBody } = await import("@/lib/moderation");
-    const screened = filterMessageBody(introMessage);
-    if (screened.flagged || screened.reason) {
-      return NextResponse.json(
-        {
-          error:
-            "Your introduction message cannot include phone numbers, emails, or social links. Keep it brief and respectful.",
-        },
-        { status: 400 }
-      );
+    // Same rules as chat messages: contact details, threats, sexual content and abuse are refused.
+    const { inspectLeak } = await import("@/lib/chat-safety");
+    const verdict = inspectLeak([introMessage]);
+    if (verdict.hit) {
+      const reason =
+        verdict.category === "contact"
+          ? "Your introduction message can't include or ask for contact details (numbers, emails, social media or other apps)."
+          : "Your introduction message must be respectful. Please change it and try again.";
+      return NextResponse.json({ error: reason }, { status: 400 });
     }
   }
 

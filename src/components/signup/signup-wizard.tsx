@@ -24,6 +24,7 @@ import {
   textQualityIssue,
   SALAH_OPTIONS,
   salahShortLabel,
+  salahDisplay,
   type SignupData,
 } from "@/lib/signup";
 import { ChoiceGrid, ChoiceTile, GenderTile, I } from "@/components/signup/choice-tile";
@@ -714,7 +715,9 @@ export function SignupWizard() {
                     }`}
                   >
                     <span className="font-semibold">{salahShortLabel(o)}</span>
-                    <span className="block text-[12px] text-ink-700/65">{o.split("–").slice(1).join("–").trim()}</span>
+                    <span className="block text-[12px] text-ink-700/65">
+                      {salahDisplay(o, data.gender === "Brother").split("–").slice(1).join("–").trim()}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1035,26 +1038,38 @@ export function SignupWizard() {
 
             {step.id === "done" && (
               <div className="text-center py-6">
-                <div className="signup-burst mx-auto w-20 h-20 rounded-full bg-rose-50 flex items-center justify-center">
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="2.2">
-                    <path d="M20 6 9 17l-5-5" />
+                <div className="relative mx-auto w-28 h-28">
+                  {/* Sparkles + rays around the tick, as in the welcome design. */}
+                  <svg className="absolute inset-0 w-full h-full text-[#e12d72]/60" viewBox="0 0 112 112" fill="none" aria-hidden>
+                    <path d="M18 34l-6-3M14 56H7M18 78l-6 3M94 34l6-3M98 56h7M94 78l6 3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                    <path d="M30 10l1.8 4.2L36 16l-4.2 1.8L30 22l-1.8-4.2L24 16l4.2-1.8L30 10ZM86 86l1.4 3.2 3.2 1.4-3.2 1.4L86 95.2l-1.4-3.2-3.2-1.4 3.2-1.4L86 86Z" fill="currentColor" />
                   </svg>
+                  <div className="signup-burst absolute inset-4 rounded-full bg-rose-50 shadow-[0_10px_30px_-12px_rgba(225,45,114,0.45)] flex items-center justify-center">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
+                  </div>
                 </div>
-                <h1 className="font-serif mt-6 text-3xl font-medium text-ink-950">{step.title}</h1>
-                <p className="mt-3 text-sm text-ink-700/70 max-w-sm mx-auto leading-relaxed">{step.subtitle}</p>
-                <p className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold">
-                  Profile submitted · pending review
+                <h1 className="font-serif mt-5 text-[28px] font-semibold text-ink-950">Welcome to Pashtun Nikah!</h1>
+                <p className="mt-3 text-[15px] text-ink-700/75 max-w-sm mx-auto leading-relaxed">
+                  Your profile has been submitted successfully. You can start exploring profiles while our team reviews your
+                  account.
                 </p>
+                <p className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-rose-50 text-[#e12d72] text-[13px] font-semibold">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M12 7v5l3 2" />
+                  </svg>
+                  Awaiting approval
+                </p>
+                <p className="mt-4 text-[13px] text-ink-700/60">We&apos;ll notify you as soon as your profile is approved.</p>
                 <button
                   type="button"
                   onClick={() => router.push("/browse")}
-                  className="block w-full mt-8 py-3.5 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition"
+                  className="block w-full mt-7 py-3.5 rounded-full bg-[#e12d72] text-white font-semibold hover:bg-[#c41d5e] transition"
                 >
-                  Start browsing
+                  Start exploring
                 </button>
-                <Link href="/login" className="block mt-3 text-sm text-ink-700/60 hover:text-ink-900">
-                  Or go to login
-                </Link>
               </div>
             )}
           </div>

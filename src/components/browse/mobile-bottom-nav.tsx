@@ -10,7 +10,7 @@ const BOTTOM_TABS: { key: NavKey; label: string }[] = [
   { key: "requests", label: "Requests" },
   { key: "messages", label: "Chats" },
   { key: "profile", label: "Profile" },
-  { key: "settings", label: "Settings" },
+  // Settings opens from the gear in My Profile's header on phones (desktop keeps it in the sidebar).
 ];
 
 /**
@@ -37,7 +37,8 @@ export function MobileBottomNav({
         {BOTTOM_TABS.map(({ key, label }) => {
           const item = NAV_ITEMS.find((n) => n.key === key);
           if (!item) return null;
-          const isActive = active === key;
+          // Settings pages sit under Profile on phones.
+          const isActive = (active === "settings" ? "profile" : active) === key;
           return (
             <Link
               key={key}

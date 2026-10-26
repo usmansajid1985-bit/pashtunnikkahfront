@@ -64,6 +64,9 @@ export function PhotoGallery({
       const data = await res.json();
       if (!res.ok) {
         setError(data.error || "Something went wrong.");
+        // PH-04: another tab may have used the last slot — reload the real list so the Add tile is right.
+        const fresh = await fetch("/api/profile/photos").then((r) => r.json()).catch(() => null);
+        if (Array.isArray(fresh?.photos)) setPhotos(fresh.photos);
         return;
       }
       if (Array.isArray(data.photos)) setPhotos(data.photos);
@@ -77,6 +80,7 @@ export function PhotoGallery({
 
   function onFile(file: File | null) {
     if (!file) return;
+    setError(null); // PH-03: only ever show the result for the file just chosen
     if (!file.type.startsWith("image/")) return setError("Please choose an image.");
     if (file.size > 6 * 1024 * 1024) return setError("Photo must be under 6MB.");
     const reader = new FileReader();
@@ -180,6 +184,11 @@ export function PhotoGallery({
         className="hidden"
         onChange={(e) => onFile(e.target.files?.[0] ?? null)}
       />
+      {/* PH-07 / PH-08: the rules beside Add photo, and that photos save on their own. */}
+      <p className="mt-3 text-[12px] text-ink-700/60">
+        JPG, PNG or WEBP · up to 6 MB each · up to {MAX} photos. Photos save automatically — no need to press Save
+        changes.
+      </p>
       {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
 
       {cropSource ? (

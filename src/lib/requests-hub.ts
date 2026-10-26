@@ -5,6 +5,7 @@ import { blockedUserIds } from "@/lib/blocking";
 import { loadCompatibilityCache, type CachedCompat } from "@/lib/compatibility-cache";
 import { countryLabel, toCountryCode } from "@/lib/country";
 import { signedPhotoUrl } from "@/lib/photos";
+import { formatLastSeen } from "@/lib/presence";
 
 export type { HubCard } from "@/lib/requests-hub-shared";
 
@@ -221,7 +222,7 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
   // every thread's latest message in another.
   const allPeerIds = allRequests.map((r) => (r.sender_id === userId ? r.receiver_id : r.sender_id));
 
-  const [profileMap, lastMsgRows, compatCache] = await Promise.all([
+  const [profileMap, lastMsgRows, compatCache, lastSeenRows] = await Promise.all([
     loadProfilesByUserId(allPeerIds),
     matchRequestIds.length === 0
       ? Promise.resolve([] as { request_id: bigint; body: string }[])
@@ -234,7 +235,11 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
     loadCompatibilityCache(userId, [
       ...new Set(allPeerIds.map((id) => id.toString())),
     ].map((s) => BigInt(s))),
+    allPeerIds.length === 0
+      ? Promise.resolve([] as { id: bigint; last_seen_at: Date | null }[])
+      : prisma.users.findMany({ where: { id: { in: allPeerIds } }, select: { id: true, last_seen_at: true } }),
   ]);
+  const lastSeenByUser = new Map(lastSeenRows.map((u) => [u.id.toString(), u.last_seen_at]));
 
   // Cards only ever get the server-blurred derivative of an approved photo (bucket is private, so
   // each one is a short-lived signed URL). Members without one fall back to the placeholder.
@@ -302,6 +307,7 @@ export async function loadRequestsHub(userId: bigint, afterExpiry = false): Prom
         expiresAt: r.status === "pending" ? r.expires_at.toISOString() : null,
         tokenRefunded: r.sender_id === userId && refundedIds.has(r.id.toString()),
         photoUrl: photoByUser.get(peerId.toString()) ?? null,
+        activity: formatLastSeen(lastSeenByUser.get(peerId.toString()) ?? null),
         // N53: only the member who ended a match can ask to rematch (either, if the PN team ended it).
         canRematch: r.status === "ended" ? r.ended_by == null || r.ended_by === userId : undefined,
       },

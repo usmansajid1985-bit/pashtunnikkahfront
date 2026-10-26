@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import type { HubCard } from "@/lib/requests-hub-shared";
 import { expiryCountdown, relativeStamp, statusDateLabel } from "@/lib/requests-hub-shared";
 import { useRequestActions } from "@/components/matches/request-actions";
-import { RematchButton } from "@/components/matches/rematch-button";
+import { WithdrawDialog } from "@/components/requests/withdraw-dialog";
 
 /** Where the introduction message opens: Chats → Requests → Received, with this request open. */
 export function requestChatHref(card: Pick<HubCard, "requestId">, sub: "received" | "sent" = "received") {
@@ -192,6 +192,12 @@ export function KebabMenu({ items, label = "More options" }: { items: MenuItem[]
   );
 }
 
+export const FlagIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="text-ink-700/70" aria-hidden>
+    <path d="M4 21V4h9l1 2h6v9h-7l-1-2H4" />
+  </svg>
+);
+
 export const MinusCircleIcon = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2" strokeLinecap="round" aria-hidden>
     <circle cx="12" cy="12" r="9" />
@@ -199,7 +205,7 @@ export const MinusCircleIcon = (
   </svg>
 );
 
-const BlockIcon = (
+export const BlockIcon = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="2" strokeLinecap="round" aria-hidden>
     <circle cx="12" cy="12" r="9" />
     <path d="m5.6 5.6 12.8 12.8" />
@@ -319,6 +325,7 @@ export function ReceivedCard({ card }: { card: HubCard }) {
 /** Status pill, date, and the one action that fits this request. */
 export function SentCard({ card }: { card: HubCard }) {
   const { act, pending, error } = useRequestActions(card.requestId!);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const status = card.status || "pending";
   const isPending = status === "pending";
 
@@ -348,17 +355,16 @@ export function SentCard({ card }: { card: HubCard }) {
               ) : null}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
-              <StatusPill status={status} />
-              {isPending ? (
-                <button
-                  type="button"
-                  disabled={pending}
-                  onClick={() => act("withdraw")}
-                  className="pointer-events-auto px-3.5 py-1.5 rounded-full border border-ink-900/12 bg-white text-[13px] font-semibold text-ink-900 disabled:opacity-50"
-                >
-                  Withdraw request
-                </button>
-              ) : status === "accepted" ? (
+              <div className="flex items-center gap-1">
+                <StatusPill status={status} />
+                {isPending ? (
+                  <KebabMenu
+                    label={`More options for your request to ${card.code}`}
+                    items={[{ label: "Withdraw request", icon: MinusCircleIcon, onClick: () => setConfirmWithdraw(true) }]}
+                  />
+                ) : null}
+              </div>
+              {isPending ? null : status === "accepted" ? (
                 <Link
                   href={`/chats/${card.requestId}`}
                   className="pointer-events-auto px-3.5 py-1.5 rounded-full bg-rose-600 text-white text-[13px] font-semibold"
@@ -378,6 +384,16 @@ export function SentCard({ card }: { card: HubCard }) {
           {error ? <p className="mt-2 text-xs text-rose-700">{error}</p> : null}
         </div>
       </div>
+      <WithdrawDialog
+        open={confirmWithdraw}
+        code={card.code}
+        busy={pending}
+        onKeep={() => setConfirmWithdraw(false)}
+        onWithdraw={() => {
+          setConfirmWithdraw(false);
+          act("withdraw");
+        }}
+      />
     </CardShell>
   );
 }
@@ -407,34 +423,6 @@ export function MatchedCard({ card }: { card: HubCard }) {
         </div>
       </div>
     </CardShell>
-  );
-}
-
-export function PastMatchRow({ card }: { card: HubCard }) {
-  return (
-    <article className="flex flex-col sm:flex-row sm:items-center gap-3 bg-white/80 border border-ink-900/6 rounded-2xl px-4 py-3.5">
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <RequestPhoto card={card} className="w-11 h-11 !rounded-full opacity-80" />
-        <div className="min-w-0">
-          <p className="font-semibold text-ink-950 truncate">{card.code}</p>
-          <p className="text-[13px] text-ink-700/55 truncate">
-            <StatusLine card={card} />
-            {card.lastMessage ? ` · ${card.lastMessage.slice(0, 48)}` : ""}
-          </p>
-        </div>
-      </div>
-      <div className="flex gap-2 shrink-0">
-        {card.requestId ? (
-          <Link href={`/chats/${card.requestId}`} className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold">
-            View chat
-          </Link>
-        ) : null}
-        <Link href={`/p/${card.code}`} className="px-3 py-1.5 rounded-full border border-ink-900/12 text-sm font-semibold">
-          Profile
-        </Link>
-        {card.canRematch ? <RematchButton profileCode={card.code} /> : null}
-      </div>
-    </article>
   );
 }
 

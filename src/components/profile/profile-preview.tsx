@@ -10,29 +10,6 @@ import type { ProfileSlide } from "@/components/profile/profile-photo-slider";
 import { ProfileHero } from "@/components/profile/profile-hero";
 import { HeroBackButton, HeroMoreMenu, SaveProfileButton } from "@/components/profile/profile-hero-controls";
 
-function Pill({
-  icon,
-  children,
-  tone = "grey",
-}: {
-  icon?: ReactNode;
-  children: ReactNode;
-  tone?: "grey" | "rose" | "green" | "amber";
-}) {
-  const tones = {
-    grey: "bg-[#f3f1f0] text-ink-950",
-    rose: "bg-rose-50 text-rose-700",
-    green: "bg-emerald-50 text-emerald-800",
-    amber: "bg-amber-50 text-amber-800",
-  };
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[13px] font-medium ${tones[tone]}`}>
-      {icon}
-      {children}
-    </span>
-  );
-}
-
 export function ProfilePreview({
   profile,
   showEditTab = false,
@@ -117,7 +94,7 @@ export function ProfilePreview({
           photoOverrideVisible={photoVisible}
           photoOverrideUrl={photoVisible === undefined ? undefined : profile.photoUrl}
           // N45: a matched profile opened from Browse shows only "Matched – go to chat".
-          footerTitle={matchStatus?.state === "accepted" ? null : "Connect"}
+          footerTitle={null}
           heroTopLeft={showEditTab ? undefined : <HeroBackButton href={backHref || closeHref} label={backLabel || "Back"} />}
           heroTopRight={moreMenu}
           footer={
@@ -193,6 +170,7 @@ export function ProfilePreview({
         presence={presence}
         topLeft={showMobileChrome && !showEditTab ? <HeroBackButton href={closeHref} /> : undefined}
         topRight={showMobileChrome ? moreMenu : undefined}
+        photoCount={showEditTab}
       />
 
       <div
@@ -205,12 +183,6 @@ export function ProfilePreview({
         }`}
       >
         {photoAccessory ? <div className="pt-4 -mx-4">{photoAccessory}</div> : null}
-
-        {profile.plan === "gold" && !profile.hideGoldBadge ? (
-          <div className="pt-3 flex flex-wrap gap-1.5">
-            <Pill tone="amber">Gold</Pill>
-          </div>
-        ) : null}
 
         {viewerCompat ? (
           <div className="mt-3">

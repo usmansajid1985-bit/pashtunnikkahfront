@@ -613,7 +613,7 @@ export function FamilyModal({
           with {peer}.
         </p>
         <div className="mt-5 space-y-2">
-          <Link href="/profile/edit#wali-contact" className={`${primaryBtn} block text-center`} style={{ background: PN_PINK }}>
+          <Link href="/settings/wali#wali-contact" className={`${primaryBtn} block text-center`} style={{ background: PN_PINK }}>
             Add wali contact
           </Link>
           <button type="button" onClick={onClose} className={secondaryBtn}>

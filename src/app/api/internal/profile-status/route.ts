@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { broadcastBrowseVisibility, broadcastChat } from "@/lib/chat-broadcast";
 import { sendPushNotification } from "@/lib/push/server";
 import { readSignedInternal } from "@/lib/internal-auth";
+import { prisma } from "@/lib/prisma";
+import { getPlanSettings } from "@/lib/plan-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +18,11 @@ export async function POST(req: Request) {
   const { userId, status } = signed;
 
   if (status === "approved") {
+    const member = await prisma.users.findUnique({ where: { id: BigInt(userId) }, select: { plan: true } });
+    const { monthlyCredits } = await getPlanSettings(member?.plan);
     await sendPushNotification(BigInt(userId), {
-      title: "Your profile is approved",
-      body: "You can now browse and send Match Requests.",
+      title: "Your Pashtun Nikah profile has been approved ✅",
+      body: `You now have ${monthlyCredits} ${member?.plan?.toLowerCase() === "gold" ? "" : "free "}Match Tokens every month. Start exploring profiles and making connections!`,
       url: "/dashboard",
       tag: `profile-approved-${userId}`,
       type: "profile_status",

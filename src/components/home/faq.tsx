@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { SectionHeading } from "@/components/home/section-heading";
 
@@ -8,47 +9,49 @@ const faqs = [
     q: "Is the platform free to use?",
     a: [
       "Yes! Registration, browsing and chatting with your matches are free. Basic members receive 3 free Match Tokens every month to send Match Requests.",
-      "For more opportunities, Gold offers 10 Match Tokens per month and additional premium features. Gold members can also purchase 5 extra Match Tokens for £6.99.",
+      "Gold members receive 10 Match Tokens per month, plus exclusive features. Gold members can also purchase 5 additional Match Tokens for £6.99.",
     ],
+    link: { href: "/gold", label: "Learn more about how Gold works here →" },
   },
   {
     q: "Who is Pashtun Nikah for?",
     a: [
-      "Pashtun Nikah is for Pashtun Muslims who are genuinely seeking marriage in a respectful, safe and Islamic environment.",
+      "Pashtun Nikah is designed exclusively for Pashtun Muslims seeking marriage. Our platform brings together members who share Pashtun heritage, culture and Islamic values.",
     ],
   },
   {
     q: "How does profile verification work?",
     a: [
-      "After you verify your email, every profile is individually reviewed by our team before it is approved and becomes visible to other members.",
+      "Every profile is individually reviewed by our team before approval to help maintain a genuine and respectful community.",
+      "You can explore the platform while your profile is awaiting approval.",
     ],
   },
   {
     q: "Will my contact or wali details be public?",
-    a: ["No. Contact and wali details are never shown publicly on your profile."],
+    a: [
+      "No. Your personal contact details and your wali's information are never displayed publicly.",
+      "You decide when to share your wali's contact details with a match, once you feel there is sufficient compatibility.",
+    ],
   },
   {
     q: "Are my profile photos public?",
     a: [
-      "No. Your photos stay blurred while members browse. Once you match, you choose up to 3 photos to share in chat, and each one can be viewed for up to 60 seconds before it blurs again.",
-    ],
-  },
-  {
-    q: "Can someone screenshot my photos?",
-    a: [
-      "Photos are only ever shown unblurred during a 60-second viewing session that you start by sharing them with a match. No app can fully stop a screenshot on every device, so only share photos with matches you trust.",
+      "No. All profile photos are blurred by default.",
+      "Once matched, you can choose to share up to 3 photos privately in chat. Your match has a 60-second viewing session, after which the photos become blurred again.",
+      "You can share your photos again whenever you choose.",
     ],
   },
   {
     q: "Is wali involvement required?",
     a: [
-      "It isn't mandatory, but we strongly encourage wali (guardian) involvement throughout the marriage process.",
+      "It's optional for females, however we strongly encourage wali involvement throughout the marriage process. Enabling Wali Oversight is also optional.",
     ],
   },
   {
     q: "What is Wali Oversight?",
     a: [
-      "Wali Oversight lets you give your wali read-only access to your chats, so they can stay informed and support you throughout.",
+      "Wali Oversight allows your wali to view your conversations with matches through read-only access.",
+      "Your wali cannot send messages or participate in the conversation. The feature is optional but strongly encouraged to support a respectful, marriage-focused experience.",
     ],
   },
 ];
@@ -89,6 +92,11 @@ export function FAQ() {
                     {item.a.map((p) => (
                       <p key={p}>{p}</p>
                     ))}
+                    {"link" in item && item.link ? (
+                      <Link href={item.link.href} className="inline-block font-semibold text-brand hover:underline">
+                        {item.link.label}
+                      </Link>
+                    ) : null}
                   </div>
                 </div>
               </div>

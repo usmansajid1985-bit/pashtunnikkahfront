@@ -83,13 +83,13 @@ export function isActiveToday(lastSeenAt: Date | string | null | undefined, now 
  * never minutes/hours or "Online". The exact timestamp is still used internally for ranking.
  */
 export function formatLastSeen(lastSeenAt: Date | string | null | undefined, now = new Date()): string {
-  if (!lastSeenAt) return "Not recently active";
+  if (!lastSeenAt) return "Active over a month ago";
   const t = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
-  if (Number.isNaN(t.getTime())) return "Not recently active";
+  if (Number.isNaN(t.getTime())) return "Active over a month ago";
   if (isActiveToday(t, now)) return "Active today";
   const days = (now.getTime() - t.getTime()) / (24 * 60 * 60_000);
   if (days < 2 && dayKey(t) === dayKey(new Date(now.getTime() - 24 * 60 * 60_000))) return "Active yesterday";
   if (days < 7) return "Active this week";
-  if (days < 30) return "Active recently";
-  return "Not recently active";
+  if (days < 31) return "Active this month";
+  return "Active over a month ago";
 }

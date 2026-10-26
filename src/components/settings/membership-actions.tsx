@@ -9,7 +9,6 @@ import { UpgradeModal } from "@/components/billing/gold-upsell";
 export function MembershipActions({
   isGold,
   activeSubscription,
-  credits,
   topupConfigured = true,
   topupTokens = TOPUP_CREDITS,
   topupPricePence = TOPUP_AMOUNT_PENCE,
@@ -18,7 +17,6 @@ export function MembershipActions({
 }: {
   isGold: boolean;
   activeSubscription: boolean;
-  credits: number;
   /** false when no Stripe price is resolvable for the top-up right now — show the CTA disabled
    * instead of letting it fail at checkout (PN-SETTINGS-006). */
   topupConfigured?: boolean;
@@ -110,11 +108,6 @@ export function MembershipActions({
 
   return (
     <div className="space-y-2.5">
-      {credits <= 1 ? (
-        <p className="text-sm rounded-xl bg-amber-50 text-amber-900 px-3 py-2 border border-amber-100">
-          Running low on Match Tokens ({credits} left). Top up or wait for your monthly allowance.
-        </p>
-      ) : null}
       {message ? (
         <p className="text-sm rounded-xl bg-emerald-50 text-emerald-800 px-3 py-2">{message}</p>
       ) : null}
@@ -139,15 +132,18 @@ export function MembershipActions({
           {pending ? "Redirecting…" : "Upgrade to Gold →"}
         </button>
       )}
-      <button
-        type="button"
-        disabled={pending || !topupConfigured}
-        title={topupConfigured ? undefined : "Top-ups are temporarily unavailable"}
-        onClick={() => void buyTopup()}
-        className="w-full h-12 rounded-full border-2 border-[#e12d72]/70 bg-white text-[14px] font-semibold text-[#c2185b] hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {pending ? "Redirecting…" : topupConfigured ? topupLabel : "Top-ups temporarily unavailable"}
-      </button>
+      {/* Top-ups are Gold-only (the API refuses Basic accounts as well). */}
+      {isGold ? (
+        <button
+          type="button"
+          disabled={pending || !topupConfigured}
+          title={topupConfigured ? undefined : "Top-ups are temporarily unavailable"}
+          onClick={() => void buyTopup()}
+          className="w-full h-12 rounded-full border-2 border-[#e12d72]/70 bg-white text-[14px] font-semibold text-[#c2185b] hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {pending ? "Redirecting…" : topupConfigured ? topupLabel : "Top-ups temporarily unavailable"}
+        </button>
+      ) : null}
 
       {modalOpen ? (
         <UpgradeModal

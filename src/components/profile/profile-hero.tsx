@@ -4,6 +4,7 @@ import { toCountryCode } from "@/lib/country";
 import type { ProfileView } from "@/lib/profile";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { ProfilePhotoSlider, type ProfileSlide } from "@/components/profile/profile-photo-slider";
+import { BriefcaseIcon, PeopleIcon, PracticeIcon } from "@/components/profile/pill-icons";
 
 /**
  * The photo-led top of a member profile: photo(s) with the profile ID, age, location and headline
@@ -21,6 +22,7 @@ export function ProfileHero({
   photoAction,
   topLeft,
   topRight,
+  photoCount = false,
 }: {
   profile: ProfileView;
   slides: ProfileSlide[];
@@ -35,6 +37,8 @@ export function ProfileHero({
   /** Over the photo's top corners — the back arrow and the ⋯ (Report / Block) menu. */
   topLeft?: ReactNode;
   topRight?: ReactNode;
+  /** Own profile: show the "1/3" photo-count pill. */
+  photoCount?: boolean;
 }) {
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
   const countryCode = toCountryCode(profile.country);
@@ -49,11 +53,18 @@ export function ProfileHero({
   return (
     <div className={`relative w-full overflow-hidden bg-ink-900/10 ${frame}`}>
       {photoHidden ? (
-        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-ink-900/10 to-ink-900/5">
-          <p className="text-sm font-semibold text-ink-700/50 px-10 text-center">Photo hidden until you match</p>
-        </div>
+        // No photo for this viewer (most often: the member hasn't added one). Show a softly blurred
+        // placeholder, never a "hidden" message.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={fallbackSrc} alt="" className="w-full h-full object-cover blur-xl scale-110" />
       ) : (
-        <ProfilePhotoSlider slides={slides} showPhoto={showPhoto} fallbackSrc={fallbackSrc} arrows={size !== "phone"} />
+        <ProfilePhotoSlider
+          slides={slides}
+          showPhoto={showPhoto}
+          fallbackSrc={fallbackSrc}
+          arrows={size !== "phone"}
+          countPill={photoCount}
+        />
       )}
 
       {photoAction ? (
@@ -67,6 +78,17 @@ export function ProfileHero({
         </div>
       ) : null}
 
+      {/* Gold members (unless they hide the badge): sunset pill under the back arrow. */}
+      {profile.plan === "gold" && !profile.hideGoldBadge ? (
+        <span
+          className={`absolute z-20 pointer-events-none rounded-full bg-gradient-to-r from-[#f7a8c4] to-[#fcd6a4] font-semibold text-ink-950/75 shadow-sm ${
+            topLeft ? (wide ? "top-[4.25rem] left-5 px-4 py-1 text-[13px]" : "top-16 left-3.5 px-3.5 py-1 text-[12.5px]") : "top-3 left-3 px-3.5 py-1 text-[12.5px]"
+          }`}
+        >
+          Gold
+        </span>
+      ) : null}
+
       {presence ? (
         <div
           className={`absolute right-3 z-20 pointer-events-none flex flex-col items-end gap-1.5 ${
@@ -74,9 +96,7 @@ export function ProfileHero({
           }`}
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3d3836]/85 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-md">
-            <span
-              className={`h-2 w-2 shrink-0 rounded-full ${presence.online ? "bg-[#4ade3a]" : "bg-white/50"}`}
-            />
+            <span className="h-2 w-2 shrink-0 rounded-full bg-[#4ade3a]" />
             {presence.label}
           </span>
           {presence.justJoined ? (
@@ -106,22 +126,36 @@ export function ProfileHero({
         </p>
         {/* Exactly three hero pills: practice, tribe (in its colour), employment. */}
         <div className={`flex flex-wrap ${wide ? "mt-4 gap-2" : "mt-3 gap-1.5"}`}>
-          {profile.religiousPractice ? <HeroPill wide={wide}>{profile.religiousPractice}</HeroPill> : null}
-          <TribePill tribe={profile.tribe} className={wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"} />
-          {profile.employment ? <HeroPill wide={wide}>{profile.employment}</HeroPill> : null}
+          {profile.religiousPractice ? (
+            <HeroPill wide={wide} icon={<PracticeIcon practice={profile.religiousPractice} />}>
+              {profile.religiousPractice}
+            </HeroPill>
+          ) : null}
+          <TribePill
+            tribe={profile.tribe}
+            icon={<PeopleIcon />}
+            className={`backdrop-blur-md ${wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"}`}
+          />
+          {profile.employment ? (
+            <HeroPill wide={wide} icon={<BriefcaseIcon />}>
+              {profile.employment}
+            </HeroPill>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
-function HeroPill({ wide, children }: { wide: boolean; children: ReactNode }) {
+/** Semi-transparent so a little of the photo's colour shows through; icon + text stay solid. */
+function HeroPill({ wide, icon, children }: { wide: boolean; icon?: ReactNode; children: ReactNode }) {
   return (
     <span
-      className={`rounded-full bg-black/40 backdrop-blur-md font-medium text-white border border-white/20 ${
+      className={`inline-flex items-center gap-1.5 rounded-full bg-black/30 backdrop-blur-sm font-medium text-white border border-white/25 ${
         wide ? "px-3.5 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"
       }`}
     >
+      {icon}
       {children}
     </span>
   );

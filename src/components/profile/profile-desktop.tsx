@@ -23,7 +23,7 @@ export function ProfileDesktop({
   presence,
   slides,
   photoAction,
-  footerTitle = "Connect",
+  footerTitle = null,
   heroTopLeft,
   heroTopRight,
 }: {
@@ -123,14 +123,6 @@ export function ProfileDesktop({
         />
 
         <div className="mt-4 space-y-3">
-          {profile.plan === "gold" && !profile.hideGoldBadge ? (
-            <div>
-              <span className="inline-flex items-center px-3 py-1.5 rounded-full bg-amber-50 text-amber-800 text-[13px] font-medium">
-                Gold
-              </span>
-            </div>
-          ) : null}
-
           {!isOwn && footer ? (
             <div className="card p-6">
               {footerTitle ? <h2 className="text-lg font-bold text-ink-950 mb-3">{footerTitle}</h2> : null}
