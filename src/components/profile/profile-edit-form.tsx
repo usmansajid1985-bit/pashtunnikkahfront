@@ -547,16 +547,17 @@ export function ProfileEditForm({
           <ChoiceGrid count={4}>
             {(
               [
-                { v: "Strictly Practising", tone: "mint" as const, icon: I.practiceStrict },
-                { v: "Actively Practising", tone: "sky" as const, icon: I.practiceActive },
-                { v: "Occasionally Practising", tone: "peach" as const, icon: I.practiceOccasional },
-                { v: "Does Not Practise", tone: "rose" as const, icon: I.practiceNone },
+                { v: "Strictly Practising", icon: I.practiceStrict },
+                { v: "Actively Practising", icon: I.practiceActive },
+                { v: "Occasionally Practising", icon: I.practiceOccasional },
+                { v: "Does Not Practise", icon: I.practiceNone },
               ] as const
             ).map((o) => (
               <ChoiceTile
                 key={o.v}
                 label={o.v}
-                tone={o.tone}
+                tone="white"
+                pink
                 icon={o.icon}
                 showCheck
                 selected={form.religiousPractice === o.v}
