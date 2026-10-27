@@ -59,6 +59,8 @@ type Props = {
     countryOnly: boolean;
     hasPin: boolean;
   };
+  /** How many profiles the member has saved (bookmarked) — shown on the My saves pill. */
+  savedCount?: number;
 };
 
 function Pill({
@@ -204,6 +206,7 @@ export function BrowseFiltersBar({
   targetGender = null,
   rememberKey,
   savedLocation,
+  savedCount = 0,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -401,8 +404,17 @@ export function BrowseFiltersBar({
           ) : null}
         </button>
 
-        <div className="ml-auto flex items-center gap-2">
-          <label className="pill-btn cursor-pointer">
+        <div className="ml-auto flex flex-col items-stretch gap-2">
+          <a href="/browse/saved" className="pill-btn justify-center gap-2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
+              <path d="M6 3.5h12v17l-6-4.2-6 4.2v-17Z" />
+            </svg>
+            <span className="text-sm font-semibold text-ink-950">My saves</span>
+            <span className="min-w-[1.5rem] h-6 px-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center tabular-nums">
+              {savedCount}
+            </span>
+          </a>
+          <label className="pill-btn cursor-pointer justify-center">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <circle cx="12" cy="12" r="9" />
               <path d="M12 7v5l3 2" />

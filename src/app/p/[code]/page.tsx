@@ -34,7 +34,8 @@ export default async function PublicProfilePage({
   const { code } = await params;
   const { from } = await searchParams;
   // Restore the exact filtered Browse the user came from (PN-BROWSE-003).
-  const browseHref = from && from.startsWith("?") ? `/browse${from}` : "/browse";
+  const fromSaves = from === "?saved=1";
+  const browseHref = fromSaves ? "/browse/saved" : from && from.startsWith("?") ? `/browse${from}` : "/browse";
   const profile = await prisma.profiles.findFirst({
     where: {
       profile_code: { equals: code, mode: "insensitive" },
@@ -232,7 +233,7 @@ export default async function PublicProfilePage({
       navProfileCode={session.profileCode}
       closeHref={browseHref}
       backHref={browseHref}
-      backLabel="Back to browse"
+      backLabel={fromSaves ? "Back to My saves" : "Back to browse"}
       unreadCount={unreadCount}
       viewerCompat={viewerCompat}
       presence={presence}

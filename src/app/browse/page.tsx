@@ -136,6 +136,14 @@ export default async function BrowsePage({
   }
 
   const blockedIds = await blockedUserIds(userId);
+  // My saves pill: only saves that are still viewable (approved, not hidden, not blocked).
+  const savedCount = await prisma.profiles.count({
+    where: {
+      user_id: { in: savedFavourites.map((f) => f.profile_user_id).filter((id) => !blockedIds.includes(id)) },
+      status: "approved",
+      is_hidden: false,
+    },
+  });
 
   const { ids: locationIds, needsLocation } = await savedLocationFilter(me, filters.near);
 
@@ -241,6 +249,7 @@ export default async function BrowsePage({
             hasPin: me?.location_lat != null && me?.location_lng != null,
           }}
           options={filterOptions}
+          savedCount={savedCount}
         />
 
         {needsLocation ? (
