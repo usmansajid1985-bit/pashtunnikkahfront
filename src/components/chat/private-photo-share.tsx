@@ -454,10 +454,10 @@ export function PrivatePhotoShare({
                 </svg>
               </span>
               <div className="min-w-0">
-                <p className="font-bold text-ink-950 text-[15px]">{peerName} has shared photos with you</p>
+                <p className="font-bold text-ink-950 text-[15px]">{peerName} has shared private photos with you</p>
                 <p className="text-[12.5px] text-ink-700/70 mt-0.5 leading-relaxed">
-                  View up to {incoming.photoCount} photo{incoming.photoCount === 1 ? "" : "s"} for 60 seconds. The timer
-                  continues if you close the viewer.
+                  You can view up to {incoming.photoCount} photo{incoming.photoCount === 1 ? "" : "s"} for 1 minute. Once
+                  you start, the timer will continue even if you close the viewer.
                 </p>
               </div>
             </div>
@@ -476,14 +476,14 @@ export function PrivatePhotoShare({
                 onClick={() => void startViewing(incoming.shareId)}
                 className="flex-1 py-2.5 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white text-sm font-semibold disabled:opacity-50"
               >
-                {busy ? "Starting…" : "View photos"}
+                {busy ? "Starting…" : "Start Viewing"}
               </button>
               <button
                 type="button"
                 onClick={() => setStartPromptOpen(false)}
                 className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
               >
-                Not now
+                Not Now
               </button>
             </div>
           </div>
