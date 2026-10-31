@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
+import { emitSavedChange } from "@/components/browse/saved-count";
 
 /** Browse → My saves: the member's bookmarked profiles. Unsaving removes the card. */
 export function SavedGrid({ initialItems }: { initialItems: ProfileCardData[] }) {
@@ -34,6 +35,7 @@ export function SavedGrid({ initialItems }: { initialItems: ProfileCardData[] })
       return;
     }
     setItems((prev) => prev.filter((p) => p.userId !== userId));
+    emitSavedChange(-1); // keep the "My saves" heading count in step (PN-AUD-005)
     showToast("Removed from My saves");
   }
 

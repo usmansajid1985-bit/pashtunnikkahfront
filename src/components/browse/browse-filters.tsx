@@ -11,6 +11,7 @@ import {
   stripGoldFilters,
 } from "@/lib/browse-filters-shared";
 import { LocationFilter, locationNarrows, locationSummary, type LocationChoice } from "@/components/browse/location-filter";
+import { useLiveSavedCount } from "@/components/browse/saved-count";
 import { RELOCATION_OPTIONS } from "@/lib/relocation";
 import { COUNTRIES } from "@/lib/country";
 import { HEIGHT_FILTER_STEPS } from "@/lib/height";
@@ -229,6 +230,7 @@ export function BrowseFiltersBar({
   );
   const [areaChanged, setAreaChanged] = useState(false);
   const locked = !isGold;
+  const liveSavedCount = useLiveSavedCount(savedCount);
   const activeCount = countActiveFilters(filters, isGold);
   const draftTribes = parseTribeList(draft.tribe);
 
@@ -409,7 +411,7 @@ export function BrowseFiltersBar({
             </svg>
             <span className="text-sm font-semibold text-ink-950">My saves</span>
             <span className="min-w-[1.5rem] h-6 px-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center tabular-nums">
-              {savedCount}
+              {liveSavedCount}
             </span>
           </a>
           <label className="pill-btn cursor-pointer justify-center">

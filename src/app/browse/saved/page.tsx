@@ -5,6 +5,7 @@ import { blockedUserIds } from "@/lib/blocking";
 import { getNavCounts } from "@/lib/dashboard";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { SavedGrid } from "@/components/browse/saved-grid";
+import { SavedCountBadge } from "@/components/browse/saved-count";
 import { BROWSE_PROFILE_SELECT, rankBrowseProfiles } from "@/lib/browse-rank";
 
 export const dynamic = "force-dynamic";
@@ -52,9 +53,7 @@ export default async function SavedProfilesPage() {
         </a>
         <div className="mt-3 flex items-center gap-3">
           <h1 className="text-2xl font-bold text-ink-950">My saves</h1>
-          <span className="min-w-[1.75rem] h-7 px-2 rounded-full bg-rose-50 text-rose-600 text-sm font-semibold flex items-center justify-center tabular-nums">
-            {cards.length}
-          </span>
+          <SavedCountBadge initial={cards.length} />
         </div>
         <p className="mt-1 text-sm text-ink-700/70">Profiles you&apos;ve bookmarked. Tap the bookmark again to remove one.</p>
         <SavedGrid initialItems={cards} />

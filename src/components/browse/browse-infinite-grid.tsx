@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
+import { emitSavedChange } from "@/components/browse/saved-count";
 import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
 import { useChatSocket } from "@/hooks/use-chat-socket";
@@ -94,6 +95,8 @@ export function BrowseInfiniteGrid({
         else next.add(userId);
         return next;
       });
+      // Keep the "My saves" pill in step with this save/removal (PN-AUD-005).
+      emitSavedChange(isSaved ? -1 : 1);
     } finally {
       setSavingIds((prev) => {
         const next = new Set(prev);
