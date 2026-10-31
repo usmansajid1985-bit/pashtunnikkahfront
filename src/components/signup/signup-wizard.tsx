@@ -532,14 +532,14 @@ export function SignupWizard() {
                 />
                 <div className="mt-1 flex justify-between text-[11px] text-ink-700/55">
                   <span className="text-left leading-tight">
-                    4&apos;6&quot;
+                    4&apos;0&quot;
                     <br />
-                    (137 cm)
+                    (122 cm)
                   </span>
                   <span className="text-right leading-tight">
-                    6&apos;6&quot;
+                    7&apos;0&quot;
                     <br />
-                    (198 cm)
+                    (213 cm)
                   </span>
                 </div>
               </div>

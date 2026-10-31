@@ -297,9 +297,9 @@ export const HEIGHTS = Array.from({ length: 44 }, (_, i) => {
   return `${ft}'${inch}" (${cm} cm)`;
 });
 
-/** Signup slider: 4'6" (137 cm) through 6'6" (198 cm), one inch per step. */
-export const HEIGHT_SLIDER = Array.from({ length: 25 }, (_, i) => {
-  const totalIn = 54 + i;
+/** Signup slider: 4'0" (122 cm) through 7'0" (213 cm), one inch per step. */
+export const HEIGHT_SLIDER = Array.from({ length: 37 }, (_, i) => {
+  const totalIn = 48 + i;
   const ft = Math.floor(totalIn / 12);
   const inch = totalIn % 12;
   const cm = Math.round(totalIn * 2.54);
