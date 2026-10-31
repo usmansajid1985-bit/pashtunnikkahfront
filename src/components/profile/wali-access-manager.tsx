@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ActivityIcon, ClockIcon, EyeIcon, IconBadge, IconField, LinkIcon, MailIcon, PersonIcon, primaryWaliBtn } from "./wali-ui";
 
 type WaliMode = "oversight" | "oversight_notify";
 
@@ -27,11 +28,11 @@ type Activity = {
 
 /** W05 (Join Conversation dropped — W06 not needed). */
 const MODES: { value: WaliMode; label: string; help: string }[] = [
-  { value: "oversight", label: "Oversight only", help: "Can read your conversations. No notifications." },
+  { value: "oversight", label: "View chats only", help: "Your wali can view your conversations." },
   {
     value: "oversight_notify",
-    label: "Oversight + notifications",
-    help: "Can read your conversations and gets an email when there's new activity.",
+    label: "View chats + email updates",
+    help: "Your wali can view your conversations and gets an email when there's new activity.",
   },
 ];
 
@@ -45,9 +46,6 @@ const EVENT_LABEL: Record<string, string> = {
   notified: "Notification sent",
   revoked: "Access removed",
 };
-
-const field =
-  "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
 function when(iso: string) {
   return new Date(iso).toLocaleString("en-GB", {
@@ -171,71 +169,83 @@ export function WaliAccessManager() {
   const shownActivity = showAllActivity ? activity : activity.slice(0, 8);
 
   return (
+    <div className="space-y-4">
     <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2" id="wali">
-      <div>
-        <h2 className="font-bold text-ink-950">Wali or Mother Oversight</h2>
-        <p className="text-xs text-ink-700/55 mt-0.5">
-          Give your wali or mother a private link to view your chats and profile — read-only, no
-          messaging. Choose whether they also get email notifications. You can change this or remove
-          access at any time.
-        </p>
+      <div className="flex items-start gap-3">
+        <IconBadge><EyeIcon /></IconBadge>
+        <div>
+          <h2 className="text-[17px] font-bold text-ink-950">Wali Oversight</h2>
+          <p className="text-[13px] text-ink-700/60 mt-0.5 leading-snug">
+            Invite your wali or mother to view your chats, read-only. Remove access at any time.
+          </p>
+        </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs font-semibold mb-1">Name</label>
-          <input className={field} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Abdul Rahman" />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Relation (optional)</label>
-          <input className={field} value={relation} onChange={(e) => setRelation(e.target.value)} placeholder="e.g. Father" />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="block text-xs font-semibold mb-1">
-            Email {mode === "oversight_notify" ? "(needed for notifications)" : "(optional — we'll email them the invitation)"}
-          </label>
-          <input
-            className={field}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. abdulrahman@email.com"
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <p className="text-xs font-semibold mb-1">Access</p>
-          <div className="grid sm:grid-cols-2 gap-2">
-            {MODES.map((m) => (
+      <div className="grid sm:grid-cols-3 gap-3">
+        <IconField
+          label="Full name"
+          icon={<PersonIcon />}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Abdul Rahman"
+        />
+        <IconField
+          label="Relationship (optional)"
+          icon={<LinkIcon />}
+          value={relation}
+          onChange={(e) => setRelation(e.target.value)}
+          placeholder="e.g. Father"
+        />
+        <IconField
+          label="Email (optional)"
+          icon={<MailIcon />}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="e.g. wali@example.com"
+        />
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold mb-1.5 text-ink-900">Access</p>
+        <div className="grid sm:grid-cols-2 gap-2.5">
+          {MODES.map((m) => {
+            const selected = mode === m.value;
+            return (
               <label
                 key={m.value}
-                className={`cursor-pointer rounded-xl border px-3 py-2.5 text-sm ${
-                  mode === m.value ? "border-rose-300 bg-rose-50/60" : "border-ink-900/10"
+                className={`flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 ${
+                  selected ? "border-[#e12d72] bg-rose-50/50" : "border-ink-900/12 hover:border-ink-900/20"
                 }`}
               >
                 <input
                   type="radio"
                   name="wali-mode"
                   className="sr-only"
-                  checked={mode === m.value}
+                  checked={selected}
                   onChange={() => setMode(m.value)}
                 />
-                <span className="font-semibold text-ink-950">{m.label}</span>
-                <span className="block text-[12px] text-ink-700/60">{m.help}</span>
+                <span
+                  className={`mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full border-2 ${
+                    selected ? "border-[#e12d72]" : "border-ink-900/25"
+                  }`}
+                  aria-hidden
+                >
+                  {selected ? <span className="h-2 w-2 rounded-full bg-[#e12d72]" /> : null}
+                </span>
+                <span>
+                  <span className="block text-[14px] font-semibold text-ink-950">{m.label}</span>
+                  <span className="block text-[12.5px] text-ink-700/60 leading-snug">{m.help}</span>
+                </span>
               </label>
-            ))}
-          </div>
-        </div>
-        <div className="sm:col-span-2">
-          <button
-            type="button"
-            onClick={() => void addWali()}
-            disabled={busy}
-            className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
-          >
-            {busy ? "Adding…" : "Invite wali"}
-          </button>
+            );
+          })}
         </div>
       </div>
+
+      <button type="button" onClick={() => void addWali()} disabled={busy} className={primaryWaliBtn}>
+        {busy ? "Adding…" : "Invite wali"}
+      </button>
 
       {error ? <p className="text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{error}</p> : null}
       {notice ? <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">{notice}</p> : null}
@@ -318,13 +328,35 @@ export function WaliAccessManager() {
         </div>
       )}
 
-      <div className="pt-2 border-t border-ink-900/6">
-        <h3 className="font-semibold text-sm text-ink-950">Activity log</h3>
-        <p className="text-[12px] text-ink-700/55">Everything your walis have done — kept even after access is removed.</p>
+    </section>
+
+    <section className="bg-white rounded-2xl border border-ink-900/8 p-5 lg:col-span-2">
+      <div className="sm:flex sm:items-start sm:justify-between sm:gap-6">
+        <div className="flex items-start gap-3 sm:max-w-[46%]">
+          <IconBadge><ActivityIcon /></IconBadge>
+          <div>
+            <h3 className="text-[16px] font-bold text-ink-950">Activity</h3>
+            <p className="text-[13px] text-ink-700/60 mt-0.5 leading-snug">
+              See what your wali has viewed. Kept even after access is removed.
+            </p>
+          </div>
+        </div>
         {activity.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-700/50">No activity yet.</p>
-        ) : (
-          <ul className="mt-2 divide-y divide-ink-900/6">
+          <div className="mt-4 sm:mt-0 sm:flex-1 flex items-center gap-3 rounded-xl bg-[#f4f2f3] px-4 py-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-ink-700/45" aria-hidden>
+              <ClockIcon />
+            </span>
+            <div>
+              <p className="text-[14px] font-semibold text-ink-950">No activity yet</p>
+              <p className="text-[12.5px] text-ink-700/55">Your wali&apos;s activity will appear here.</p>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {activity.length > 0 ? (
+        <>
+          <ul className="mt-4 divide-y divide-ink-900/6">
             {shownActivity.map((a) => (
               <li key={a.id} className="py-2 flex gap-3 text-[13px]">
                 <span className="w-32 shrink-0 text-ink-700/55">{when(a.at)}</span>
@@ -335,17 +367,18 @@ export function WaliAccessManager() {
               </li>
             ))}
           </ul>
-        )}
-        {activity.length > 8 ? (
-          <button
-            type="button"
-            onClick={() => setShowAllActivity((v) => !v)}
-            className="mt-1 text-xs font-semibold text-rose-700 hover:underline"
-          >
-            {showAllActivity ? "Show less" : `Show all ${activity.length}`}
-          </button>
-        ) : null}
-      </div>
+          {activity.length > 8 ? (
+            <button
+              type="button"
+              onClick={() => setShowAllActivity((v) => !v)}
+              className="mt-1 text-xs font-semibold text-rose-700 hover:underline"
+            >
+              {showAllActivity ? "Show less" : `Show all ${activity.length}`}
+            </button>
+          ) : null}
+        </>
+      ) : null}
     </section>
+    </div>
   );
 }

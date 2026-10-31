@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IconBadge, IconField, MailIcon, PersonIcon, PhoneIcon, LinkIcon, primaryWaliBtn } from "./wali-ui";
 
 export function GuardianContactManager() {
   const [name, setName] = useState("");
@@ -58,70 +59,58 @@ export function GuardianContactManager() {
       id="wali-contact"
       className="scroll-mt-24 bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2"
     >
-      <div>
-        <h2 className="font-bold text-ink-950">Wali or Mother Contact Card</h2>
-        <p className="text-xs text-ink-700/55 mt-0.5">
-          Add your wali&apos;s or mother&apos;s name and phone number. Once a match is accepted, you can
-          send this as a contact card in chat so the other member can reach them directly.
-        </p>
+      <div className="flex items-start gap-3">
+        <IconBadge><PersonIcon /></IconBadge>
+        <div>
+          <h2 className="text-[17px] font-bold text-ink-950">Wali Contact Details</h2>
+          <p className="text-[13px] text-ink-700/60 mt-0.5 leading-snug">
+            Add your wali&apos;s or mother&apos;s details. You can share them in chat once a match is accepted.
+          </p>
+        </div>
       </div>
 
       {loading ? <p className="text-sm text-ink-700/50">Loading…</p> : (
       <>
-
-
       <div className="grid sm:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-semibold mb-1">Wali or mother name</label>
-          <input
-            className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Abdul Rahman"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Phone number</label>
-          <input
-            className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
-            value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="e.g. +44 7911 123456"
-            type="tel"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Relationship to you (optional)</label>
-          <input
-            className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
-            value={relation}
-            onChange={(e) => setRelation(e.target.value)}
-            placeholder="e.g. Father"
-            maxLength={64}
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold mb-1">Email (optional)</label>
-          <input
-            className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="e.g. wali@example.com"
-            type="email"
-          />
-        </div>
-        <div className="sm:col-span-2 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={busy}
-            className="px-4 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
-          >
-            {busy ? "Saving…" : "Save contact card"}
-          </button>
-          {saved ? <span className="text-sm text-emerald-700 font-medium">Saved.</span> : null}
-        </div>
+        <IconField
+          label="Full name"
+          icon={<PersonIcon />}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Abdul Rahman"
+        />
+        <IconField
+          label="Phone number"
+          icon={<PhoneIcon />}
+          value={contact}
+          onChange={(e) => setContact(e.target.value)}
+          placeholder="e.g. +44 7911 123456"
+          type="tel"
+        />
+        <IconField
+          label="Relationship to you (optional)"
+          icon={<LinkIcon />}
+          value={relation}
+          onChange={(e) => setRelation(e.target.value)}
+          placeholder="e.g. Father"
+          maxLength={64}
+        />
+        <IconField
+          label="Email (optional)"
+          icon={<MailIcon />}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="e.g. wali@example.com"
+          type="email"
+        />
       </div>
+
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => void save()} disabled={busy} className={primaryWaliBtn}>
+          {busy ? "Saving…" : "Save details"}
+        </button>
+      </div>
+      {saved ? <p className="text-sm text-emerald-700 font-medium">Saved.</p> : null}
 
       {error ? <p className="text-sm text-rose-700 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{error}</p> : null}
       </>
