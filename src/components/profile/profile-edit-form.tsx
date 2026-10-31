@@ -23,7 +23,7 @@ import {
 } from "@/lib/signup";
 import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
-import { ISLAMIC_SECTS } from "@/lib/islamic-background";
+import { ISLAMIC_SECTS, displaySect } from "@/lib/islamic-background";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
@@ -574,16 +574,16 @@ export function ProfileEditForm({
               </option>
             ))}
           </select>
-          <label className="block text-xs font-semibold">Islamic background (sect)</label>
+          <label className="block text-xs font-semibold">Islamic background</label>
           <select
             className={field}
-            value={form.islamicBackground}
+            value={displaySect(form.islamicBackground) ?? ""}
             onChange={(e) => patch("islamicBackground", e.target.value)}
           >
             <option value="">Select…</option>
-            {form.islamicBackground &&
-            !(ISLAMIC_SECTS as readonly string[]).includes(form.islamicBackground) ? (
-              <option value={form.islamicBackground}>{form.islamicBackground}</option>
+            {displaySect(form.islamicBackground) &&
+            !(ISLAMIC_SECTS as readonly string[]).includes(displaySect(form.islamicBackground)!) ? (
+              <option value={form.islamicBackground!}>{form.islamicBackground}</option>
             ) : null}
             {ISLAMIC_SECTS.map((s) => (
               <option key={s} value={s}>

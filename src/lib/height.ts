@@ -61,11 +61,12 @@ export function displayHeight(
   return formatHeight(cm);
 }
 
-/** Dropdown steps for the Browse height filter (cm, with a friendly label). */
+/** Steps for the Browse minimum-height filter: 4'0" (122 cm) to 7'0" (213 cm), one inch each.
+ * Labels carry both feet/inches and cm (via formatHeight). */
 export const HEIGHT_FILTER_STEPS: { cm: number; label: string }[] = Array.from(
-  { length: (205 - 140) / 5 + 1 },
+  { length: 37 },
   (_, i) => {
-    const cm = 140 + i * 5;
+    const cm = Math.round((48 + i) * 2.54);
     return { cm, label: formatHeight(cm)! };
   }
 );

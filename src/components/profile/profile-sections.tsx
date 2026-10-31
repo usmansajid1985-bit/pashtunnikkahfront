@@ -4,6 +4,7 @@ import { iconFor } from "@/lib/profile-optional";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
+import { displaySect } from "@/lib/islamic-background";
 import { RelocationIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
@@ -203,7 +204,7 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
           {hasFaithPractice ? (
             <Group label="Faith & Practice" first>
               <div className={chips}>
-                {profile.islamicBackground ? <Chip icon="☪️">{profile.islamicBackground}</Chip> : null}
+                {profile.islamicBackground ? <Chip icon="☪️">{displaySect(profile.islamicBackground)}</Chip> : null}
                 {/* B08: members can filter by Salah, so it must be visible on the profile. */}
                 {salah ? <Chip icon="🕌">{salah}</Chip> : null}
                 {profile.religiousPractice ? <Chip>{profile.religiousPractice}</Chip> : null}

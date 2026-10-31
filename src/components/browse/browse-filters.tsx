@@ -154,8 +154,6 @@ function AgeRange({ min, max, onChange }: { min: number; max: number; onChange: 
   );
 }
 
-/** Feet-and-inches part of a height label: `5'9" (175 cm)` → `5'9"`. */
-const shortHeight = (label: string) => label.split(" (")[0];
 
 function Field({
   label,
@@ -609,7 +607,7 @@ export function BrowseFiltersBar({
                       </select>
                     </Field>
 
-                    <Field label="Islamic background (sect)">
+                    <Field label="Islamic background">
                       <select
                         className={selectClass}
                         value={draft.sect}
@@ -704,10 +702,10 @@ export function BrowseFiltersBar({
                           style={{ "--pn-fill": `${(heightIdx / (HEIGHT_FILTER_STEPS.length - 1)) * 100}%` } as React.CSSProperties}
                           aria-valuetext={`${heightStep.label} or taller`}
                         />
-                        <span className="mt-1 flex justify-between text-xs text-ink-700/60">
-                          <span>{shortHeight(HEIGHT_FILTER_STEPS[0].label)}</span>
-                          <span className="font-semibold text-ink-950">{shortHeight(heightStep.label)} or taller</span>
-                          <span>{shortHeight(HEIGHT_FILTER_STEPS[HEIGHT_FILTER_STEPS.length - 1].label)}</span>
+                        <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-ink-700/60">
+                          <span>{HEIGHT_FILTER_STEPS[0].label}</span>
+                          <span className="font-semibold text-ink-950 text-center">{heightStep.label} or taller</span>
+                          <span className="text-right">{HEIGHT_FILTER_STEPS[HEIGHT_FILTER_STEPS.length - 1].label}</span>
                         </span>
                       </Field>
                       <Field label="Education" locked={locked}>
