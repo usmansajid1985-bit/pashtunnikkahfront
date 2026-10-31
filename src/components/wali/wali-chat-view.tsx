@@ -15,6 +15,7 @@ export function WaliChatView({
   peerCode,
   wardCode,
   initialMessages,
+  ended = false,
 }: {
   requestId: string;
   profileUserId: string;
@@ -23,6 +24,8 @@ export function WaliChatView({
   /** The member this wali oversees (W03: "PNF565's chat with PNM681"). */
   wardCode: string;
   initialMessages: ChatMessageDTO[];
+  /** An ended match is read-only history — show "Ended" instead of the live connection state. */
+  ended?: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
   // Live messages arrive on this wali link's own topic, joined by WaliRevocationGuard — the
@@ -49,10 +52,14 @@ export function WaliChatView({
         </p>
         <span
           className={`text-[11px] font-semibold px-2 py-1 rounded-full ${
-            connected ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+            ended
+              ? "bg-ink-900/8 text-ink-700/70"
+              : connected
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700"
           }`}
         >
-          {connected ? "Live" : "Connecting…"}
+          {ended ? "Ended" : connected ? "Live" : "Connecting…"}
         </span>
       </div>
       <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-2">

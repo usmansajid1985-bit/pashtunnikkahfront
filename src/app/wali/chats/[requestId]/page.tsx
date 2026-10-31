@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
-import { assertAcceptedParticipant, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
+import { assertMatchParticipant, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
@@ -28,7 +28,10 @@ export default async function WaliChatThreadPage({
   const requestId = BigInt(raw);
   const profileUserId = BigInt(session.profileUserId);
 
-  const req = await assertAcceptedParticipant(requestId, profileUserId);
+  // Read-only gate: accepted chats are "Live", ended chats stay readable (the member and her wali
+  // can both still read an ended conversation; only new messages stop). The old write-gate here
+  // rejected every ended chat as "Chat not found" even though it appears in the wali's list.
+  const req = await assertMatchParticipant(requestId, profileUserId);
   if (!req) {
     return (
       <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
@@ -90,6 +93,7 @@ export default async function WaliChatThreadPage({
           peerCode={peer?.code || ""}
           wardCode={wardCode}
           initialMessages={messages}
+          ended={req.status === "ended"}
         />
       </div>
     </div>
