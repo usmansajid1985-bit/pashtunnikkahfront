@@ -442,13 +442,22 @@ export function SignupWizard() {
             )}
 
             {step.id === "name" && (
-              <input
-                className="field"
-                placeholder={data.gender === "Sister" ? "e.g. Fatima Khan" : "e.g. Ahmed Khan"}
-                value={data.fullName}
-                onChange={(e) => patch({ fullName: e.target.value })}
-                autoFocus
-              />
+              <>
+                <input
+                  className="field"
+                  placeholder={data.gender === "Sister" ? "e.g. Fatima Khan" : "e.g. Ahmed Khan"}
+                  value={data.fullName}
+                  onChange={(e) => patch({ fullName: e.target.value })}
+                  autoFocus
+                />
+                <p className="mt-2 flex items-center gap-1.5 text-[12.5px] text-ink-700/55">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                  </svg>
+                  Your full name is kept private and will not appear on your public profile.
+                </p>
+              </>
             )}
 
             {step.id === "marital" && (
