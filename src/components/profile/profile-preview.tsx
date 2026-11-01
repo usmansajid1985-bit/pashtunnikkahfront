@@ -186,7 +186,7 @@ export function ProfilePreview({
 
         {viewerCompat ? (
           <div className="mt-3">
-            <CompatibilityPanel compat={viewerCompat} compact />
+            <CompatibilityPanel compat={viewerCompat} peerCode={profile.profileCode} compact />
           </div>
         ) : null}
 

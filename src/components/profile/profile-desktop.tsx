@@ -130,7 +130,7 @@ export function ProfileDesktop({
             </div>
           ) : null}
 
-          {viewerCompat ? <CompatibilityPanel compat={viewerCompat} /> : null}
+          {viewerCompat ? <CompatibilityPanel compat={viewerCompat} peerCode={profile.profileCode} /> : null}
 
           <ProfileSections profile={profile} />
 
