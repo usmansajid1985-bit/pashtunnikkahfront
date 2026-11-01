@@ -5,8 +5,10 @@ import type { CompatBreakdown, CompatItem } from "@/lib/compat-engine";
 
 export type ViewerCompat = {
   breakdown: CompatBreakdown;
-  /** Optional AI-written note, built only from the breakdown below. */
+  /** Optional AI-written summary (strongest alignment + main thing to clarify). */
   summary: string | null;
+  /** Optional AI-personalised questions; falls back to topic-derived ones when absent. */
+  questions?: string[];
 };
 
 /* ───────────────────────────── icons ───────────────────────────── */
@@ -140,7 +142,8 @@ export function CompatibilityPanel({
   const { breakdown } = compat;
   const { aligned, discuss, unknown } = breakdown;
 
-  const questions = questionsFrom(breakdown);
+  // Prefer the AI-personalised questions; fall back to topic-derived ones until they're generated.
+  const questions = compat.questions && compat.questions.length ? compat.questions : questionsFrom(breakdown);
   const shownQuestions = moreQuestions ? questions : questions.slice(0, 3);
 
   return (
@@ -156,9 +159,9 @@ export function CompatibilityPanel({
         </span>
       </div>
 
-      {/* Summary */}
+      {/* Summary — AI-written when available, else a factual fallback from the findings */}
       <p className="mt-3 text-[14.5px] leading-relaxed text-ink-800">
-        {summaryFor(breakdown, peerCode)}
+        {compat.summary ?? summaryFor(breakdown, peerCode)}
       </p>
 
       {/* Always visible: Where you align + Worth discussing */}

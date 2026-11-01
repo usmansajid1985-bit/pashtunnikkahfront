@@ -9,7 +9,7 @@ import { getUnreadMessageCount } from "@/lib/dashboard";
 import { recordBrowseOpened } from "@/lib/browse-rank";
 import { computeCompatibilityOnce, getCachedCompatDetail, toCompatProfile } from "@/lib/compatibility-cache";
 import { buildCompatBreakdown, compatFingerprint, compatSideFromProfile } from "@/lib/compat-engine";
-import { cachedCompatSummary, generateCompatSummary } from "@/lib/compat-summary";
+import { cachedCompatInsights, generateCompatInsights, mergeInsights } from "@/lib/compat-insights";
 import type { ViewerCompat } from "@/components/profile/compatibility-panel";
 import { readHideGoldBadge } from "@/lib/ensure-p2-schema";
 import { formatLastSeen, isActiveToday, isJustJoined } from "@/lib/presence";
@@ -128,21 +128,24 @@ export default async function PublicProfilePage({
     // open — Gold sees it as soon as the profile opens, before any Match Request.
     const meSide = compatSideFromProfile(viewerProfile, "you");
     const themSide = compatSideFromProfile(profile, profile.profile_code ?? "This member");
-    const breakdown = buildCompatBreakdown(meSide, themSide);
+    const ruleBreakdown = buildCompatBreakdown(meSide, themSide);
     const fingerprint = compatFingerprint(meSide, themSide);
-    const summary = await cachedCompatSummary(viewerId, profile.user_id, fingerprint);
-    viewerCompat = { breakdown, summary };
+    // AI layer (summary + personalised questions + written-section findings) is cached per pair +
+    // fingerprint and generated off the request path; until it exists the rule-based result shows.
+    const insights = await cachedCompatInsights(viewerId, profile.user_id, fingerprint);
+    const breakdown = insights ? mergeInsights(ruleBreakdown, insights.written) : ruleBreakdown;
+    viewerCompat = { breakdown, summary: insights?.summary ?? null, questions: insights?.questions ?? [] };
     void import("@/lib/billing-schema").then(({ recordUsage }) => recordUsage(viewerId, "ai_insight"));
     after(async () => {
       try {
-        // The short AI note is generated once per pair + profile data, off the request path.
-        if (!summary) {
-          await generateCompatSummary({
+        if (!insights) {
+          await generateCompatInsights({
             viewerId,
             candidateUserId: profile.user_id,
             fingerprint,
-            peerCode: themSide.code,
-            breakdown,
+            me: meSide,
+            them: themSide,
+            breakdown: ruleBreakdown,
           });
         }
         // Internal score only (Browse ordering); never shown as a percentage.
