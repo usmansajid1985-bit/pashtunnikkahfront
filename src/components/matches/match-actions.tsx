@@ -5,6 +5,7 @@ import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import React, { FormEvent, useState, useTransition } from "react";
 import type { MatchRelationStatus } from "@/lib/matches";
 import { INTRO_MAX_CHARS, INTRO_MAX_WORDS, countWords } from "@/lib/intro-message";
+import { OUT_OF_TOKENS_TITLE, OUT_OF_TOKENS_BODY, topupButtonLabel } from "@/lib/stripe-constants";
 
 
 export function MatchActions({
@@ -29,6 +30,35 @@ export function MatchActions({
   const [pending, startTransition] = useTransition();
   const [showSendModal, setShowSendModal] = useState(false);
   const [introMessage, setIntroMessage] = useState("");
+  // Fetched when the modal opens so a member with 0 tokens sees the "out of tokens" state up front,
+  // rather than only after trying to send (PN tokens UX).
+  const [tokenInfo, setTokenInfo] = useState<{ tokens: number; isGold: boolean } | null>(null);
+  const outOfTokens = tokenInfo !== null && tokenInfo.tokens <= 0;
+
+  function openSendModal() {
+    setShowSendModal(true);
+    setTokenInfo(null);
+    fetch("/api/billing/gold-offer", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) setTokenInfo({ tokens: Number(d.tokens) || 0, isGold: Boolean(d.isGold) });
+      })
+      .catch(() => {});
+  }
+
+  function buyTokens() {
+    setShowSendModal(false);
+    if (tokenInfo?.isGold) {
+      fetch("/api/stripe/topup", { method: "POST" })
+        .then((r) => r.json())
+        .then((d) => {
+          if (d?.url) window.location.href = d.url;
+        })
+        .catch(() => {});
+    } else {
+      openGoldUpsell("out_of_tokens");
+    }
+  }
 
   async function sendRequest(intro?: string | null, rematch = false) {
     setError(null);
@@ -112,7 +142,7 @@ export function MatchActions({
           <button
             type="button"
             disabled={pending || Boolean(blockedReason)}
-            onClick={() => setShowSendModal(true)}
+            onClick={() => openSendModal()}
             className={`${btn} bg-brand text-white hover:bg-brand-700 shadow-[0_12px_28px_-12px_rgba(225,45,114,0.55)] disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-brand disabled:shadow-none`}
           >
             {pending ? "Sending…" : (
@@ -170,7 +200,7 @@ export function MatchActions({
             <button
               type="button"
               disabled={pending || Boolean(blockedReason)}
-              onClick={() => setShowSendModal(true)}
+              onClick={() => openSendModal()}
               className={`${btn} bg-brand text-white hover:bg-brand-700 shadow-[0_12px_28px_-12px_rgba(225,45,114,0.55)] disabled:opacity-100 disabled:cursor-not-allowed disabled:hover:bg-brand disabled:shadow-none`}
             >
               {pending ? "Sending…" : "Request Rematch"}
@@ -194,45 +224,69 @@ export function MatchActions({
             className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl space-y-3"
           >
             <h3 className="text-lg font-bold text-ink-950">
-              {status.state === "ended" ? "Request Rematch" : "Request Match"}
+              {outOfTokens ? OUT_OF_TOKENS_TITLE : status.state === "ended" ? "Request Rematch" : "Request Match"}
             </h3>
-            <p className="text-sm text-ink-700/70">
-              Uses 1 Match Token. Optional short introduction (up to {INTRO_MAX_WORDS} words).
-            </p>
-            <textarea
-              value={introMessage}
-              onChange={(e) => {
-                const next = e.target.value.slice(0, INTRO_MAX_CHARS);
-                // Stop at 30 words, but still let them delete or edit inside the limit.
-                if (countWords(next) <= INTRO_MAX_WORDS || next.length < introMessage.length) setIntroMessage(next);
-              }}
-              rows={3}
-              placeholder="Assalamu alaikum"
-              className="w-full resize-none rounded-xl border border-ink-900/10 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:border-rose-300"
-            />
-            <p className="text-[11px] text-ink-700/45 text-right">
-              {countWords(introMessage)}/{INTRO_MAX_WORDS} words
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={pending}
-                className="flex-1 py-2.5 rounded-full bg-brand text-white text-sm font-semibold disabled:opacity-50"
-              >
-                {pending ? "Sending…" : "Send request"}
-              </button>
-              <button
-                type="button"
-                disabled={pending}
-                onClick={() => {
-                  setShowSendModal(false);
-                  setIntroMessage("");
-                }}
-                className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-              >
-                Cancel
-              </button>
-            </div>
+            {outOfTokens ? (
+              <>
+                <p className="text-sm text-ink-700/70">{OUT_OF_TOKENS_BODY}</p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => buyTokens()}
+                    className="flex-1 py-2.5 rounded-full bg-brand text-white text-sm font-semibold"
+                  >
+                    {tokenInfo?.isGold ? topupButtonLabel() : "Upgrade to Gold"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSendModal(false)}
+                    className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-700/70">
+                  Uses 1 Match Token. Optional short introduction (up to {INTRO_MAX_WORDS} words).
+                </p>
+                <textarea
+                  value={introMessage}
+                  onChange={(e) => {
+                    const next = e.target.value.slice(0, INTRO_MAX_CHARS);
+                    // Stop at 30 words, but still let them delete or edit inside the limit.
+                    if (countWords(next) <= INTRO_MAX_WORDS || next.length < introMessage.length) setIntroMessage(next);
+                  }}
+                  rows={3}
+                  placeholder="Assalamu alaikum"
+                  className="w-full resize-none rounded-xl border border-ink-900/10 px-3 py-2 text-sm leading-relaxed focus:outline-none focus:border-rose-300"
+                />
+                <p className="text-[11px] text-ink-700/45 text-right">
+                  {countWords(introMessage)}/{INTRO_MAX_WORDS} words
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="flex-1 py-2.5 rounded-full bg-brand text-white text-sm font-semibold disabled:opacity-50"
+                  >
+                    {pending ? "Sending…" : "Send request"}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      setShowSendModal(false);
+                      setIntroMessage("");
+                    }}
+                    className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
           </form>
         </div>
       ) : null}

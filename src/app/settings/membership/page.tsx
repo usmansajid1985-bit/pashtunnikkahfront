@@ -8,6 +8,7 @@ import { MembershipActions } from "@/components/settings/membership-actions";
 import { GoldFeatureIcon, type GoldFeature } from "@/components/settings/membership-icons";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { currentTopupPack } from "@/lib/stripe";
+import { OUT_OF_TOKENS_TITLE, OUT_OF_TOKENS_BODY } from "@/lib/stripe-constants";
 import { getUnreadMessageCount } from "@/lib/dashboard";
 import { GOLD_PRICE_LABEL, goldFeatures } from "@/lib/gold-offer";
 
@@ -179,8 +180,7 @@ export default async function MembershipPage({
             <span>
               {balance <= 0 ? (
                 <>
-                  <span className="font-semibold">You&apos;ve used all your Match Tokens this month.</span> Upgrade to Gold to
-                  unlock exclusive features.
+                  <span className="font-semibold">{OUT_OF_TOKENS_TITLE}</span> {OUT_OF_TOKENS_BODY}
                 </>
               ) : (
                 <>

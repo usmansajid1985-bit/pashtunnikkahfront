@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { TOPUP_CREDITS, TOPUP_AMOUNT_PENCE } from "@/lib/stripe-constants";
+import { TOPUP_CREDITS, TOPUP_AMOUNT_PENCE, topupButtonLabel } from "@/lib/stripe-constants";
 import { type GoldFeature } from "@/components/settings/membership-icons";
 import { UpgradeModal } from "@/components/billing/gold-upsell";
 
@@ -104,7 +104,7 @@ export function MembershipActions({
     });
   }
 
-  const topupLabel = `Buy ${topupTokens} Match Tokens — £${(topupPricePence / 100).toFixed(2)}`;
+  const topupLabel = topupButtonLabel(topupTokens, topupPricePence);
 
   return (
     <div className="space-y-2.5">

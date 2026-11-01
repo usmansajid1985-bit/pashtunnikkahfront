@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { GoldFeatureIcon, type GoldFeature } from "@/components/settings/membership-icons";
+import { OUT_OF_TOKENS_TITLE, OUT_OF_TOKENS_BODY } from "@/lib/stripe-constants";
 
 /**
  * The one "Upgrade to Gold" popup, shown app-wide: when Match Tokens run out, when a Basic member
@@ -14,8 +15,8 @@ export type GoldUpsellReason = "upgrade" | "out_of_tokens" | "gold_filter" | "pr
 const HEADINGS: Record<GoldUpsellReason, { kicker?: string; subtitle: string }> = {
   upgrade: { subtitle: "Unlock more ways to continue your search for marriage." },
   out_of_tokens: {
-    kicker: "You've used all your Match Tokens",
-    subtitle: "Get 10 Match Tokens every month with Gold, or top up to keep sending requests.",
+    kicker: OUT_OF_TOKENS_TITLE,
+    subtitle: OUT_OF_TOKENS_BODY,
   },
   gold_filter: { kicker: "Advanced filters are a Gold feature", subtitle: "Search by distance, tribe, faith, education and more." },
   profile_views: { kicker: "See who viewed your profile", subtitle: "Gold members see everyone who's been looking." },
@@ -219,7 +220,7 @@ export function UpgradeModal({
             onClick={onTopup}
             className="mt-2.5 w-full h-12 rounded-full border-2 border-[#e12d72]/70 bg-white text-[14px] font-semibold text-[#c2185b] hover:bg-rose-50 disabled:opacity-60"
           >
-            Or buy {topup.tokens} Match Tokens — {topup.priceLabel}
+            Buy {topup.tokens} Match Tokens · {topup.priceLabel}
           </button>
         ) : null}
         {error ? <p className="mt-2 text-center text-sm text-rose-700">{error}</p> : null}
