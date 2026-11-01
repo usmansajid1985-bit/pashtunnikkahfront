@@ -8,6 +8,8 @@
  * No percentages, and no claims about anyone's character or the success of a marriage.
  */
 
+import { cleanMarriagePrefs, marriagePrefsText } from "@/lib/marriage-prefs";
+
 export type CompatSide = {
   code: string;
   gender: string | null;
@@ -36,9 +38,10 @@ export type CompatSide = {
   occupation: string | null;
   interests: string | null;
   livingArrangements: string | null;
-  /** Written sections — read by the AI layer, not the rule checks. */
+  /** Written sections + stated marriage preferences — read by the AI layer, not the rule checks. */
   aboutMe: string | null;
   lookingFor: string | null;
+  marriagePrefs: string | null;
 };
 
 export type CompatStatus = "aligned" | "discuss" | "unknown";
@@ -453,7 +456,7 @@ export function buildCompatBreakdown(me: CompatSide, them: CompatSide): CompatBr
 }
 
 /** Bump when the rules or wording change, so cached AI summaries are rewritten from the new text. */
-export const COMPAT_ENGINE_VERSION = 3;
+export const COMPAT_ENGINE_VERSION = 4;
 
 /** Stable fingerprint of everything the breakdown depends on — the AI summary is regenerated
  * only when this changes (B28). */
@@ -464,7 +467,7 @@ export function compatFingerprint(me: CompatSide, them: CompatSide) {
       s.considerDivorcee, s.openTo, s.country, s.city, s.willingToRelocate, s.religiousPractice,
       s.religiousMethodology, s.salah, s.education, s.educationPref, s.tribe, s.ancestralRegion,
       s.smoking, s.vaping, s.languages.join(","), s.occupation, s.interests, s.livingArrangements,
-      s.aboutMe, s.lookingFor,
+      s.aboutMe, s.lookingFor, s.marriagePrefs,
     ].map((v) => (v == null ? "" : String(v).trim().toLowerCase()));
   const raw = JSON.stringify([COMPAT_ENGINE_VERSION, pick(me), pick(them)]);
   // djb2 — small, stable, no crypto needed (this is a cache key, not a secret).
@@ -505,15 +508,16 @@ type ProfileRowLike = {
   partner_preferences?: string | null;
 };
 
-/** Smoking / vaping / languages live in the `traits` JSON blob (see lib/profile parseExtras). */
-function parseExtrasLite(raw?: string | null): { smoking?: string; vaping?: string; languages?: string[] } {
+/** Smoking / vaping / languages / marriage preferences live in the `traits` JSON blob. */
+function parseExtrasLite(raw?: string | null): { smoking?: string; vaping?: string; languages?: string[]; marriagePrefs?: unknown } {
   if (!raw) return {};
   try {
-    const j = JSON.parse(raw) as { smoking?: string; vaping?: string; languages?: unknown };
+    const j = JSON.parse(raw) as { smoking?: string; vaping?: string; languages?: unknown; marriagePrefs?: unknown };
     return {
       smoking: typeof j.smoking === "string" ? j.smoking : undefined,
       vaping: typeof j.vaping === "string" ? j.vaping : undefined,
       languages: Array.isArray(j.languages) ? (j.languages.filter((l) => typeof l === "string") as string[]) : undefined,
+      marriagePrefs: j.marriagePrefs,
     };
   } catch {
     return {};
@@ -552,6 +556,7 @@ export function compatSideFromProfile(p: ProfileRowLike, code?: string): CompatS
     livingArrangements: p.living_arrangements ?? null,
     aboutMe: p.about_me ?? null,
     lookingFor: p.partner_preferences ?? null,
+    marriagePrefs: marriagePrefsText(cleanMarriagePrefs(extras.marriagePrefs)) || null,
   };
 }
 

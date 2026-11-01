@@ -2,6 +2,7 @@ import { cleanPersonality } from "@/lib/profile-optional";
 import type { profiles, users } from "@/generated/prisma/client";
 import { relocationLabel } from "@/lib/relocation";
 import { displayHeight } from "@/lib/height";
+import { cleanMarriagePrefs, type MarriagePrefs } from "@/lib/marriage-prefs";
 
 export type ProfileExtras = {
   smoking?: string;
@@ -14,6 +15,7 @@ export type ProfileExtras = {
   /** Optional Edit Profile extras (see profile-optional.ts). Interests live in `profiles.interests`. */
   personality?: string[];
   islamicPractice?: string;
+  marriagePrefs?: MarriagePrefs;
 };
 
 export type ProfileView = {
@@ -40,6 +42,7 @@ export type ProfileView = {
   /** Optional extras filled in on Edit Profile only. */
   personality: string[];
   islamicPractice: string | null;
+  marriagePrefs: MarriagePrefs;
   religiousPractice: string | null;
   islamicBackground: string | null;
   salah: string | null;
@@ -189,6 +192,7 @@ export function mapProfileView(
     languages,
     personality: cleanPersonality(extras.personality),
     islamicPractice: typeof extras.islamicPractice === "string" && extras.islamicPractice.trim() ? extras.islamicPractice : null,
+    marriagePrefs: cleanMarriagePrefs(extras.marriagePrefs),
     religiousPractice: profile.religious_practice,
     islamicBackground: profile.religious_methodology,
     salah: profile.salah_pattern,

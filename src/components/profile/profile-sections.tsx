@@ -5,6 +5,7 @@ import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 import { displaySect } from "@/lib/islamic-background";
+import { MARRIAGE_PREF_FIELDS, IMPORTANCE_LABEL } from "@/lib/marriage-prefs";
 import { RelocationIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
@@ -155,6 +156,11 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
   const hasChildren = childrenLabel(profile.hasChildren);
   const wantsChildren = wantsChildrenLabel(profile.willingChildren);
   const salah = salahLabel(profile.salah);
+  const marriagePrefRows = MARRIAGE_PREF_FIELDS.map((f) => {
+    const item = profile.marriagePrefs[f.key];
+    return item?.value ? { key: f.key, label: f.label, value: item.value, importance: item.importance } : null;
+  }).filter(Boolean as unknown as <T>(v: T | null) => v is T);
+
   const hasCareer = profile.education || profile.occupation || (profile.employment && !profile.occupation);
   const hasFaithPractice = profile.islamicBackground || profile.religiousPractice || salah || profile.bornMuslim;
   const hasLifestyle = smoking || vaping;
@@ -188,6 +194,31 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
           </div>
         ) : null}
       </Section>
+
+      {marriagePrefRows.length ? (
+        <Section title="Marriage Preferences">
+          <div className="space-y-2">
+            {marriagePrefRows.map((row) => (
+              <div key={row.key} className="flex items-start justify-between gap-3">
+                <p className="text-[13.5px] leading-snug text-ink-800">
+                  <span className="text-ink-700/60">{row.label}:</span> <span className="font-semibold text-ink-950">{row.value}</span>
+                </p>
+                <span
+                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                    row.importance === "essential"
+                      ? "bg-rose-50 text-[#e12d72]"
+                      : row.importance === "preferred"
+                        ? "bg-amber-50 text-amber-700"
+                        : "bg-ink-900/[0.05] text-ink-700/60"
+                  }`}
+                >
+                  {IMPORTANCE_LABEL[row.importance]}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
 
       {hasCareer ? (
         <Section title="Career & Education">

@@ -92,7 +92,8 @@ export async function generateCompatInsights(opts: {
     timeoutMs: 12000,
     system: [
       "You help two members of a Muslim matrimony app (Pashtun Nikah) understand where they align, what they should discuss, and what to ask next.",
-      "You are given each member's structured facts, the rule-based findings already produced, and their free-text 'About me' and 'Looking for' sections.",
+      "You are given each member's structured facts, the rule-based findings already produced, their free-text 'About me' and 'Looking for' sections, and any stated marriage preferences (each marked Essential, Preferred or Flexible).",
+      "A marriage preference marked Essential is a deliberate requirement: if the other member clearly does not meet it, that is a conflict worth discussing; if their position is unknown, say it needs clarifying. Preferred and Flexible preferences are softer. Do not treat these like disposable search filters.",
       "Read the written sections to find explicitly stated expectations about marriage, family, work and lifestyle. Distinguish a similarity, a difference, and a genuine preference conflict (a conflict is when one states a requirement the other does not meet).",
       "Do NOT repeat findings already covered by the rule-based list. Only add what the written text reveals. If something is not stated, it is unknown, never assumed.",
       "Ignore repeated text, placeholder answers and test biographies; treat personality descriptions as self-reported, not verified. Flag contradictions as needing clarification.",
@@ -107,8 +108,8 @@ export async function generateCompatInsights(opts: {
         worthDiscussing: breakdown.discuss.map((i) => i.text),
         notEnoughInformation: breakdown.unknown.map((i) => i.topic),
       },
-      you: { aboutMe: cleanWritten(me.aboutMe), lookingFor: cleanWritten(me.lookingFor) },
-      [code]: { aboutMe: cleanWritten(them.aboutMe), lookingFor: cleanWritten(them.lookingFor) },
+      you: { aboutMe: cleanWritten(me.aboutMe), lookingFor: cleanWritten(me.lookingFor), marriagePreferences: me.marriagePrefs ?? "" },
+      [code]: { aboutMe: cleanWritten(them.aboutMe), lookingFor: cleanWritten(them.lookingFor), marriagePreferences: them.marriagePrefs ?? "" },
     }),
   });
   if (!result) return null;

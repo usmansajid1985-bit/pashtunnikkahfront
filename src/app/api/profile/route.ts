@@ -3,6 +3,7 @@ import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
 import { isPashtoLevel, textQualityIssue } from "@/lib/signup";
 import { INTERESTS, ISLAMIC_PRACTICE_MAX, cleanInterests, cleanPersonality, isPashtoDialect } from "@/lib/profile-optional";
+import { cleanMarriagePrefs } from "@/lib/marriage-prefs";
 import { refreshHomeCoords } from "@/lib/browse-location";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { withOwnerPhotoUrls } from "@/lib/photos";
@@ -131,6 +132,7 @@ export async function PATCH(req: Request) {
       islamicPractice: has("islamicPractice")
         ? String(body.islamicPractice ?? "").slice(0, ISLAMIC_PRACTICE_MAX)
         : (extras.islamicPractice ?? ""),
+      marriagePrefs: has("marriagePrefs") ? cleanMarriagePrefs(body.marriagePrefs) : (extras.marriagePrefs ?? {}),
     };
 
     // Interests are stored in `profiles.interests` (comma-separated — the Browse interests filter
