@@ -30,6 +30,15 @@ export type CompatSide = {
   educationPref: string | null;
   tribe: string | null;
   ancestralRegion: string | null;
+  smoking: string | null;
+  vaping: string | null;
+  languages: string[];
+  occupation: string | null;
+  interests: string | null;
+  livingArrangements: string | null;
+  /** Written sections — read by the AI layer, not the rule checks. */
+  aboutMe: string | null;
+  lookingFor: string | null;
 };
 
 export type CompatStatus = "aligned" | "discuss" | "unknown";
@@ -134,11 +143,11 @@ function maritalCheck(me: CompatSide, them: CompatSide): CompatItem | null {
   const unknown: string[] = [];
   if (mine.needed) {
     if (mine.open === false) discuss.push(`${them.code} is ${mine.needed}, and your preferences say you're not considering this`);
-    else if (mine.open === null) unknown.push(`${them.code} is ${mine.needed} — you haven't said whether you'd consider this`);
+    else if (mine.open === null) unknown.push(`${them.code} is ${mine.needed}, and you haven't said whether you'd consider this`);
   }
   if (theirs.needed) {
     if (theirs.open === false) discuss.push(`you're ${theirs.needed}, and ${them.code}'s preferences say they're not considering this`);
-    else if (theirs.open === null) unknown.push(`you're ${theirs.needed} — ${them.code} hasn't said whether they'd consider this`);
+    else if (theirs.open === null) unknown.push(`you're ${theirs.needed}, and ${them.code} hasn't said whether they'd consider this`);
   }
   if (discuss.length) return { topic, status: "discuss", text: `${capitalise(discuss.join("; and "))}.` };
   if (unknown.length) return { topic, status: "unknown", text: `${capitalise(unknown.join("; and "))}.` };
@@ -170,13 +179,13 @@ function practiceCheck(me: CompatSide, them: CompatSide): CompatItem {
     return {
       topic,
       status: "aligned",
-      text: `Similar levels of practice — you: ${me.religiousPractice!.toLowerCase()}, ${them.code}: ${them.religiousPractice!.toLowerCase()}.`,
+      text: `Similar levels of practice. You: ${me.religiousPractice!.toLowerCase()}; ${them.code}: ${them.religiousPractice!.toLowerCase()}.`,
     };
   }
   return {
     topic,
     status: "discuss",
-    text: `Different levels of practice — you: ${me.religiousPractice!.toLowerCase()}, ${them.code}: ${them.religiousPractice!.toLowerCase()}. Worth talking about what each of you expects.`,
+    text: `Different levels of practice. You: ${me.religiousPractice!.toLowerCase()}; ${them.code}: ${them.religiousPractice!.toLowerCase()}. Worth talking about what each of you expects.`,
   };
 }
 
@@ -193,7 +202,7 @@ function methodologyCheck(me: CompatSide, them: CompatSide): CompatItem {
   return {
     topic,
     status: "discuss",
-    text: `Different backgrounds — you: ${me.religiousMethodology}, ${them.code}: ${them.religiousMethodology}.`,
+    text: `Different backgrounds. You: ${me.religiousMethodology}; ${them.code}: ${them.religiousMethodology}.`,
   };
 }
 
@@ -217,13 +226,13 @@ function salahCheck(me: CompatSide, them: CompatSide): CompatItem {
     return {
       topic,
       status: "aligned",
-      text: a === b ? `You both pray ${salahShort(me.salah!)}.` : `Similar prayer habits — you: ${salahShort(me.salah!)}, ${them.code}: ${salahShort(them.salah!)}.`,
+      text: a === b ? `You both pray ${salahShort(me.salah!)}.` : `Similar prayer habits. You: ${salahShort(me.salah!)}; ${them.code}: ${salahShort(them.salah!)}.`,
     };
   }
   return {
     topic,
     status: "discuss",
-    text: `Different prayer habits — you: ${salahShort(me.salah!)}, ${them.code}: ${salahShort(them.salah!)}.`,
+    text: `Different prayer habits. You: ${salahShort(me.salah!)}; ${them.code}: ${salahShort(them.salah!)}.`,
   };
 }
 
@@ -260,7 +269,11 @@ function educationCheck(me: CompatSide, them: CompatSide): CompatItem {
   if (theyMeetMine && iMeetTheirs) {
     return { topic, status: "aligned", text: "You each meet the education preference the other has set." };
   }
-  return { topic, status: "unknown", text: "Education or education preferences are missing from one of your profiles." };
+  // Be precise about what's missing: a stated preference is not the same as the level itself.
+  if (myPref == null && theirPref == null && myLevel != null && theirLevel != null) {
+    return { topic, status: "unknown", text: "Neither of you has stated an education preference, so there's nothing to check against yet." };
+  }
+  return { topic, status: "unknown", text: "An education level or education preference is missing from one of your profiles." };
 }
 
 /* ------------------------------- Location & relocation ------------------------------- */
@@ -269,14 +282,28 @@ function locationCheck(me: CompatSide, them: CompatSide): CompatItem {
   if (!has(me.country) || !has(them.country)) {
     return { topic, status: "unknown", text: "One of you hasn't shared where you live." };
   }
+  const iMove = norm(me.willingToRelocate);
+  const theyMove = norm(them.willingToRelocate);
   if (norm(me.country) === norm(them.country)) {
     if (has(me.city) && norm(me.city) === norm(them.city)) {
       return { topic, status: "aligned", text: `You both live in ${them.city}.` };
     }
+    // Same country, different cities: sharing a country doesn't settle where you'd live, so this is
+    // a practical thing to discuss rather than a plain "you both live in X".
+    if (has(me.city) && has(them.city)) {
+      if (iMove === "no" && theyMove === "yes") {
+        return { topic, status: "discuss", text: `You live in ${me.city} and ${them.code} lives in ${them.city}. You're not planning to move and ${them.code} is open to relocating, so it's worth confirming whether settling in ${me.city} would work.` };
+      }
+      if (iMove === "yes" && theyMove === "no") {
+        return { topic, status: "discuss", text: `You live in ${me.city} and ${them.code} lives in ${them.city}. ${them.code} isn't planning to move and you're open to relocating, so it's worth confirming whether settling in ${them.city} would work.` };
+      }
+      if (iMove === "no" && theyMove === "no") {
+        return { topic, status: "discuss", text: `You live in ${me.city} (and aren't planning to move) and ${them.code} lives in ${them.city} (and isn't either), so it's worth discussing where you'd settle.` };
+      }
+      return { topic, status: "discuss", text: `You live in ${me.city} and ${them.code} lives in ${them.city}. You share a country, but it's worth clarifying which area you'd settle in.` };
+    }
     return { topic, status: "aligned", text: `You both live in ${them.country}.` };
   }
-  const iMove = norm(me.willingToRelocate);
-  const theyMove = norm(them.willingToRelocate);
   if (iMove === "yes" || theyMove === "yes") {
     return {
       topic,
@@ -285,7 +312,7 @@ function locationCheck(me: CompatSide, them: CompatSide): CompatItem {
     };
   }
   if (iMove === "maybe" || theyMove === "maybe") {
-    return { topic, status: "discuss", text: "You live in different countries and relocation is a 'maybe' — worth discussing where you'd live." };
+    return { topic, status: "discuss", text: "You live in different countries and relocation is a 'maybe', so it's worth discussing where you'd live." };
   }
   if (iMove === "no" && theyMove === "no") {
     return { topic, status: "discuss", text: "You live in different countries and neither of you is planning to relocate." };
@@ -324,9 +351,80 @@ function heritageCheck(me: CompatSide, them: CompatSide): CompatItem | null {
   return null;
 }
 
+/* ------------------------------- Lifestyle: smoking & vaping ------------------------------- */
+// Stored values are "Never" / "Occasionally" / "Regularly".
+const usesHabit = (v: string | null) => {
+  const n = norm(v);
+  return n === "occasionally" || n === "regularly" || n === "socially" || n === "yes";
+};
+function habitDescription(side: CompatSide): string {
+  const parts: string[] = [];
+  if (usesHabit(side.smoking)) parts.push("smokes");
+  if (usesHabit(side.vaping)) parts.push("vapes");
+  return parts.length ? parts.join(" and ") : "does neither";
+}
+function lifestyleCheck(me: CompatSide, them: CompatSide): CompatItem | null {
+  const topic = "Lifestyle";
+  const haveAny = (has(me.smoking) || has(me.vaping)) && (has(them.smoking) || has(them.vaping));
+  if (!haveAny) return null; // keep the result focused — don't add an "unknown" line for this
+  const meUses = usesHabit(me.smoking) || usesHabit(me.vaping);
+  const themUses = usesHabit(them.smoking) || usesHabit(them.vaping);
+  if (meUses === themUses) {
+    if (!meUses) return { topic, status: "aligned", text: "Neither of you smokes or vapes." };
+    return { topic, status: "aligned", text: `You both ${habitDescription(me)}.` };
+  }
+  if (meUses) {
+    return { topic, status: "discuss", text: `You ${habitDescription(me)} and ${them.code} does not. Worth checking how each of you feels about this.` };
+  }
+  return { topic, status: "discuss", text: `${them.code} ${habitDescription(them)} and you do not. Worth checking how each of you feels about this.` };
+}
+
+/* ------------------------------- Languages (shared only) ------------------------------- */
+function languagesCheck(me: CompatSide, them: CompatSide): CompatItem | null {
+  const topic = "Languages";
+  const theirs = new Set(them.languages.map((l) => norm(l)).filter(Boolean));
+  const shared = me.languages.filter((l) => theirs.has(norm(l)));
+  if (shared.length === 0) return null; // speaking different languages isn't a concern in itself
+  return { topic, status: "aligned", text: `You both speak ${joinList(shared)}.` };
+}
+
+/* ------------------------------- Interests (shared only) ------------------------------- */
+function interestsCheck(me: CompatSide, them: CompatSide): CompatItem | null {
+  const topic = "Interests";
+  const theirs = new Set(openList(them.interests));
+  const shared = openList(me.interests).filter((x) => theirs.has(x));
+  if (shared.length < 2) return null; // one shared hobby is thin; different hobbies aren't a concern
+  return { topic, status: "aligned", text: `You share a few interests, including ${joinList(shared.slice(0, 3))}.` };
+}
+
+function joinList(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
 function capitalise(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+/** How prominent a topic is: the most consequential marriage considerations come first, so when we
+ * cap "Where you align" / "Worth discussing" at three, the important findings are the ones kept. */
+const TOPIC_PRIORITY: Record<string, number> = {
+  "Marital history": 100,
+  "Religious practice": 92,
+  "Islamic background": 88,
+  Children: 86,
+  Salah: 80,
+  Location: 74,
+  Lifestyle: 68,
+  "Age preferences": 55,
+  Education: 50,
+  Heritage: 30,
+  Languages: 22,
+  Interests: 16,
+};
+const byPriority = (a: CompatItem, b: CompatItem) =>
+  (TOPIC_PRIORITY[b.topic] ?? 0) - (TOPIC_PRIORITY[a.topic] ?? 0);
 
 export function buildCompatBreakdown(me: CompatSide, them: CompatSide): CompatBreakdown {
   const b: CompatBreakdown = { aligned: [], discuss: [], unknown: [] };
@@ -338,15 +436,24 @@ export function buildCompatBreakdown(me: CompatSide, them: CompatSide): CompatBr
     methodologyCheck(me, them),
     childrenCheck(me, them),
     locationCheck(me, them),
+    lifestyleCheck(me, them),
     educationCheck(me, them),
     heritageCheck(me, them),
+    languagesCheck(me, them),
+    interestsCheck(me, them),
   ];
   for (const item of items) if (item) pushItem(b, item);
+  // Keep it focused and surface the most important findings first: up to three key alignments and
+  // three discussion points, ordered by how much they matter. "Not enough information" is left whole
+  // (the UI condenses it) so nothing missing is silently dropped.
+  b.aligned = b.aligned.sort(byPriority).slice(0, 3);
+  b.discuss = b.discuss.sort(byPriority).slice(0, 3);
+  b.unknown = b.unknown.sort(byPriority);
   return b;
 }
 
 /** Bump when the rules or wording change, so cached AI summaries are rewritten from the new text. */
-export const COMPAT_ENGINE_VERSION = 2;
+export const COMPAT_ENGINE_VERSION = 3;
 
 /** Stable fingerprint of everything the breakdown depends on — the AI summary is regenerated
  * only when this changes (B28). */
@@ -356,6 +463,8 @@ export function compatFingerprint(me: CompatSide, them: CompatSide) {
       s.age, s.maritalStatus, s.hasChildren, s.wantsChildren, s.agePrefFrom, s.agePrefTo, s.acceptWidow,
       s.considerDivorcee, s.openTo, s.country, s.city, s.willingToRelocate, s.religiousPractice,
       s.religiousMethodology, s.salah, s.education, s.educationPref, s.tribe, s.ancestralRegion,
+      s.smoking, s.vaping, s.languages.join(","), s.occupation, s.interests, s.livingArrangements,
+      s.aboutMe, s.lookingFor,
     ].map((v) => (v == null ? "" : String(v).trim().toLowerCase()));
   const raw = JSON.stringify([COMPAT_ENGINE_VERSION, pick(me), pick(them)]);
   // djb2 — small, stable, no crypto needed (this is a cache key, not a secret).
@@ -387,9 +496,32 @@ type ProfileRowLike = {
   education_pref?: string | null;
   tribe?: string | null;
   ancestral_village?: string | null;
+  traits?: string | null;
+  occupation?: string | null;
+  interests?: string | null;
+  living_arrangements?: string | null;
+  home_language?: string | null;
+  about_me?: string | null;
+  partner_preferences?: string | null;
 };
 
+/** Smoking / vaping / languages live in the `traits` JSON blob (see lib/profile parseExtras). */
+function parseExtrasLite(raw?: string | null): { smoking?: string; vaping?: string; languages?: string[] } {
+  if (!raw) return {};
+  try {
+    const j = JSON.parse(raw) as { smoking?: string; vaping?: string; languages?: unknown };
+    return {
+      smoking: typeof j.smoking === "string" ? j.smoking : undefined,
+      vaping: typeof j.vaping === "string" ? j.vaping : undefined,
+      languages: Array.isArray(j.languages) ? (j.languages.filter((l) => typeof l === "string") as string[]) : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
 export function compatSideFromProfile(p: ProfileRowLike, code?: string): CompatSide {
+  const extras = parseExtrasLite(p.traits);
   return {
     code: code ?? p.profile_code ?? "They",
     gender: p.gender ?? null,
@@ -412,6 +544,14 @@ export function compatSideFromProfile(p: ProfileRowLike, code?: string): CompatS
     educationPref: p.education_pref ?? null,
     tribe: p.tribe ?? null,
     ancestralRegion: p.ancestral_village ?? null,
+    smoking: extras.smoking ?? null,
+    vaping: extras.vaping ?? null,
+    languages: extras.languages ?? (p.home_language ? [p.home_language] : []),
+    occupation: p.occupation ?? null,
+    interests: p.interests ?? null,
+    livingArrangements: p.living_arrangements ?? null,
+    aboutMe: p.about_me ?? null,
+    lookingFor: p.partner_preferences ?? null,
   };
 }
 
