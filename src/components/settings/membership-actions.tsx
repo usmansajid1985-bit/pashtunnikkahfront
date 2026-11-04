@@ -49,8 +49,10 @@ export function MembershipActions({
           setError(data.error || "Could not confirm payment");
           return;
         }
+        // The return URL tells us which flow this was (topup vs subscription) — the sync response
+        // doesn't carry a type, so a top-up used to fall through to the Gold welcome message.
         setMessage(
-          data.type === "topup"
+          topup === "1"
             ? `${topupTokens} Match Tokens added to your account.`
             : "Welcome to Gold — your membership is active."
         );

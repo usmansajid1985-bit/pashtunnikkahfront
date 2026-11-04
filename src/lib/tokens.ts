@@ -9,8 +9,8 @@ import { ensureBillingSchema } from "@/lib/billing-schema";
  *
  * Rules (admin-configurable in token_settings):
  *   Basic   basic_monthly per calendar month, no rollover (lot expires at the month's end).
- *   Gold    gold_monthly per paid cycle IN TOTAL — upgrading mid-month gives gold_monthly minus the
- *           Basic tokens already used that month, and the unused Basic lot is closed (never 13).
+ *   Gold    gold_monthly per paid cycle. Upgrading mid-month grants a FRESH full gold_monthly
+ *           regardless of Basic usage; the unused Basic lot is closed (replaced, not added).
  *   Rollover up to rollover_max unused GOLD tokens carry into the next paid cycle only (a rollover
  *           lot never rolls again); gold + rollover is capped at gold_max_total.
  *   Top-up  topup_tokens per pack, never expire, kept after Gold ends.
@@ -440,15 +440,15 @@ export async function applyGoldCycle(opts: {
       await closeLot(tx, lot, "cycle_ended");
     }
 
-    // Upgrade from Basic: this month's Basic usage counts against the first Gold allowance.
-    let goldAmount = s.goldMonthly;
+    // Upgrade from Basic: a member gets a FRESH full Gold allowance regardless of how many Basic
+    // tokens they used this month (product decision). Any remaining Basic tokens are replaced, not
+    // added — the unused Basic lots are closed so they aren't counted on top of the Gold balance.
+    const goldAmount = s.goldMonthly;
     const isFirstCycle = !candidate;
     if (isFirstCycle) {
-      const basic = await openLots(tx, opts.userId, ["basic"]);
-      const thisMonth = basic.filter((l) => monthKey(l.granted_at) === monthKey());
-      const used = thisMonth.reduce((n, l) => n + (l.amount - l.remaining), 0);
-      goldAmount = Math.max(0, s.goldMonthly - used);
-      for (const lot of basic) await closeLot(tx, lot, "upgraded_to_gold", "gold_upgrade_reconciled");
+      for (const lot of await openLots(tx, opts.userId, ["basic"])) {
+        await closeLot(tx, lot, "upgraded_to_gold", "gold_upgrade_reconciled");
+      }
     }
 
     await insertLot(tx, {
@@ -461,7 +461,7 @@ export async function applyGoldCycle(opts: {
       stripeRef: opts.invoiceId,
       paymentId: opts.paymentId,
       reason: "monthly_gold_allowance",
-      note: isFirstCycle && goldAmount < s.goldMonthly ? `${s.goldMonthly - goldAmount} Basic token(s) already used this month` : null,
+      note: null,
     });
     if (rollover > 0) {
       const cycleMs = Math.max(1, opts.periodEnd.getTime() - opts.periodStart.getTime());

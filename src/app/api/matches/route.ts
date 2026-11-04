@@ -12,6 +12,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import { findPriorEndedMatch } from "@/lib/rematch-tokens";
 import { sendPushNotification } from "@/lib/push/server";
 import { broadcastChat } from "@/lib/chat-broadcast";
+import { createMessage } from "@/lib/chat";
 import { introMessageProblem } from "@/lib/intro-message";
 import {
   allowsPrivateChat,
@@ -100,6 +101,24 @@ export async function POST(req: Request) {
       },
     });
     if (accepted.count === 0) return null;
+
+    // The introduction message the sender included becomes the first message in the conversation,
+    // so it isn't lost once the request is accepted. Idempotent via a stable clientId.
+    const introRow = await prisma.match_requests.findUnique({
+      where: { id: matchId },
+      select: { intro_message: true },
+    });
+    const intro = introRow?.intro_message?.trim();
+    if (intro) {
+      await createMessage({
+        requestId: matchId,
+        senderId,
+        receiverId,
+        body: intro,
+        clientId: `intro-${matchId}`,
+      }).catch((err) => console.error("[match] intro message insert failed", err));
+    }
+
     const privateChat = allowsPrivateChat(mode);
     let wali = null;
     if (!privateChat) {
