@@ -71,6 +71,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "This member is not available." }, { status: 403 });
   }
 
+  // Gender eligibility, enforced server-side: a member can't send a match request to a same-gender
+  // member even by calling the API directly (PN-AUD: same-gender direct access).
+  {
+    const { sameGender } = await import("@/lib/gender");
+    const pair = await prisma.profiles.findMany({
+      where: { user_id: { in: [me, peerUserId] } },
+      select: { user_id: true, gender: true },
+    });
+    const mineG = pair.find((p) => p.user_id === me)?.gender;
+    const peerG = pair.find((p) => p.user_id === peerUserId)?.gender;
+    if (sameGender(mineG, peerG)) {
+      return NextResponse.json({ error: "This member is not available." }, { status: 403 });
+    }
+  }
+
   async function acceptMatch(matchId: bigint, senderId: bigint, receiverId: bigint) {
     const mode = await resolveModeForMatch(senderId, receiverId);
     const accepted = await prisma.match_requests.updateMany({

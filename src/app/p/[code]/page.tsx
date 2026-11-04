@@ -100,6 +100,15 @@ export default async function PublicProfilePage({
       getCachedCompatDetail(viewerId, profile.user_id),
       prisma.favourites.findFirst({ where: { user_id: viewerId, profile_user_id: profile.user_id }, select: { id: true } }),
     ]);
+
+  // SEC: gender eligibility is enforced on the server, not just in Browse — a member must not be
+  // able to open a same-gender profile (or its compatibility insights) through a direct URL
+  // (PN-AUD: same-gender direct access). Own profile already redirected above.
+  {
+    const { sameGender } = await import("@/lib/gender");
+    if (sameGender(viewerProfile?.gender, profile.gender)) notFound();
+  }
+
   const matchStatus = relationStatus(relation, viewerId);
 
   const isGold = (viewerUser?.plan ?? "").toLowerCase() === "gold";

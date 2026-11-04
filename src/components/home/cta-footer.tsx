@@ -65,11 +65,10 @@ const columns: { title: string; links: [string, string][] }[] = [
   },
 ];
 
-// TODO: swap in the real social profile URLs.
 const socials = [
   {
     label: "Instagram",
-    href: "#",
+    href: "https://www.instagram.com/pashtunnikah/",
     icon: (
       <>
         <rect x="3.5" y="3.5" width="17" height="17" rx="5" />
@@ -80,12 +79,12 @@ const socials = [
   },
   {
     label: "Facebook",
-    href: "#",
+    href: "https://www.facebook.com/p/Pashtun-Nikah-61590652829433/",
     icon: <path d="M14 8.5h2.5V5H14c-2.2 0-3.5 1.5-3.5 3.7V11H8v3.5h2.5V21H14v-6.5h2.5L17 11h-3V9.2c0-.4.3-.7.7-.7Z" fill="currentColor" stroke="none" />,
   },
   {
     label: "TikTok",
-    href: "#",
+    href: "https://www.tiktok.com/@pashtun.nikah",
     icon: (
       <path
         d="M16.6 3h-3.2v12.2a2.8 2.8 0 1 1-2.8-2.8c.3 0 .5 0 .8.1V9.2a6 6 0 1 0 5.2 6V9.1a7.4 7.4 0 0 0 4.4 1.4V7.3a4.4 4.4 0 0 1-4.4-4.3Z"
@@ -116,6 +115,8 @@ export function SiteFooter() {
                 <a
                   key={s.label}
                   href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   aria-label={s.label}
                   className="w-10 h-10 rounded-full border border-white/25 flex items-center justify-center text-white hover:border-brand hover:text-brand transition"
                 >
