@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
           >
             <div>
               <label htmlFor="identifier" className="block text-sm font-semibold text-ink-900 mb-1.5">
-                Profile ID or Email
+                Profile ID or email
               </label>
               <input
                 id="identifier"

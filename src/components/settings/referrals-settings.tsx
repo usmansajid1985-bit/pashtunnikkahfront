@@ -26,7 +26,7 @@ export function ReferralsSettings() {
       <span className="flex-1 min-w-0">
         <span className="block text-[15px] font-semibold text-ink-950">Refer a friend</span>
         <span className="block text-[12.5px] text-ink-700/65 mt-0.5 leading-snug">
-          Share your link when a friend signs up · Referrals: {data.count ?? 0}
+          Invite a friend to join using your referral link. · Referrals: {data.count ?? 0}
         </span>
         <span className="mt-1.5 flex items-center gap-2">
           <code className="text-[11.5px] bg-[#f6f4f5] px-2 py-0.5 rounded-md text-ink-900">{data.code}</code>

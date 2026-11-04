@@ -38,7 +38,7 @@ export function GoldBadgeSettings({
         <div>
           <h3 className="font-bold text-ink-950">Gold member badge</h3>
           <p className="mt-1 text-[12.5px] text-ink-700/65 leading-relaxed">
-            Show a Gold pill on your public profile. You can hide it if you prefer a discreet presence.
+            Show your Gold membership badge on your profile. You can hide it at any time.
           </p>
           {msg ? <p className="mt-2 text-xs font-medium text-emerald-700">{msg}</p> : null}
         </div>

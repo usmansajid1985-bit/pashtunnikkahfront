@@ -124,7 +124,7 @@ export function DeleteAccountForm() {
         onClick={submit}
         className="w-full sm:w-auto px-6 py-3 rounded-full bg-rose-600 text-white text-sm font-semibold disabled:opacity-40"
       >
-        {pending ? "Closing your account…" : "Close my account"}
+        {pending ? "Scheduling deletion…" : "Schedule account deletion"}
       </button>
     </div>
   );

@@ -39,8 +39,9 @@ export function GetAppButton() {
           <rect x="2" y="1.5" width="14" height="21" rx="2.5" />
           <path d="M7.5 19h3" strokeLinecap="round" />
         </svg>
-        Get the app
+        Install app
       </button>
+      <p className="mt-2 text-center text-[13px] text-ink-700/70">Add Pashtun Nikah to your home screen.</p>
       {showHelp ? (
         <p className="mt-3 max-w-xs text-center text-[13px] leading-relaxed text-ink-700">
           On iPhone, tap <span className="font-semibold">Share</span> then{" "}

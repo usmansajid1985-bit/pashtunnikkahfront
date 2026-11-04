@@ -15,7 +15,7 @@ const PUSH_ROWS: { key: Key; label: string; hint: string }[] = [
   { key: "notify_requests", label: "Match requests", hint: "New and accepted requests" },
   { key: "notify_messages", label: "Messages", hint: "New chat messages" },
   { key: "notify_profile_views", label: "Profile views", hint: "When someone views your profile" },
-  { key: "notify_wali", label: "Wali & family activity", hint: "Wali handovers and reminders" },
+  { key: "notify_wali", label: "Wali & family activity", hint: "Wali contact-sharing requests and reminders" },
   { key: "notify_updates", label: "Pashtun Nikah updates", hint: "Announcements and new features" },
 ];
 

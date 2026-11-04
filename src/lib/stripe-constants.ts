@@ -13,5 +13,5 @@ export const OUT_OF_TOKENS_BODY =
 
 /** "Buy 5 Match Tokens · £6.99" — the Gold top-up purchase button. */
 export function topupButtonLabel(tokens: number = TOPUP_CREDITS, pricePence: number = TOPUP_AMOUNT_PENCE) {
-  return `Buy ${tokens} Match Tokens · £${(pricePence / 100).toFixed(2)}`;
+  return `Buy ${tokens} Match Tokens (£${(pricePence / 100).toFixed(2)})`;
 }

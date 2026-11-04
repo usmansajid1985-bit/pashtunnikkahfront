@@ -1003,7 +1003,7 @@ export function ProfileEditForm({
             {pauseSaving
               ? "Saving…"
               : form.isHidden
-                ? "Paused — you're hidden from Browse. Existing matches and chats still work."
+                ? "Your profile is paused and hidden from Browse. You can still access your existing matches and chats."
                 : "Active — you appear in Browse."}
           </p>
         </section>

@@ -62,7 +62,7 @@ export function GuardianContactManager() {
       <div className="flex items-start gap-3">
         <IconBadge><PersonIcon /></IconBadge>
         <div>
-          <h2 className="text-[17px] font-bold text-ink-950">Wali Contact Details</h2>
+          <h2 className="text-[17px] font-bold text-ink-950">Wali contact details</h2>
           <p className="text-[13px] text-ink-700/60 mt-0.5 leading-snug">
             Add your wali&apos;s or mother&apos;s details. You can share them in chat once a match is accepted.
           </p>

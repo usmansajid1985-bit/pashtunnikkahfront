@@ -9,17 +9,8 @@ export function goldFeatures(gold: PlanSettings): GoldFeature[] {
   return [
     { icon: "tokens", title: `${gold.monthlyCredits} Match Tokens monthly`, detail: "Send more Match Requests every month." },
     { icon: "filters", title: "Advanced browse filters", detail: "Be more specific in your search." },
-    { icon: "insights", title: "AI Match Insights", detail: "See your compatibility and shared values." },
-    ...(gold.rolloverCap > 0
-      ? [
-          {
-            icon: "rollover" as const,
-            title: `Up to ${gold.rolloverCap} unused tokens roll over`,
-            detail: "Don't lose unused Gold tokens (next month only).",
-          },
-        ]
-      : []),
-    { icon: "eye", title: "See who viewed your profile", detail: "Find out who's interested in you." },
+    { icon: "insights", title: "Match Insights", detail: "Explore shared values, potential differences and questions worth discussing." },
+    { icon: "eye", title: "See who viewed your profile", detail: "See who has viewed your profile." },
   ];
 }
 

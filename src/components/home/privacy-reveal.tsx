@@ -18,7 +18,7 @@ const steps = [
     img: "/images/landing/phone-reveal.webp",
     alt: "A revealed photo with a 00:42 countdown",
     title: "60-second reveal",
-    body: "Each photo is visible for up to 60 seconds, then blurs again.",
+    body: "Your match has one 60-second viewing session for the photos you share. They blur again when the session ends.",
   },
 ];
 

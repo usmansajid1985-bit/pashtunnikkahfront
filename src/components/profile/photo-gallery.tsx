@@ -92,7 +92,7 @@ export function PhotoGallery({
     <section className="bg-white rounded-2xl border border-ink-900/8 p-5 lg:col-span-2">
       <h2 className="font-bold text-ink-950">Profile photos</h2>
       <p className="mt-1 text-sm text-ink-700/70">
-        Add up to {MAX}. Choose one as your main photo.
+        Add up to {MAX} photos and choose your main photo.
         {profileApproved
           ? " Changes show on your profile straight away."
           : " Your photos are reviewed together with your profile."}
@@ -186,8 +186,8 @@ export function PhotoGallery({
       />
       {/* PH-07 / PH-08: the rules beside Add photo, and that photos save on their own. */}
       <p className="mt-3 text-[12px] text-ink-700/60">
-        JPG, PNG or WEBP · up to 6 MB each · up to {MAX} photos. Photos save automatically — no need to press Save
-        changes.
+        JPG, PNG or WEBP · up to 6 MB each · up to {MAX} photos. Photos save automatically. You don&apos;t need to select
+        Save changes.
       </p>
       {error ? <p className="mt-2 text-sm text-rose-700">{error}</p> : null}
 

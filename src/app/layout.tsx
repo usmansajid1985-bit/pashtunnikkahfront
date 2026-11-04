@@ -19,7 +19,10 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "Pashtun Nikah — Find your Nikah, the right way",
+  title: {
+    default: "Pashtun Nikah — Find your Nikah, the right way",
+    template: "%s | Pashtun Nikah",
+  },
   description:
     "The first dedicated Pashtun matrimony platform — connecting families with trust, tradition, and transparency.",
   manifest: "/manifest.webmanifest",

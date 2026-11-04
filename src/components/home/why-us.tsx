@@ -15,7 +15,7 @@ function IconTile({ children }: { children: ReactNode }) {
 const features: { title: string; body: string; badge: ReactNode; link?: boolean }[] = [
   {
     title: "Chat for Free",
-    body: "Browse profiles, send free monthly match requests and chat with your matches at no extra cost.",
+    body: "Browse profiles, receive 3 free Match Tokens each month and chat with your matches for free.",
     badge: (
       <IconTile>
         <path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 20l1.1-4.3A8.4 8.4 0 0 1 3 11.5 8.6 8.6 0 0 1 12 3a8.6 8.6 0 0 1 9 8.5Z" />
@@ -46,7 +46,7 @@ const features: { title: string; body: string; badge: ReactNode; link?: boolean 
   },
   {
     title: "Dedicated wali oversight",
-    body: "Give your wali read-only access to chats, so they can stay informed and support you throughout.",
+    body: "Give your wali read-only access to your conversations to support a marriage process guided by Islamic values. They cannot send messages.",
     badge: (
       <IconTile>
         <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />

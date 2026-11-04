@@ -35,7 +35,7 @@ const columns: { title: string; links: [string, string][] }[] = [
     links: [
       ["/", "Home"],
       ["/#how-it-works", "How It Works"],
-      ["/#privacy", "Why Us"],
+      ["/#privacy", "Photo privacy"],
       ["/#stories", "Success Stories"],
       ["/#faq", "FAQ"],
     ],

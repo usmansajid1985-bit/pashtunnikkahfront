@@ -26,7 +26,7 @@ export function WaliAccessTabs() {
       <div role="tablist" className="flex gap-6 border-b border-ink-900/8">
         {(
           [
-            { id: "contact", label: "Wali contact card", icon: <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /> },
+            { id: "contact", label: "Wali contact details", icon: <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" /> },
             {
               id: "oversight",
               label: "Wali oversight",

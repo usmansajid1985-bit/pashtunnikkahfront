@@ -118,7 +118,7 @@ export type StepDef = {
 
 export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
   const base: StepDef[] = [
-    { id: "gender", title: "What's your gender?", subtitle: "This shapes your journey on Pashtun Nikah." },
+    { id: "gender", title: "What's your gender?", subtitle: "Choose the option that applies to you." },
     { id: "name", title: "What's your full name?", subtitle: "Enter your first and last name." },
     { id: "marital", title: "What is your marital status?" },
     { id: "dob", title: "What is your date of birth?", subtitle: "You must be 18 or over to use Pashtun Nikah." },

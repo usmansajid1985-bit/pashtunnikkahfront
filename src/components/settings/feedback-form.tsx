@@ -167,7 +167,7 @@ export function FeedbackForm() {
 
       <div className="rounded-2xl bg-white border border-ink-900/6 p-4 sm:p-5 space-y-5">
         <label className="block">
-          <span className="block text-[15px] font-bold text-ink-950 mb-2">Subject</span>
+          <span className="block text-[15px] font-bold text-ink-950 mb-2">Subject <span className="font-normal text-ink-700/70">(required)</span></span>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value.slice(0, 160))}
@@ -177,7 +177,7 @@ export function FeedbackForm() {
         </label>
 
         <label className="block">
-          <span className="block text-[15px] font-bold text-ink-950 mb-2">Message</span>
+          <span className="block text-[15px] font-bold text-ink-950 mb-2">Message <span className="font-normal text-ink-700/70">(required)</span></span>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 4000))}
@@ -233,7 +233,7 @@ export function FeedbackForm() {
                   aria-label="Add screenshot"
                 >
                   <ImageIcon />
-                  {isNext ? <span className="text-[13px] font-medium">Add photo</span> : null}
+                  {isNext ? <span className="text-[13px] font-medium">Add screenshot</span> : null}
                 </button>
               );
             })}

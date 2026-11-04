@@ -1942,7 +1942,7 @@ export function ChatApp({
                   <p className="mt-1 text-sm text-ink-700/60">
                     {inboxTab === "requests"
                       ? "Open a request to read the full introduction message."
-                      : "Your matches will show on the left."}
+                      : "Open one of your matches to start chatting."}
                   </p>
                 </div>
               </div>

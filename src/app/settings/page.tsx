@@ -226,7 +226,7 @@ export default async function SettingsPage() {
         <SettingsRow
           href="/settings/visibility"
           title="Pause profile"
-          description={profile.is_hidden ? "Paused — hidden from Browse" : "Temporarily hide your profile"}
+          description={profile.is_hidden ? "Paused: hidden from Browse" : "Temporarily hide your profile"}
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="M10 9v6M14 9v6" /></svg>}
         />
       </SettingsGroup>

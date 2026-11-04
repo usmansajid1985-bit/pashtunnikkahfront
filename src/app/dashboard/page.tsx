@@ -174,7 +174,7 @@ export default async function DashboardPage() {
                   {ACTIVITY_ICONS.wali}
                 </svg>
               </span>
-              Chat requests
+              Match requests
             </p>
             <h2 className="mt-3 text-xl font-bold text-ink-950">
               {waiting === 0 ? "No requests waiting" : `${waiting} request${waiting === 1 ? "" : "s"} waiting`}

@@ -119,21 +119,6 @@ export default async function GoldPage() {
               before taking things further.
             </p>
           </Benefit>
-          {tokens.rolloverEnabled ? (
-            <Benefit
-              title={`Up to ${tokens.rolloverMax} unused tokens roll over`}
-              icon={
-                <Icon>
-                  <path d="M20 12a8 8 0 0 1-14 5.3M4 12a8 8 0 0 1 14-5.3M18 3v4h-4M6 21v-4h4" />
-                </Icon>
-              }
-            >
-              <p>
-                Unused Gold tokens (up to {tokens.rolloverMax}) carry over to your next paid month. Purchased tokens never
-                expire.
-              </p>
-            </Benefit>
-          ) : null}
           <Benefit
             title="Gold member badge"
             icon={

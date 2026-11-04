@@ -220,7 +220,7 @@ export function UpgradeModal({
             onClick={onTopup}
             className="mt-2.5 w-full h-12 rounded-full border-2 border-[#e12d72]/70 bg-white text-[14px] font-semibold text-[#c2185b] hover:bg-rose-50 disabled:opacity-60"
           >
-            Buy {topup.tokens} Match Tokens · {topup.priceLabel}
+            Buy {topup.tokens} Match Tokens ({topup.priceLabel})
           </button>
         ) : null}
         {error ? <p className="mt-2 text-center text-sm text-rose-700">{error}</p> : null}

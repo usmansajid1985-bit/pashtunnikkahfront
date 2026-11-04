@@ -73,8 +73,8 @@ export function SiteHeader() {
 
           <nav className="hidden lg:flex items-center gap-8 text-[13px] text-ink-700">
             <Link href="/#how-it-works" className="hover:text-brand transition">How It Works</Link>
-            <Link href="/#privacy" className="hover:text-brand transition">Why Us</Link>
-            <Link href="/#why-us" className="hover:text-brand transition">About</Link>
+            <Link href="/#privacy" className="hover:text-brand transition">Photo privacy</Link>
+            <Link href="/#why-us" className="hover:text-brand transition">Why Pashtun Nikah</Link>
             <Link href="/#stories" className="hover:text-brand transition">Stories</Link>
             <Link href="/#faq" className="hover:text-brand transition">FAQ</Link>
             <Link href="/support" className="hover:text-brand transition">Support</Link>
@@ -157,8 +157,8 @@ export function SiteHeader() {
         <nav className="flex-1 flex flex-col gap-1 px-5 pt-8">
           {[
             ["/#how-it-works", "How It Works"],
-            ["/#privacy", "Why Us"],
-            ["/#why-us", "About"],
+            ["/#privacy", "Photo privacy"],
+            ["/#why-us", "Why Pashtun Nikah"],
             ["/#stories", "Stories"],
             ["/#faq", "FAQ"],
             ["/support", "Support"],
