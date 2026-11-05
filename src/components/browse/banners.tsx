@@ -103,7 +103,7 @@ export function CompletenessBanner({ percent }: { percent: number }) {
             cy="32"
             r="27"
             fill="none"
-            stroke="#aa1945"
+            stroke="#e12d72"
             strokeWidth="6"
             strokeLinecap="round"
             strokeDasharray={circ}

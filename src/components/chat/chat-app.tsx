@@ -140,7 +140,7 @@ function StatusIcon({ status, onDark }: { status: SendStatus; onDark: boolean })
       </svg>
     );
   }
-  const color = status === "read" ? (onDark ? "#fb7ea4" : "#aa1945") : grey;
+  const color = status === "read" ? (onDark ? "#fb7ea4" : "#e12d72") : grey;
   return (
     <svg width="16" height="10" viewBox="0 0 16 10" aria-label={status === "read" ? "Read" : "Delivered"}>
       <path d="M1.2 5.2 3.6 7.6 8.2 2.2" fill="none" stroke={color} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -167,7 +167,7 @@ function DoubleCheck({ read }: { read: boolean }) {
       <path
         d="M1.2 5.2 3.6 7.6 8.2 2.2"
         fill="none"
-        stroke={read ? "#aa1945" : "#9ca3af"}
+        stroke={read ? "#e12d72" : "#9ca3af"}
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -175,7 +175,7 @@ function DoubleCheck({ read }: { read: boolean }) {
       <path
         d="M5.4 5.2 7.8 7.6 14 1.4"
         fill="none"
-        stroke={read ? "#aa1945" : "#9ca3af"}
+        stroke={read ? "#e12d72" : "#9ca3af"}
         strokeWidth="1.6"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -343,9 +343,9 @@ function MessageBubble({
                 className={`mb-2 rounded-lg px-2.5 py-1.5 text-[12px] ${
                   mine ? "bg-black/25 text-white/85" : "bg-white/80 text-ink-700"
                 }`}
-                style={{ borderLeft: "3px solid #aa1945" }}
+                style={{ borderLeft: "3px solid #e12d72" }}
               >
-                <p className="font-semibold text-[11px]" style={{ color: "#aa1945" }}>
+                <p className="font-semibold text-[11px]" style={{ color: "#e12d72" }}>
                   {replyLabel || quoteName}
                 </p>
                 <p className="line-clamp-2 opacity-90">{msg.replyTo.body}</p>
@@ -2412,9 +2412,9 @@ export function ChatApp({
                             <div className="mb-2 flex items-start gap-2 rounded-xl bg-[#f7f4f2] px-3 py-2">
                               <div
                                 className="flex-1 min-w-0"
-                                style={{ borderLeft: "3px solid #aa1945", paddingLeft: 10 }}
+                                style={{ borderLeft: "3px solid #e12d72", paddingLeft: 10 }}
                               >
-                                <p className="text-[12px] font-semibold" style={{ color: "#aa1945" }}>
+                                <p className="text-[12px] font-semibold" style={{ color: "#e12d72" }}>
                                   {replyTo.senderId === userId ? "You" : displayName}
                                 </p>
                                 <p className="text-[13px] text-ink-700 truncate">{replyTo.body}</p>
@@ -2481,7 +2481,7 @@ export function ChatApp({
                                   }
                                   setChatConsent(true);
                                 }}
-                                className="shrink-0 self-stretch @xl:self-center px-6 h-11 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white text-[14px] font-semibold shadow-sm transition"
+                                className="shrink-0 self-stretch @xl:self-center px-6 h-11 rounded-full bg-[#e12d72] hover:bg-[#c92763] text-white text-[14px] font-semibold shadow-sm transition"
                               >
                                 I understand
                               </button>
@@ -2596,7 +2596,7 @@ export function ChatApp({
                             <button
                               type="submit"
                               disabled={!hasVisibleText(text)}
-                              className="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-rose-700 transition shadow-[0_8px_20px_-10px_rgba(170,25,69,0.7)]"
+                              className="w-11 h-11 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0 disabled:opacity-40 hover:bg-rose-700 transition shadow-[0_8px_20px_-10px_rgba(225, 45, 114,0.7)]"
                               aria-label="Send"
                             >
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">

@@ -134,7 +134,7 @@ export function FeedbackForm() {
           >
             Send more feedback
           </button>
-          <Link href="/settings" className="px-5 py-2.5 rounded-full bg-[#e0306f] text-white text-sm font-semibold">
+          <Link href="/settings" className="px-5 py-2.5 rounded-full bg-[#e12d72] text-white text-sm font-semibold">
             Back to Settings
           </Link>
         </div>
@@ -155,7 +155,7 @@ export function FeedbackForm() {
               aria-selected={active}
               onClick={() => setKind(k.id)}
               className={`min-w-0 h-11 rounded-full flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2 text-[12px] sm:text-[14px] font-semibold tracking-tight transition [&_svg]:w-[14px] sm:[&_svg]:w-4 ${
-                active ? "bg-[#e0306f] text-white shadow-sm" : "text-ink-700/75 hover:text-ink-950"
+                active ? "bg-[#e12d72] text-white shadow-sm" : "text-ink-700/75 hover:text-ink-950"
               }`}
             >
               {k.icon}
@@ -228,7 +228,7 @@ export function FeedbackForm() {
                   type="button"
                   onClick={() => fileRef.current?.click()}
                   className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1.5 transition ${
-                    isNext ? "bg-rose-50 text-[#e0306f] hover:bg-rose-100" : "bg-[#f6f5f7] text-ink-700/35 hover:bg-ink-900/[0.06]"
+                    isNext ? "bg-rose-50 text-[#e12d72] hover:bg-rose-100" : "bg-[#f6f5f7] text-ink-700/35 hover:bg-ink-900/[0.06]"
                   }`}
                   aria-label="Add screenshot"
                 >
@@ -246,7 +246,7 @@ export function FeedbackForm() {
           type="button"
           disabled={pending || !ready}
           onClick={submit}
-          className="w-full h-13 py-3.5 rounded-full bg-[#e0306f] hover:bg-[#c92763] text-white text-[16px] font-semibold disabled:opacity-50 transition"
+          className="w-full h-13 py-3.5 rounded-full bg-[#e12d72] hover:bg-[#c92763] text-white text-[16px] font-semibold disabled:opacity-50 transition"
         >
           {pending ? "Sending…" : "Submit feedback"}
         </button>

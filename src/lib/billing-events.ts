@@ -106,7 +106,7 @@ export async function notifyMemberBilling(
       <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#0f0d0e;font-size:18px;margin:0 0 12px">${escapeHtml(n.title)}</h2>
         ${n.lines.map((l) => `<p style="color:#3f3b3c;font-size:14px;line-height:1.6;margin:0 0 8px">${escapeHtml(l)}</p>`).join("")}
-        <a href="${link}" style="display:inline-block;margin-top:14px;background:#aa1945;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px">${escapeHtml(cta)}</a>
+        <a href="${link}" style="display:inline-block;margin-top:14px;background:#e12d72;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px">${escapeHtml(cta)}</a>
       </div>`;
     await sendMail({ to: u.email, subject: n.title, text, html });
   } catch (err) {

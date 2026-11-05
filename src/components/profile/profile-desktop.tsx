@@ -145,7 +145,7 @@ export function ProfileDesktop({
                   className="h-full rounded-full"
                   style={{
                     width: `${profile.completeness}%`,
-                    background: "linear-gradient(90deg,#aa1945,#d14f82)",
+                    background: "linear-gradient(90deg,#e12d72,#d14f82)",
                   }}
                 />
               </div>
@@ -180,7 +180,7 @@ export function ProfileDesktop({
               <Link
                 href="/profile/edit"
                 className="mt-5 block text-center py-3 rounded-full text-white font-semibold text-sm"
-                style={{ background: "linear-gradient(135deg,#aa1945,#d14f82)" }}
+                style={{ background: "linear-gradient(135deg,#e12d72,#d14f82)" }}
               >
                 {profile.completeness >= 100 ? "Edit my profile" : "Complete my profile"}
               </Link>

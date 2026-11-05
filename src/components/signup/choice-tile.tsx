@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 type Tone = "mint" | "peach" | "lilac" | "sky" | "rose" | "sand" | "white";
 
 const TONES: Record<Tone, { bg: string; border: string; selectedBorder: string }> = {
-  mint: { bg: "#eefaf1", border: "#cfe9d6", selectedBorder: "#aa1945" },
-  peach: { bg: "#fdf3e8", border: "#f0d4b5", selectedBorder: "#aa1945" },
-  lilac: { bg: "#f5f0fd", border: "#ddd0f5", selectedBorder: "#aa1945" },
-  sky: { bg: "#eef4fd", border: "#c9daf5", selectedBorder: "#aa1945" },
-  rose: { bg: "#fdf2f6", border: "#f0c3d3", selectedBorder: "#aa1945" },
-  sand: { bg: "#faf6f1", border: "#ebe0d4", selectedBorder: "#aa1945" },
-  white: { bg: "#ffffff", border: "#ece7e6", selectedBorder: "#aa1945" },
+  mint: { bg: "#eefaf1", border: "#cfe9d6", selectedBorder: "#e12d72" },
+  peach: { bg: "#fdf3e8", border: "#f0d4b5", selectedBorder: "#e12d72" },
+  lilac: { bg: "#f5f0fd", border: "#ddd0f5", selectedBorder: "#e12d72" },
+  sky: { bg: "#eef4fd", border: "#c9daf5", selectedBorder: "#e12d72" },
+  rose: { bg: "#fdf2f6", border: "#f0c3d3", selectedBorder: "#e12d72" },
+  sand: { bg: "#faf6f1", border: "#ebe0d4", selectedBorder: "#e12d72" },
+  white: { bg: "#ffffff", border: "#ece7e6", selectedBorder: "#e12d72" },
 };
 
 export function IconBadge({ children }: { children: ReactNode }) {
@@ -131,7 +131,7 @@ export function BeardTile({
       onClick={onClick}
       aria-pressed={selected}
       className={`choice-tile beard-tile ${selected ? "is-selected" : ""}`}
-      style={{ background: t.bg, borderColor: selected ? "#aa1945" : t.border }}
+      style={{ background: t.bg, borderColor: selected ? "#e12d72" : t.border }}
     >
       {/* unoptimized: the optimizer can re-encode to JPEG, dropping the feathered alpha edge */}
       <Image src={t.image} alt="" width={160} height={160} unoptimized loading="eager" className="beard-tile-img" />

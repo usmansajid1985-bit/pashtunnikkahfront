@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 :root {
+  /* Brand pink scale — rose-600/700 migrated off the old red (#e12d72/#c41d5e) so every
+     bg/text/border-rose-600 utility uses the shared brand pink (#e12d72). */
   --rose-50: #fdf2f6;
   --rose-100: #fbe0ea;
-  --rose-300: #e585ac;
-  --rose-500: #b62a60;
-  --rose-600: #aa1945;
-  --rose-700: #8a1439;
+  --rose-300: #f093b7;
+  --rose-500: #e85494;
+  --rose-600: #e12d72;
+  --rose-700: #c41d5e;
   --ink-950: #0f0d0e;
   --ink-900: #201a1d;
   --ink-700: #4a4145;
@@ -339,7 +341,7 @@ body {
   outline: none;
   border-color: #e585ac;
   background: white;
-  box-shadow: 0 0 0 3px rgba(170, 25, 69, 0.08);
+  box-shadow: 0 0 0 3px rgba(225, 45, 114, 0.08);
 }
 .option-card {
   display: flex;
@@ -356,7 +358,7 @@ body {
   border-color: #e585ac;
 }
 .option-card.selected {
-  border-color: #aa1945;
+  border-color: #e12d72;
   background: #fdf2f6;
 }
 
@@ -395,7 +397,7 @@ body {
   box-shadow: 0 10px 22px -16px rgba(15, 13, 14, 0.28);
 }
 .choice-tile.is-selected {
-  box-shadow: 0 0 0 1px #aa1945, 0 12px 24px -16px rgba(170, 25, 69, 0.45);
+  box-shadow: 0 0 0 1px #e12d72, 0 12px 24px -16px rgba(225, 45, 114, 0.45);
 }
 .choice-tile.pink-select.is-selected {
   box-shadow: none;
@@ -433,8 +435,8 @@ body {
   color: transparent;
 }
 .choice-check.on {
-  background: #aa1945;
-  border-color: #aa1945;
+  background: #e12d72;
+  border-color: #e12d72;
   color: #fff;
 }
 /* Gender step — illustrated avatar tiles */
@@ -535,7 +537,7 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding-left: 10px;
-  border-left: 3px solid #aa1945;
+  border-left: 3px solid #e12d72;
 }
 .choice-section-head h2 {
   font-size: 14px;
@@ -569,7 +571,7 @@ body {
 }
 .dress-tile.is-selected {
   background: #fff8fa;
-  border-color: #aa1945;
+  border-color: #e12d72;
 }
 .dress-tile-img {
   align-self: center;
@@ -671,7 +673,7 @@ body {
 }
 .signup-burst {
   animation: signupBurst 0.7s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 0 0 0 rgba(170, 25, 69, 0.25);
+  box-shadow: 0 0 0 0 rgba(225, 45, 114, 0.25);
 }
 @keyframes signupBurst {
   0% {

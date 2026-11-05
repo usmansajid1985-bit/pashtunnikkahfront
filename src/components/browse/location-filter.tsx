@@ -198,10 +198,10 @@ export function LocationFilter({ active, onClose, onUse }: Props) {
           radius: (anyDistance ? 0 : radiusMiles) * MILES_TO_METERS,
           visible: !anyDistance,
           clickable: false,
-          strokeColor: "#aa1945",
+          strokeColor: "#e12d72",
           strokeOpacity: 0.7,
           strokeWeight: 1,
-          fillColor: "#aa1945",
+          fillColor: "#e12d72",
           fillOpacity: 0.14,
         });
         if (start && !anyDistance) {
@@ -456,7 +456,7 @@ export function LocationFilter({ active, onClose, onUse }: Props) {
             aria-expanded={searchOpen}
             className="flex w-full items-center gap-3.5 rounded-2xl border border-ink-900/10 px-4 py-3 text-left hover:border-rose-200"
           >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#aa1945" strokeWidth="1.8" className="shrink-0">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="1.8" className="shrink-0">
               <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
               <circle cx="12" cy="10.5" r="2" />
             </svg>

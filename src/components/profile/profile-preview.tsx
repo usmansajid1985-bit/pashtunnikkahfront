@@ -220,7 +220,7 @@ export function ProfilePreview({
           <div className="max-w-lg mx-auto px-4 flex gap-2">
             <a
               href="/profile/edit"
-              className="flex-1 text-center py-3.5 rounded-2xl bg-rose-600 text-white font-semibold text-[15px] hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(170,25,69,0.55)]"
+              className="flex-1 text-center py-3.5 rounded-2xl bg-rose-600 text-white font-semibold text-[15px] hover:bg-rose-700 shadow-[0_12px_28px_-12px_rgba(225, 45, 114,0.55)]"
             >
               Edit my profile
             </a>

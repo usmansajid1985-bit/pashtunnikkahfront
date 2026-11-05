@@ -52,7 +52,7 @@ function emailLayout(name: string, paragraphs: string[], button?: { label: strin
       ${paragraphs.map((p) => `<p>${escapeHtml(p)}</p>`).join("")}
       ${
         button
-          ? `<p style="margin:28px 0"><a href="${escapeHtml(button.url)}" style="display:inline-block;background:#aa1945;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">${escapeHtml(button.label)}</a></p>`
+          ? `<p style="margin:28px 0"><a href="${escapeHtml(button.url)}" style="display:inline-block;background:#e12d72;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">${escapeHtml(button.label)}</a></p>`
           : ""
       }
       <p style="font-size:14px;color:#57534e">— Pashtun Nikah</p>

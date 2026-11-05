@@ -91,7 +91,7 @@ If you did not ask for this, you can ignore this email.
       <p>We received a request to reset your Pashtun Nikah password.</p>
       <p style="margin:28px 0">
         <a href="${escapeHtml(resetUrl)}"
-           style="display:inline-block;background:#aa1945;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">
+           style="display:inline-block;background:#e12d72;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">
           Reset password
         </a>
       </p>
@@ -119,7 +119,7 @@ ${verifyUrl}
       <p>Please verify your email to send match requests on Pashtun Nikah.</p>
       <p style="margin:28px 0">
         <a href="${escapeHtml(verifyUrl)}"
-           style="display:inline-block;background:#aa1945;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">
+           style="display:inline-block;background:#e12d72;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-family:system-ui,sans-serif;font-weight:600">
           Verify email
         </a>
       </p>

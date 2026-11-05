@@ -1094,7 +1094,7 @@ export function SignupWizard() {
               type="button"
               disabled={!canNext || submitting}
               onClick={onNext}
-              className="w-full mt-7 py-3.5 flex items-center justify-center gap-2 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition disabled:opacity-45 disabled:cursor-not-allowed shadow-[0_10px_30px_-12px_rgba(170,25,69,0.55)]"
+              className="w-full mt-7 py-3.5 flex items-center justify-center gap-2 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition disabled:opacity-45 disabled:cursor-not-allowed shadow-[0_10px_30px_-12px_rgba(225, 45, 114,0.55)]"
             >
               {submitting
                 ? "Creating account…"

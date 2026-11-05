@@ -67,7 +67,7 @@ function shell(heading: string, lines: string[], ctaLabel: string, ctaUrl: strin
     <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:480px;margin:0 auto;padding:24px">
       <h2 style="color:#0f0d0e;font-size:18px;margin:0 0 12px">${heading}</h2>
       ${lines.map((l) => `<p style="color:#3f3b3c;font-size:14px;line-height:1.6;margin:0 0 8px">${l}</p>`).join("")}
-      <a href="${url}" style="display:inline-block;margin-top:14px;background:#aa1945;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px">${ctaLabel}</a>
+      <a href="${url}" style="display:inline-block;margin-top:14px;background:#e12d72;color:#fff;text-decoration:none;font-weight:600;font-size:14px;padding:10px 20px;border-radius:999px">${ctaLabel}</a>
       <p style="color:#9b9698;font-size:12px;margin-top:20px">You can change what you're emailed about in Settings → Notifications.</p>
     </div>`;
   return { text, html };

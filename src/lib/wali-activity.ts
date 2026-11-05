@@ -58,9 +58,9 @@ export async function logWaliConversationView(userId: bigint, linkId: bigint, re
 function emailShell(heading: string, lines: string[], ctaLabel: string, ctaUrl: string) {
   const text = [heading, "", ...lines, "", `${ctaLabel}: ${ctaUrl}`, "", "— Pashtun Nikah"].join("\n");
   const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#1f1a1c">
-    <h2 style="color:#aa1945;font-size:20px">${heading}</h2>
+    <h2 style="color:#e12d72;font-size:20px">${heading}</h2>
     ${lines.map((l) => `<p style="line-height:1.5">${l}</p>`).join("")}
-    <p><a href="${ctaUrl}" style="display:inline-block;background:#aa1945;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:bold">${ctaLabel}</a></p>
+    <p><a href="${ctaUrl}" style="display:inline-block;background:#e12d72;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:bold">${ctaLabel}</a></p>
     <p style="color:#888;font-size:12px">Pashtun Nikah — family-first matrimony.</p></div>`;
   return { text, html };
 }
