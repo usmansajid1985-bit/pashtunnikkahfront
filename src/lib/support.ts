@@ -22,7 +22,9 @@ export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || "support@pashtunnikah.
 
 /** WhatsApp Business number, international digits only. Unset → the page offers email only. */
 export function supportWhatsAppNumber() {
-  return (process.env.SUPPORT_WHATSAPP_NUMBER || "").replace(/\D/g, "") || null;
+  // Falls back to the official support WhatsApp number so the option shows even before the Vercel
+  // env var is set; SUPPORT_WHATSAPP_NUMBER overrides it.
+  return (process.env.SUPPORT_WHATSAPP_NUMBER || "+447467918820").replace(/\D/g, "") || null;
 }
 
 let ensured = false;
