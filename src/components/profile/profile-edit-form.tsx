@@ -869,7 +869,8 @@ export function ProfileEditForm({
               <ChoiceTile
                 key={o.v}
                 label={o.v}
-                tone={o.tone}
+                pink
+                showCheck
                 icon={o.icon}
                 selected={form.employment === o.v}
                 onClick={() => {

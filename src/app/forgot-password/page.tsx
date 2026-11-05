@@ -78,7 +78,7 @@ export default function ForgotPasswordPage() {
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
                 placeholder="Enter your Profile ID or email"
-                className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10"
+                className="w-full rounded-xl border border-[#d9d9de] bg-[#f7f7f8] px-4 py-3 text-[15px] text-ink-950 focus:outline-none focus:border-[#e12d72] focus:bg-white focus:ring-3 focus:ring-rose-600/10"
                 required
               />
             </div>

@@ -172,7 +172,7 @@ export function FeedbackForm() {
             value={subject}
             onChange={(e) => setSubject(e.target.value.slice(0, 160))}
             placeholder={placeholder}
-            className="w-full rounded-xl bg-[#f6f5f7] border border-transparent px-4 py-3 text-[15px] outline-none focus:bg-white focus:border-rose-200"
+            className="w-full rounded-xl bg-[#f7f7f8] border border-[#d9d9de] px-4 py-3 text-[15px] text-ink-950 outline-none focus:bg-white focus:border-[#e12d72] focus:ring-3 focus:ring-rose-600/10"
           />
         </label>
 
@@ -183,7 +183,7 @@ export function FeedbackForm() {
             onChange={(e) => setMessage(e.target.value.slice(0, 4000))}
             rows={6}
             placeholder={kind === "bug" ? "Tell us what happened and the steps to reproduce it…" : "Tell us more…"}
-            className="w-full rounded-xl bg-[#f6f5f7] border border-transparent px-4 py-3 text-[15px] outline-none resize-y focus:bg-white focus:border-rose-200"
+            className="w-full rounded-xl bg-[#f7f7f8] border border-[#d9d9de] px-4 py-3 text-[15px] text-ink-950 outline-none resize-y focus:bg-white focus:border-[#e12d72] focus:ring-3 focus:ring-rose-600/10"
           />
         </label>
 
