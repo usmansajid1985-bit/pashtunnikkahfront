@@ -66,8 +66,20 @@ export function EmojiPicker({ onSelect }: { onSelect: (emoji: string) => void })
         setOpen(false);
       }
     }
+    function onKey(e: KeyboardEvent) {
+      // Escape closes the picker and returns focus to its trigger button (PN-AUD-016).
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setOpen(false);
+        (wrapRef.current?.querySelector("button") as HTMLButtonElement | null)?.focus();
+      }
+    }
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   return (

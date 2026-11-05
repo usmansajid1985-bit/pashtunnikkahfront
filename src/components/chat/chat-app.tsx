@@ -691,6 +691,29 @@ export function ChatApp({
     return () => document.removeEventListener("mousedown", onDown);
   }, [headerMenu]);
 
+  // A11y (PN-AUD-016): Escape closes the open chat menus and returns focus to their trigger, and
+  // only one of the header/composer menus is ever open at a time.
+  useEffect(() => {
+    if (!headerMenu && !composerMenu) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        setHeaderMenu(null);
+        setComposerMenu(false);
+      }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [headerMenu, composerMenu]);
+
+  // Opening one menu closes the other, so popovers never overlap.
+  useEffect(() => {
+    if (composerMenu) setHeaderMenu(null);
+  }, [composerMenu]);
+  useEffect(() => {
+    if (headerMenu) setComposerMenu(false);
+  }, [headerMenu]);
+
   const {
     connected,
     joinThread,
