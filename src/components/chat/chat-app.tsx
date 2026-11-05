@@ -37,6 +37,7 @@ import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate"
 import { PrivatePhotoShare, openPrivatePhotos, openSharePicker } from "@/components/chat/private-photo-share";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
+import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
 import { MessageActionMenu } from "@/components/chat/message-action-menu";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
 import { ChatNotifyBanner } from "@/components/notifications/chat-notify-banner";
@@ -1656,6 +1657,9 @@ export function ChatApp({
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+      {/* Cross-tab logout: if another tab logs out (or logs in as someone else), this tab reloads
+          and redirects to login instead of leaving a usable-looking chat/composer (PN-AUD-018). */}
+      <StaleSessionGuard userId={userId} />
       <ReportDialog
         target={reportTarget}
         onClose={() => setReportTarget(null)}
