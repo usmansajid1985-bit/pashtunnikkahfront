@@ -125,6 +125,9 @@ function unLeet(s: string) {
 
 export function squashContactText(raw: string) {
   let s = stripInvisible(raw.toLowerCase());
+  // Drop brackets/parens used to wrap obfuscations ("[at]", "(dot)") so the word rules below still
+  // fire — otherwise "qa [at] example [dot] com" slips past the email check (PN-AUD-022).
+  s = s.replace(/[[\]{}()<>]/g, " ");
   s = s.replace(/\b(zero|one|two|three|four|five|six|seven|eight|nine|oh)\b/g, (m) => DIGIT_WORDS[m] || m);
   s = s.replace(/\b(dot|point)\b/g, ".");
   s = s.replace(/\b(at)\b/g, "@");
