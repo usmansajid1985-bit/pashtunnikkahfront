@@ -82,7 +82,9 @@ export function NavBell({
         <path d="M13.7 21a2 2 0 0 1-3.4 0" />
       </svg>
       {bellUnread > 0 ? (
-        <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-600 ring-2 ring-white" />
+        <span className="absolute -right-0.5 -top-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10.5px] font-bold leading-none flex items-center justify-center ring-2 ring-white tabular-nums">
+          {bellUnread > 99 ? "99+" : bellUnread}
+        </span>
       ) : null}
     </Link>
   );

@@ -102,9 +102,7 @@ export function ProfileCard({
             </span>
             {p.justJoined ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[11.5px] font-semibold text-rose-600">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M12 2l2.2 6.6H21l-5.5 4 2.1 6.6L12 15.2 6.4 19.2l2.1-6.6L3 8.6h6.8Z" />
-                </svg>
+                <span aria-hidden>🎉</span>
                 Just Joined
               </span>
             ) : null}
