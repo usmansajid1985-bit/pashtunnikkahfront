@@ -154,6 +154,18 @@ export function mapProfileView(
       action: "edit",
     },
     {
+      // Optional sections count towards completeness so a bare signup isn't shown as 100%, but they
+      // never block approval or access (PN-AUD: new profile shows 100%).
+      label: "Interests",
+      done: Boolean(profile.interests && profile.interests.trim()),
+      action: "edit",
+    },
+    {
+      label: "Personality",
+      done: Array.isArray(extras.personality) && extras.personality.length > 0,
+      action: "edit",
+    },
+    {
       label: "Cultural verification",
       // PN's approval workflow is the cultural check — an approved profile is verified,
       // even if the standalone cultural_verified flag was never toggled in admin.

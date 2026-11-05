@@ -63,6 +63,12 @@ export async function PATCH(req: Request) {
     const existing = await prisma.profiles.findUnique({ where: { user_id: userId } });
     if (!existing) return NextResponse.json({ error: "No profile" }, { status: 404 });
 
+    // A sent full name must not be blank or whitespace: saving it used to silently keep the old
+    // name while reporting success (PN-AUD-025). Reject it with an inline error instead.
+    if (Object.prototype.hasOwnProperty.call(body, "fullName") && String(body.fullName ?? "").trim().length < 2) {
+      return NextResponse.json({ error: "Please enter your full name.", field: "fullName" }, { status: 400 });
+    }
+
     // About Me / Looking For: a changed text must be real sentences of 30+ words. Untouched
     // older profiles aren't blocked from saving other fields.
     for (const [key, col, label] of [

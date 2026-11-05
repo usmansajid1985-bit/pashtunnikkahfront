@@ -91,9 +91,12 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
 
   const list = useMemo(() => {
     const rows = [...(tab === "incoming" ? data.incoming : tab === "sent" ? data.sent : data.matched)];
-    if (sort === "oldest") rows.sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
+    // Matched cards display the accepted/matched date (statusAt), so sort by that same timestamp —
+    // sorting by the original request date contradicted the dates shown (PN-AUD matched sorting).
+    const key = (c: (typeof rows)[number]) => (tab === "matched" ? c.statusAt || c.createdAt : c.createdAt);
+    if (sort === "oldest") rows.sort((a, b) => +new Date(key(a)) - +new Date(key(b)));
     else if (sort === "compat" && tab === "matched") rows.sort((a, b) => b.compat - a.compat);
-    else rows.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    else rows.sort((a, b) => +new Date(key(b)) - +new Date(key(a)));
     return rows;
   }, [tab, sort, data]);
 
