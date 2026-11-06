@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
-import { isPashtoLevel, occupationIssue, textQualityIssue } from "@/lib/signup";
+import { isPashtoLevel, occupationIssue, religiousPracticeConflict, textQualityIssue } from "@/lib/signup";
 import { saveHomeCoords } from "@/lib/browse-location";
 import { getPhoneCountryCodes } from "@/lib/phone-codes";
 import { PHONE_INVALID_MESSAGE, phoneRules, toE164 } from "@/lib/phone";
@@ -104,6 +104,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Please tell us how well you speak Pashto." }, { status: 400 });
     }
     const pashtoLevel = speaksPashto ? String(body.pashtoLevel) : null;
+
+    // Faith answers must be consistent — a strictly/actively practising member can't also pick a
+    // "Never"/"Rarely" Salah answer (Match Insights V2).
+    const faithConflict = religiousPracticeConflict(body.religiousPractice, body.salah);
+    if (faithConflict) return NextResponse.json({ error: faithConflict, field: "salah" }, { status: 400 });
 
     // Tribe: one from the Confederacy → Tribe selector (or "Unsure") — never free text.
     const tribe = standardTribe(body.tribe);

@@ -455,6 +455,72 @@ export function buildCompatBreakdown(me: CompatSide, them: CompatSide): CompatBr
   return b;
 }
 
+export type CompatOutcome = "strong" | "potential" | "low" | "insufficient";
+
+/** A plain outcome from the rule-based findings (Match Insights V2): strong / potential / low, or
+ * insufficient when there's barely anything to compare. No percentage and no prediction that a
+ * marriage will work — it only reflects how the shared answers line up. */
+export function compatOutcome(b: CompatBreakdown): CompatOutcome {
+  const aligned = b.aligned.length;
+  const discuss = b.discuss.length; // "worth discussing" = differences / potential conflicts
+  if (aligned + discuss <= 1) return "insufficient";
+  if (discuss === 0 && aligned >= 2) return "strong";
+  if (discuss >= 2 && discuss >= aligned) return "low";
+  return "potential";
+}
+
+/** topic → short theme word for the headline. */
+const HEADLINE_THEME: Record<string, string> = {
+  "Religious practice": "faith",
+  "Islamic background": "faith",
+  Salah: "faith",
+  Location: "location",
+  "Living arrangements": "where you'd live",
+  Relocation: "where you'd live",
+  Children: "family plans",
+  Lifestyle: "lifestyle",
+  Education: "education",
+  "Marital history": "marital background",
+  Heritage: "heritage",
+  Languages: "language",
+  Interests: "interests",
+  "Age preferences": "age",
+};
+function headlineThemes(items: CompatItem[], max: number): string {
+  const seen: string[] = [];
+  for (const it of items) {
+    const t = HEADLINE_THEME[it.topic];
+    if (t && !seen.includes(t)) seen.push(t);
+    if (seen.length >= max) break;
+  }
+  if (seen.length === 0) return "";
+  if (seen.length === 1) return seen[0];
+  return `${seen.slice(0, -1).join(", ")} and ${seen[seen.length - 1]}`;
+}
+
+/** The prominent, dynamically generated headline (Match Insights V2) — names the specific areas the
+ * outcome turns on. Factual, no "highly compatible" claim and no percentage. */
+export function compatHeadline(b: CompatBreakdown, code: string): string {
+  const alignThemes = headlineThemes(b.aligned, 2);
+  const discussThemes = headlineThemes(b.discuss, 1);
+  switch (compatOutcome(b)) {
+    case "strong":
+      return alignThemes
+        ? `You and ${code} align closely on ${alignThemes}.`
+        : `You and ${code} align closely on what you've both shared.`;
+    case "potential":
+      if (alignThemes && discussThemes) return `You and ${code} share ${alignThemes}, with ${discussThemes} to talk through.`;
+      if (alignThemes) return `You and ${code} share ${alignThemes}, with a few things to talk through.`;
+      return `You and ${code} have a few things to talk through.`;
+    case "low":
+      return discussThemes
+        ? `You and ${code} have important differences around ${discussThemes}.`
+        : `You and ${code} have some important things to discuss.`;
+    default:
+      return `There isn't enough shared yet to compare you and ${code}.`;
+  }
+}
+
 /** Bump when the rules or wording change, so cached AI summaries are rewritten from the new text. */
 export const COMPAT_ENGINE_VERSION = 4;
 

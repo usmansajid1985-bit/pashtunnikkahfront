@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { CompatBreakdown, CompatItem } from "@/lib/compat-engine";
+import { compatHeadline } from "@/lib/compat-engine";
 
 export type ViewerCompat = {
   breakdown: CompatBreakdown;
@@ -159,8 +160,16 @@ export function CompatibilityPanel({
         </span>
       </div>
 
+      {/* Prominent dynamic headline (Poppins Medium) naming the specific areas the outcome turns on */}
+      <h2
+        className="mt-3 text-[19px] leading-snug font-medium text-ink-950"
+        style={{ fontFamily: "var(--font-poppins), var(--font-inter), system-ui, sans-serif" }}
+      >
+        {compatHeadline(breakdown, peerCode)}
+      </h2>
+
       {/* Summary — AI-written when available, else a factual fallback from the findings */}
-      <p className="mt-3 text-[14.5px] leading-relaxed text-ink-800">
+      <p className="mt-1.5 text-[14px] leading-relaxed text-ink-700/75">
         {compat.summary ?? summaryFor(breakdown, peerCode)}
       </p>
 

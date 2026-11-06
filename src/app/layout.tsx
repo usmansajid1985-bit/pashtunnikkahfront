@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { Fraunces, Inter, Poppins } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/notifications/service-worker-registrar";
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { LiveUpdates } from "@/components/notifications/live-updates";
@@ -16,6 +16,13 @@ const inter = Inter({
 const fraunces = Fraunces({
   variable: "--font-fraunces",
   subsets: ["latin"],
+});
+
+// Match Insights V2 headline (Poppins Medium).
+const poppins = Poppins({
+  variable: "--font-poppins",
+  subsets: ["latin"],
+  weight: ["500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -54,7 +61,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${fraunces.variable} antialiased`}>
+      <body className={`${inter.variable} ${fraunces.variable} ${poppins.variable} antialiased`}>
         <ServiceWorkerRegistrar />
         <PresenceHeartbeat />
         <LiveUpdates />

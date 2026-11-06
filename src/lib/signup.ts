@@ -416,6 +416,24 @@ export function salahShortLabel(v: string) {
   return v.split("–")[0].trim();
 }
 
+/** Flag a self-contradictory faith answer so it can be corrected during onboarding and profile
+ * editing — e.g. "Strictly/Actively Practising" alongside a "Never" or "Rarely" Salah answer.
+ * Returns a message to show, or null when the answers are consistent (or one is unset). */
+export function religiousPracticeConflict(
+  practice: string | null | undefined,
+  salah: string | null | undefined
+): string | null {
+  const p = (practice || "").trim().toLowerCase();
+  const s = (salah || "").trim().toLowerCase();
+  if (!p || !s) return null;
+  const highPractice = p.startsWith("strictly") || p.startsWith("actively");
+  const lowSalah = s.startsWith("never") || s.startsWith("rarely");
+  if (highPractice && lowSalah) {
+    return "Your religious practice and prayer answers don't match. A strictly or actively practising member usually prays more than 'Never' or 'Rarely' — please review both answers.";
+  }
+  return null;
+}
+
 /** Everyday English words — genuine writing always contains plenty of these; keyboard-mash doesn't. */
 const COMMON_WORDS = new Set(
   (

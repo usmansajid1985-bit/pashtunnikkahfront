@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { saveCityPlaceId, verifyCity } from "@/lib/city-search";
 import { cityInvalidMessage } from "@/lib/country";
-import { isPashtoLevel, textQualityIssue } from "@/lib/signup";
+import { isPashtoLevel, religiousPracticeConflict, textQualityIssue } from "@/lib/signup";
 import { INTERESTS, ISLAMIC_PRACTICE_MAX, cleanInterests, cleanPersonality, isPashtoDialect } from "@/lib/profile-optional";
 import { cleanMarriagePrefs } from "@/lib/marriage-prefs";
 import { refreshHomeCoords } from "@/lib/browse-location";
@@ -67,6 +67,17 @@ export async function PATCH(req: Request) {
     // name while reporting success (PN-AUD-025). Reject it with an inline error instead.
     if (Object.prototype.hasOwnProperty.call(body, "fullName") && String(body.fullName ?? "").trim().length < 2) {
       return NextResponse.json({ error: "Please enter your full name.", field: "fullName" }, { status: 400 });
+    }
+
+    // Faith answers must be internally consistent — a strictly/actively practising member can't also
+    // select a "Never"/"Rarely" Salah answer (Match Insights V2: prevent contradictory findings).
+    {
+      const effPractice = Object.prototype.hasOwnProperty.call(body, "religiousPractice")
+        ? body.religiousPractice
+        : existing.religious_practice;
+      const effSalah = Object.prototype.hasOwnProperty.call(body, "salah") ? body.salah : existing.salah_pattern;
+      const conflict = religiousPracticeConflict(effPractice, effSalah);
+      if (conflict) return NextResponse.json({ error: conflict, field: "salah" }, { status: 400 });
     }
 
     // About Me / Looking For: a changed text must be real sentences of 30+ words. Untouched
