@@ -359,6 +359,7 @@ export async function POST(req: Request) {
 
     const res = NextResponse.json({
       ok: true,
+      userId: user.id.toString(),
       profileCode: profile_code,
       redirectTo: "/browse",
       verifyEmail: true,

@@ -44,6 +44,7 @@ import {
   isBreachedPassword,
 } from "@/lib/password-strength";
 import { phonePlaceholder, phoneRules, sanitizePhoneInput, toE164 } from "@/lib/phone";
+import { writeSessionMarker } from "@/lib/session-marker";
 
 const STORAGE_KEY = "pn_signup_draft_v2";
 
@@ -296,6 +297,10 @@ export function SignupWizard() {
         return;
       }
       localStorage.removeItem(STORAGE_KEY);
+      // Signup auto-signs-in (the session cookie is set in the response), so record who is now
+      // signed in for StaleSessionGuard — otherwise a marker left by a prior account on this
+      // browser would make guarded pages reload. (PN-SETTINGS-005)
+      writeSessionMarker(json.userId ?? null);
       setDir(1);
       setStepIndex(steps.findIndex((s) => s.id === "done"));
     } catch {

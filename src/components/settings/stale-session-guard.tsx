@@ -10,13 +10,13 @@ import { readSessionMarker, writeSessionMarker, SESSION_MARKER_KEY } from "@/lib
  */
 export function StaleSessionGuard({ userId }: { userId: string }) {
   useEffect(() => {
-    const existing = readSessionMarker();
-    if (existing === null) {
-      writeSessionMarker(userId);
-    } else if (existing !== userId) {
-      window.location.reload();
-      return;
-    }
+    // This page was just server-rendered for the current session cookie, so `userId` is, by
+    // definition, the user who is signed in right now. Adopt it as the marker and NEVER reload on
+    // mount: a reload can't change the stored marker, so reloading here on a mismatch (e.g. a stale
+    // marker left by a prior account, or a signup that didn't update it) would loop forever. We
+    // only reload when the marker CHANGES to a different user while this page stays open — the real
+    // "logged out then back in as someone else in another tab" case. (PN-SETTINGS-005)
+    writeSessionMarker(userId);
 
     function checkStillCurrent() {
       const current = readSessionMarker();
@@ -24,7 +24,9 @@ export function StaleSessionGuard({ userId }: { userId: string }) {
     }
 
     function onStorage(e: StorageEvent) {
-      if (e.key === SESSION_MARKER_KEY && e.newValue !== userId) window.location.reload();
+      if (e.key === SESSION_MARKER_KEY && e.newValue !== null && e.newValue !== userId) {
+        window.location.reload();
+      }
     }
 
     window.addEventListener("storage", onStorage);
