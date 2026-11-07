@@ -12,10 +12,27 @@ export type NavCounts = {
 const EVENT = "pn:nav-counts";
 let polling = false;
 let tickNow: (() => Promise<void>) | null = null;
+/** Last counts seen by the shared poller — the base for optimistic nudges. */
+let lastCounts: NavCounts = { bellUnread: 0, incomingRequests: 0, unreadMessages: 0 };
 
 /** Re-fetch badge counts immediately — called by LiveUpdates on realtime events (Q02/N07). */
 export function refreshNavCounts() {
   if (tickNow) void tickNow();
+}
+
+/**
+ * Optimistically nudge the shared badge counts and broadcast right away, so the bell drops the
+ * instant a notification is opened instead of waiting for the next poll (V2 badge-sync). Clamp at
+ * zero. Callers should still reconcile with the server (refreshNavCounts) once the read is saved.
+ */
+export function bumpNavCounts(delta: Partial<NavCounts>) {
+  if (typeof window === "undefined") return;
+  lastCounts = {
+    bellUnread: Math.max(0, lastCounts.bellUnread + (delta.bellUnread ?? 0)),
+    incomingRequests: Math.max(0, lastCounts.incomingRequests + (delta.incomingRequests ?? 0)),
+    unreadMessages: Math.max(0, lastCounts.unreadMessages + (delta.unreadMessages ?? 0)),
+  };
+  window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: lastCounts }));
 }
 
 /**
@@ -32,6 +49,7 @@ function startPolling() {
       const res = await fetch("/api/notifications/summary", { cache: "no-store" });
       if (!res.ok) return;
       const data = (await res.json()) as NavCounts;
+      lastCounts = data;
       window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: data }));
     } catch {
       /* offline — keep last known counts */
@@ -55,10 +73,19 @@ function useNavCounts(initial: Partial<NavCounts>): NavCounts {
     unreadMessages: initial.unreadMessages ?? 0,
   });
   useEffect(() => {
+    // Seed the shared base from this island's server-provided initial before the first poll lands,
+    // so an optimistic bump (e.g. opening a notification) starts from the right number.
+    if (initial.bellUnread != null && lastCounts.bellUnread === 0) lastCounts.bellUnread = initial.bellUnread;
+    if (initial.incomingRequests != null && lastCounts.incomingRequests === 0) lastCounts.incomingRequests = initial.incomingRequests;
+    if (initial.unreadMessages != null && lastCounts.unreadMessages === 0) lastCounts.unreadMessages = initial.unreadMessages;
     startPolling();
-    const onEvt = (e: Event) => setCounts((e as CustomEvent<NavCounts>).detail);
+    const onEvt = (e: Event) => {
+      lastCounts = (e as CustomEvent<NavCounts>).detail;
+      setCounts(lastCounts);
+    };
     window.addEventListener(EVENT, onEvt);
     return () => window.removeEventListener(EVENT, onEvt);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return counts;
 }

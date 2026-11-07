@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ActivityNotification } from "@/lib/notifications";
 import type { AnnouncementCard } from "@/lib/announcements-shared";
 import { AnnouncementCardRow } from "@/components/announcements/announcement-card";
+import { bumpNavCounts, refreshNavCounts } from "@/components/browse/nav-notifications";
 
 function timeAgo(iso: string): string {
   const s = Math.max(1, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -117,6 +118,7 @@ export function NotificationsView({
   const [activity, setActivity] = useState(initialActivity);
   const announcements = initialAnnouncements;
   const unreadAnnouncements = announcements.filter((a) => !a.read).length;
+  const unreadActivity = activity.filter((n) => !n.read).length;
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -140,23 +142,32 @@ export function NotificationsView({
 
   async function markAllRead() {
     setMenuOpen(false);
+    // Drop the bell by however many activity items were still unread, immediately (V2 badge-sync).
+    const stillUnread = activity.filter((n) => !n.read).length;
     setActivity((prev) => prev.map((n) => ({ ...n, read: true })));
+    if (stillUnread > 0) bumpNavCounts({ bellUnread: -stillUnread });
     await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ markAllRead: true }),
     });
+    refreshNavCounts();
     router.refresh();
   }
 
   function openActivity(n: ActivityNotification) {
     if (!n.read) {
       setActivity((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
+      // Decrement the bell straight away, then reconcile with the server once the read is saved —
+      // so the badge never waits for the next poll (V2 badge-sync).
+      bumpNavCounts({ bellUnread: -1 });
       void fetch("/api/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: n.id }),
-      });
+      })
+        .then(() => refreshNavCounts())
+        .catch(() => {});
     }
     if (n.url) router.push(n.url);
   }
@@ -225,9 +236,9 @@ export function NotificationsView({
             }`}
           >
             {t === "activity" ? "Activity" : "Announcements"}
-            {t === "announcements" && unreadAnnouncements > 0 ? (
+            {(t === "activity" ? unreadActivity : unreadAnnouncements) > 0 ? (
               <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-600 text-white text-[12px] font-bold flex items-center justify-center">
-                {unreadAnnouncements}
+                {t === "activity" ? unreadActivity : unreadAnnouncements}
               </span>
             ) : null}
           </button>
