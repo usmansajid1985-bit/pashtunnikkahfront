@@ -442,50 +442,40 @@ export function PrivatePhotoShare({
         </Overlay>
       ) : null}
 
-      {/* Before-viewing prompt (spec §6) */}
+      {/* "Respect their privacy" confirm (spec §6) — shown on first view; the chat behind is dimmed
+          and blurred while this stays sharp. The 60s timer only starts once "I understand" is pressed. */}
       {startPromptOpen && incoming && incoming.status !== "none" ? (
         <Overlay>
-        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 px-3 pb-3 sm:pb-0">
-          <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 w-11 h-11 rounded-full bg-rose-50 text-[#e12d72] flex items-center justify-center" aria-hidden>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
-                  <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" />
-                </svg>
-              </span>
-              <div className="min-w-0">
-                <p className="font-bold text-ink-950 text-[15px]">{peerName} has shared private photos with you</p>
-                <p className="text-[12.5px] text-ink-700/70 mt-0.5 leading-relaxed">
-                  You can view up to {incoming.photoCount} photo{incoming.photoCount === 1 ? "" : "s"} for 1 minute. Once
-                  you start, the timer will continue even if you close the viewer.
-                </p>
-              </div>
-            </div>
-            <div className="mt-3 rounded-xl bg-rose-50 border border-rose-100 px-3.5 py-2.5">
-              <p className="text-[12.5px] font-bold text-[#e12d72]">Respect their privacy</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-[#c41d5e]">
-                Do not screenshot, record or share these photos. They&apos;ve trusted you with temporary access. Repeated or
-                serious violations may lead to account termination.
-              </p>
-            </div>
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink-950/45 backdrop-blur-[4px] px-5">
+          <div className="w-full max-w-[20rem] rounded-[22px] bg-white px-6 py-7 shadow-2xl text-center">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center" aria-hidden>
+              <svg width="46" height="46" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3 5 6v5c0 5 3 8.5 7 10 4-1.5 7-5 7-10V6l-7-3Z" fill="none" stroke="#e12d72" strokeWidth="1.8" strokeLinejoin="round" />
+                <rect x="9.3" y="11" width="5.4" height="4.2" rx="1" fill="#0e0e12" />
+                <path d="M10.3 11v-1.1a1.7 1.7 0 0 1 3.4 0V11" fill="none" stroke="#0e0e12" strokeWidth="1.3" />
+              </svg>
+            </span>
+            <h2 className="mt-3 text-[19px] font-bold text-ink-950">Respect their privacy</h2>
+            <p className="mt-2 text-[13.5px] leading-relaxed text-ink-700/75">
+              These photos have been shared with you privately. Please do not screenshot, record or share them
+              without permission. Misuse may result in account suspension or termination.
+            </p>
             {error ? <p className="text-[11px] text-rose-600 mt-2">{error}</p> : null}
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void startViewing(incoming.shareId)}
-                className="flex-1 py-2.5 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white text-sm font-semibold disabled:opacity-50"
-              >
-                {busy ? "Starting…" : "Start Viewing"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStartPromptOpen(false)}
-                className="flex-1 py-2.5 rounded-full border border-ink-900/12 text-sm font-semibold"
-              >
-                Not Now
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void startViewing(incoming.shareId)}
+              className="mt-5 w-full py-3 rounded-full bg-[#e12d72] hover:bg-[#c41d5e] text-white text-[15px] font-bold disabled:opacity-50 transition"
+            >
+              {busy ? "Starting…" : "I understand — View photos"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setStartPromptOpen(false)}
+              className="mt-1.5 w-full py-2.5 text-[14px] font-semibold text-ink-700/60 hover:text-ink-900"
+            >
+              Cancel
+            </button>
           </div>
         </div>
         </Overlay>

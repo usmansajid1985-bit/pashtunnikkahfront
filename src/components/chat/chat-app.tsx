@@ -35,6 +35,7 @@ import { useChatSocket } from "@/hooks/use-chat-socket";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { MobileBottomNavGate } from "@/components/browse/mobile-bottom-nav-gate";
 import { PrivatePhotoShare, openPrivatePhotos, openSharePicker } from "@/components/chat/private-photo-share";
+import { IncomingPhotoCard } from "@/components/chat/incoming-photo-card";
 import { PrivatePhotoStatusWatcher } from "@/components/chat/private-photo-status-watcher";
 import { EmojiPicker } from "@/components/chat/emoji-picker";
 import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
@@ -2059,20 +2060,18 @@ export function ChatApp({
                     {!matchEnded ? (
                       <button
                         type="button"
-                        onClick={() => setHeaderMenu((m) => (m === "photo" ? null : "photo"))}
-                        className={`relative w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
-                          headerMenu === "photo" ? "bg-rose-50 text-rose-700" : "text-ink-700"
-                        }`}
-                        aria-label="Share photos"
-                        title="Share photos"
+                        onClick={() => {
+                          setHeaderMenu(null);
+                          if (activeId) openSharePicker(activeId);
+                        }}
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition text-ink-700"
+                        aria-label="Share my photos"
+                        title="Share my photos"
                       >
                         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M4 8h3l1.3-2h7.4L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
                           <circle cx="12" cy="13" r="3.3" />
                         </svg>
-                        {incomingPrivatePhotoStatus === "shared" || incomingPrivatePhotoStatus === "active" ? (
-                          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-600" />
-                        ) : null}
                       </button>
                     ) : null}
                     <button
@@ -2230,16 +2229,6 @@ export function ChatApp({
                               </button>
                             )}
                           </div>
-                        ) : null}
-                        {headerMenu === "photo" && activeId ? (
-                          <PrivatePhotoShare
-                            requestId={activeId}
-                            matchEnded={matchEnded}
-                            peerName={displayName}
-                            variant="dropdown"
-                            open
-                            onIncomingStatusChange={setIncomingPrivatePhotoStatus}
-                          />
                         ) : null}
                     </div>
                   ) : null}
@@ -2428,6 +2417,15 @@ export function ChatApp({
                                 ×
                               </button>
                             </div>
+                          ) : null}
+
+                          {activeId ? (
+                            <IncomingPhotoCard
+                              requestId={activeId}
+                              peerCode={displayName}
+                              blurUrl={avatarUrl(seed)}
+                              matchEnded={matchEnded}
+                            />
                           ) : null}
 
                           {family?.card && !familyModal ? (
