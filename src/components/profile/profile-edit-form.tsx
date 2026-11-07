@@ -24,13 +24,7 @@ import {
 import { BeardTile, ChoiceGrid, ChoiceSection, ChoiceTile, DressTile, I, LIFESTYLE_ICONS } from "@/components/signup/choice-tile";
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { ISLAMIC_SECTS, displaySect } from "@/lib/islamic-background";
-import {
-  MARRIAGE_IMPORTANCE,
-  MARRIAGE_PREF_FIELDS,
-  IMPORTANCE_LABEL,
-  type MarriageImportance,
-  type MarriagePrefs,
-} from "@/lib/marriage-prefs";
+import { MARRIAGE_PREF_FIELDS, type MarriagePrefs } from "@/lib/marriage-prefs";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { PhotoGallery } from "@/components/profile/photo-gallery";
 import { useLeaveGuard } from "@/hooks/use-leave-guard";
@@ -54,14 +48,12 @@ import { matchTribe } from "@/lib/tribes";
 const field =
   "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
-/** Editor for the optional Marriage Preferences: each row is a value (choice or free text) plus an
- * Essential / Preferred / Flexible chip. An empty value means the row is simply not set. */
+/** Editor for the optional Marriage Plans: two questions (timeframe, living arrangements), each a
+ * simple choice. An empty value means the row is simply not set. */
 function MarriagePrefsEditor({ value, onChange }: { value: MarriagePrefs; onChange: (v: MarriagePrefs) => void }) {
-  function setField(key: string, patch: { value?: string; importance?: MarriageImportance }) {
-    const current = value[key] ?? { value: "", importance: "preferred" as MarriageImportance };
-    const next = { ...current, ...patch };
+  function setValue(key: string, v: string) {
     const out = { ...value };
-    if (next.value.trim()) out[key] = { value: next.value, importance: next.importance };
+    if (v.trim()) out[key] = { value: v, importance: "preferred" };
     else delete out[key];
     onChange(out);
   }
@@ -69,7 +61,6 @@ function MarriagePrefsEditor({ value, onChange }: { value: MarriagePrefs; onChan
     <div className="space-y-4">
       {MARRIAGE_PREF_FIELDS.map((f) => {
         const item = value[f.key];
-        const importance = item?.importance ?? "preferred";
         return (
           <div key={f.key} className="rounded-xl border border-ink-900/8 p-3.5">
             <label className="block text-[13px] font-semibold text-ink-950">{f.label}</label>
@@ -77,7 +68,7 @@ function MarriagePrefsEditor({ value, onChange }: { value: MarriagePrefs; onChan
               <select
                 className={`${field} mt-1.5`}
                 value={item?.value ?? ""}
-                onChange={(e) => setField(f.key, { value: e.target.value })}
+                onChange={(e) => setValue(f.key, e.target.value)}
               >
                 <option value="">No preference</option>
                 {f.options.map((o) => (
@@ -90,30 +81,11 @@ function MarriagePrefsEditor({ value, onChange }: { value: MarriagePrefs; onChan
               <input
                 className={`${field} mt-1.5`}
                 value={item?.value ?? ""}
-                onChange={(e) => setField(f.key, { value: e.target.value })}
+                onChange={(e) => setValue(f.key, e.target.value)}
                 placeholder={f.placeholder}
                 maxLength={120}
               />
             )}
-            {item?.value ? (
-              <div className="mt-2 flex gap-1.5">
-                {MARRIAGE_IMPORTANCE.map((imp) => {
-                  const on = importance === imp;
-                  return (
-                    <button
-                      key={imp}
-                      type="button"
-                      onClick={() => setField(f.key, { importance: imp })}
-                      className={`px-3 py-1.5 rounded-full text-[12px] font-semibold border transition ${
-                        on ? "border-[#e12d72] bg-rose-50 text-[#e12d72]" : "border-ink-900/12 text-ink-700/70 hover:border-ink-900/25"
-                      }`}
-                    >
-                      {IMPORTANCE_LABEL[imp]}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
           </div>
         );
       })}
@@ -522,10 +494,10 @@ export function ProfileEditForm({
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2">
           <div>
-            <h2 className="font-bold text-ink-950">Marriage preferences <span className="font-normal text-ink-700/55">(optional)</span></h2>
+            <h2 className="font-bold text-ink-950">Marriage Plans <span className="font-normal text-ink-700/55">(optional)</span></h2>
             <p className="text-xs text-ink-700/60 mt-0.5 leading-snug">
-              What you&apos;re hoping for in married life. Mark each one Essential, Preferred or Flexible. These are
-              shared on your profile and help Match Insights, and are separate from your Browse filters.
+              Your marriage timeframe and living arrangements. These are shared on your profile and help
+              Match Insights, and are separate from your Browse filters.
             </p>
           </div>
           <MarriagePrefsEditor value={form.marriagePrefs} onChange={(v) => patch("marriagePrefs", v)} />

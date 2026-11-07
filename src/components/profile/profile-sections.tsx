@@ -5,7 +5,7 @@ import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 import { displaySect } from "@/lib/islamic-background";
-import { MARRIAGE_PREF_FIELDS, IMPORTANCE_LABEL } from "@/lib/marriage-prefs";
+import { MARRIAGE_PREF_FIELDS } from "@/lib/marriage-prefs";
 import { RelocationIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
@@ -49,6 +49,24 @@ function HeightIcon() {
   return (
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
       <path d="M12 4v16M8.5 4h7M8.5 20h7" />
+    </svg>
+  );
+}
+
+/** Marriage Plans row icons: a calendar for the timeframe, a house for living arrangements. */
+function MarriagePlanIcon({ field }: { field: string }) {
+  if (field === "living") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d="M3 10.5 12 3l9 7.5" />
+        <path d="M5 9.5V20h14V9.5" />
+      </svg>
+    );
+  }
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
     </svg>
   );
 }
@@ -156,9 +174,9 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
   const hasChildren = childrenLabel(profile.hasChildren);
   const wantsChildren = wantsChildrenLabel(profile.willingChildren);
   const salah = salahLabel(profile.salah);
-  const marriagePrefRows = MARRIAGE_PREF_FIELDS.map((f) => {
+  const marriagePlanRows = MARRIAGE_PREF_FIELDS.map((f) => {
     const item = profile.marriagePrefs[f.key];
-    return item?.value ? { key: f.key, label: f.label, value: item.value, importance: item.importance } : null;
+    return item?.value ? { key: f.key, label: f.label, value: item.value } : null;
   }).filter(Boolean as unknown as <T>(v: T | null) => v is T);
 
   const hasCareer = profile.education || profile.occupation || (profile.employment && !profile.occupation);
@@ -195,25 +213,21 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
         ) : null}
       </Section>
 
-      {marriagePrefRows.length ? (
-        <Section title="Marriage Preferences">
-          <div className="space-y-2">
-            {marriagePrefRows.map((row) => (
-              <div key={row.key} className="flex items-start justify-between gap-3">
-                <p className="text-[13.5px] leading-snug text-ink-800">
-                  <span className="text-ink-700/60">{row.label}:</span> <span className="font-semibold text-ink-950">{row.value}</span>
-                </p>
-                <span
-                  className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
-                    row.importance === "essential"
-                      ? "bg-rose-50 text-[#e12d72]"
-                      : row.importance === "preferred"
-                        ? "bg-amber-50 text-amber-700"
-                        : "bg-ink-900/[0.05] text-ink-700/60"
-                  }`}
-                >
-                  {IMPORTANCE_LABEL[row.importance]}
+      {marriagePlanRows.length ? (
+        <Section title="Marriage Plans">
+          <div className="space-y-4">
+            {marriagePlanRows.map((row) => (
+              <div key={row.key} className="flex items-center gap-3.5">
+                <span className="shrink-0 text-ink-700/55" aria-hidden>
+                  <MarriagePlanIcon field={row.key} />
                 </span>
+                <span className="self-stretch w-px bg-ink-900/10" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[13.5px] font-bold text-ink-950 leading-snug">{row.label}</p>
+                  <span className="mt-1 inline-block rounded-full bg-ink-900/[0.05] px-3 py-1 text-[13px] text-ink-800">
+                    {row.value}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

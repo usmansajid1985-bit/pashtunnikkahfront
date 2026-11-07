@@ -128,7 +128,7 @@ export function mapProfileView(
   const checklist: ProfileView["checklist"] = [
     { label: "Basic account created", done: true, action: "edit" },
     {
-      label: "Marriage preferences added",
+      label: "Marriage plans added",
       done: Boolean(profile.partner_preferences || profile.open_to || openTo.length),
       action: "edit",
     },

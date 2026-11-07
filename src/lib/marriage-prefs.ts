@@ -1,8 +1,10 @@
 /**
- * Optional "Marriage Preferences" — what a member actually wants in married life, marked Essential /
- * Preferred / Flexible. Lives in Profile (not mandatory onboarding), and unlike temporary Browse
- * filters these are deliberate, stated preferences, so Match Insights may treat an Essential one as
- * a real requirement.
+ * Optional "Marriage Plans" — the two things a member most wants settled about married life:
+ * their marriage timeframe and living arrangements. Lives in Profile (not mandatory onboarding).
+ * (The older "Marriage Preferences" set also asked about location, children, work/study and
+ * lifestyle, and tagged each Essential/Preferred/Flexible; those were dropped to keep this quick.
+ * The stored shape keeps an `importance` field for backward compatibility with older saved data,
+ * but it is no longer shown or editable — new saves default it to "preferred".)
  */
 
 export const MARRIAGE_IMPORTANCE = ["essential", "preferred", "flexible"] as const;
@@ -31,23 +33,11 @@ export const MARRIAGE_PREF_FIELDS: readonly MarriagePrefField[] = [
     label: "Marriage timeframe",
     options: ["Within 6 months", "Within a year", "1 to 2 years", "No fixed timeline"],
   },
-  { key: "location", label: "Where you'd like to settle", options: null, placeholder: "e.g. London, UK" },
   {
     key: "living",
     label: "Living arrangements",
     options: ["Our own home", "With my family", "With my spouse's family", "Flexible"],
   },
-  {
-    key: "children",
-    label: "A spouse who already has children",
-    options: ["Open to it", "Prefer not", "Doesn't matter"],
-  },
-  {
-    key: "work",
-    label: "Work or study after marriage",
-    options: ["Happy for my spouse to work or study", "Prefer my spouse at home", "Flexible"],
-  },
-  { key: "lifestyle", label: "Lifestyle expectations", options: null, placeholder: "e.g. non-smoking home, active, homebody" },
 ] as const;
 
 const FIELD_KEYS = new Set(MARRIAGE_PREF_FIELDS.map((f) => f.key));
@@ -76,7 +66,7 @@ export function marriagePrefsText(prefs: MarriagePrefs | null | undefined): stri
   const lines: string[] = [];
   for (const field of MARRIAGE_PREF_FIELDS) {
     const item = prefs[field.key];
-    if (item?.value) lines.push(`${field.label}: ${item.value} (${IMPORTANCE_LABEL[item.importance]})`);
+    if (item?.value) lines.push(`${field.label}: ${item.value}`);
   }
   return lines.join("; ");
 }
