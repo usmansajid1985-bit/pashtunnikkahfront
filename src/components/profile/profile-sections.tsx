@@ -6,7 +6,7 @@ import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 import { displaySect } from "@/lib/islamic-background";
 import { MARRIAGE_PREF_FIELDS } from "@/lib/marriage-prefs";
-import { RelocationIcon } from "@/components/profile/pill-icons";
+import { RelocationIcon, BriefcaseIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
@@ -238,8 +238,8 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
         <Section title="Career & Education">
           <div className={chips}>
             {profile.education ? <Chip icon="🎓">{profile.education}</Chip> : null}
-            {profile.occupation ? <Chip icon="💼">{profile.occupation}</Chip> : null}
-            {!profile.occupation && profile.employment ? <Chip icon="💼">{profile.employment}</Chip> : null}
+            {profile.occupation ? <Chip icon={<BriefcaseIcon />}>{profile.occupation}</Chip> : null}
+            {!profile.occupation && profile.employment ? <Chip icon={<BriefcaseIcon />}>{profile.employment}</Chip> : null}
           </div>
         </Section>
       ) : null}

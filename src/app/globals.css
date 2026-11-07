@@ -25,7 +25,8 @@
 }
 
 body.pn-has-bottom-nav {
-  --pn-bottom-nav-h: calc(3.5rem + env(safe-area-inset-bottom));
+  /* Clears the floating frosted bar: its 62px height + bottom gap + safe-area inset. */
+  --pn-bottom-nav-h: calc(4.75rem + env(safe-area-inset-bottom));
 }
 
 @media (min-width: 1024px) {

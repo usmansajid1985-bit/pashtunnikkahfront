@@ -124,7 +124,9 @@ export function ProfileHero({
           {countryCode ? <span aria-hidden className={`fi fi-${countryCode.toLowerCase()} rounded-[2px]`} /> : null}
           {location || "—"}
         </p>
-        {/* Exactly three hero pills: practice, tribe (in its colour), employment. */}
+        {/* Exactly three hero pills: practice, tribe (in its colour), occupation. The career pill
+            shows the member's actual occupation (e.g. "Actor") when set, falling back to their
+            employment status, with the same briefcase icon as the Career & Education section. */}
         <div className={`flex flex-wrap ${wide ? "mt-4 gap-2" : "mt-3 gap-1.5"}`}>
           {profile.religiousPractice ? (
             <HeroPill wide={wide} icon={<PracticeIcon practice={profile.religiousPractice} />}>
@@ -136,9 +138,9 @@ export function ProfileHero({
             icon={<PeopleIcon />}
             className={`backdrop-blur-md ${wide ? "px-4 py-1.5 text-[13px]" : "px-3 py-1 text-[12px]"}`}
           />
-          {profile.employment ? (
+          {profile.occupation || profile.employment ? (
             <HeroPill wide={wide} icon={<BriefcaseIcon />}>
-              {profile.employment}
+              {profile.occupation || profile.employment}
             </HeroPill>
           ) : null}
         </div>

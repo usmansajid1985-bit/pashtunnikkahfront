@@ -29,48 +29,52 @@ export function MobileBottomNav({
   requestsCount?: number;
 }) {
   return (
+    // Floating, frosted sticky bar: translucent so the page shows faintly through it as you scroll.
+    // pointer-events-none on the wrapper lets taps pass through the side gutters; the bar re-enables.
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-ink-900/8"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pointer-events-none"
       aria-label="Primary"
     >
-      <div className="grid grid-cols-6 h-14">
-        {BOTTOM_TABS.map(({ key, label }) => {
-          const item = NAV_ITEMS.find((n) => n.key === key);
-          if (!item) return null;
-          // Settings pages sit under Profile on phones.
-          const isActive = (active === "settings" ? "profile" : active) === key;
-          return (
-            <Link
-              key={key}
-              href={item.href}
-              aria-current={isActive ? "page" : undefined}
-              className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition ${
-                isActive ? "text-rose-600" : "text-ink-700/55"
-              }`}
-            >
-              <span className="relative">
-                {item.icon}
-                {key === "messages" ? (
-                  <NavCountBadge
-                    kind="messages"
-                    initialCount={unreadCount}
-                    className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px]"
-                  />
-                ) : null}
-                {key === "requests" ? (
-                  <NavCountBadge
-                    kind="requests"
-                    initialCount={requestsCount}
-                    className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px]"
-                  />
-                ) : null}
-              </span>
-              <span className="truncate max-w-[3.5rem]">{label}</span>
-            </Link>
-          );
-        })}
+      <div className="pointer-events-auto mx-auto max-w-md rounded-[24px] border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(17,17,24,0.14)]">
+        <div className="grid grid-cols-5 h-[62px]">
+          {BOTTOM_TABS.map(({ key, label }) => {
+            const item = NAV_ITEMS.find((n) => n.key === key);
+            if (!item) return null;
+            // Settings pages sit under Profile on phones.
+            const isActive = (active === "settings" ? "profile" : active) === key;
+            return (
+              <Link
+                key={key}
+                href={item.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold transition ${
+                  isActive ? "text-rose-600" : "text-ink-700/55"
+                }`}
+              >
+                <span className="relative flex items-center justify-center w-9 h-9">
+                  {isActive ? <span aria-hidden className="absolute inset-0 rounded-full bg-rose-500/12" /> : null}
+                  <span className="relative">{item.icon}</span>
+                  {key === "messages" ? (
+                    <NavCountBadge
+                      kind="messages"
+                      initialCount={unreadCount}
+                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 text-[9px]"
+                    />
+                  ) : null}
+                  {key === "requests" ? (
+                    <NavCountBadge
+                      kind="requests"
+                      initialCount={requestsCount}
+                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 text-[9px]"
+                    />
+                  ) : null}
+                </span>
+                <span className="truncate max-w-[4rem]">{label}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
-      <div style={{ height: "env(safe-area-inset-bottom)" }} />
     </nav>
   );
 }

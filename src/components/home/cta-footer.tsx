@@ -19,11 +19,12 @@ export function FinalCTA({ loggedIn }: { loggedIn: boolean }) {
 export function LogoTile({ size }: { size: number }) {
   return (
     <Image
-      src="/images/landing/logo-tile.webp"
+      src="/images/logo.png"
       alt=""
       width={size}
       height={size}
-      className="rounded-[24%] shrink-0"
+      quality={100}
+      className="rounded-[24%] shrink-0 object-cover"
       style={{ width: size, height: size }}
     />
   );

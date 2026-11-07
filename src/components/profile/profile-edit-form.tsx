@@ -155,9 +155,9 @@ function ChipPicker({
   );
 }
 
-/** P10: comparable form state — Pause saves instantly on its own, so it never counts as unsaved. */
+/** P10: comparable form state for the dirty check. */
 function snapshot(f: object) {
-  return JSON.stringify({ ...f, isHidden: undefined });
+  return JSON.stringify(f);
 }
 
 function optionsWithCurrent(options: string[], current: string) {
@@ -299,10 +299,8 @@ export function ProfileEditForm({
     aboutMe: initial.aboutMe || "",
     lookingFor: initial.lookingFor || "",
     marriagePrefs: initial.marriagePrefs as MarriagePrefs,
-    isHidden: initial.isHidden,
   });
 
-  const [pauseSaving, setPauseSaving] = useState(false);
   /** R04: a city edited here must be re-picked from the list before saving. */
   const [cityConfirmed, setCityConfirmed] = useState(true);
   const [cityPlaceId, setCityPlaceId] = useState<string | null>(null);
@@ -311,26 +309,6 @@ export function ProfileEditForm({
   const [savedSnapshot, setSavedSnapshot] = useState(() => snapshot(form));
   const dirty = useMemo(() => snapshot(form) !== savedSnapshot, [form, savedSnapshot]);
   const { dialog: leaveDialog } = useLeaveGuard(dirty);
-
-  /** Pause saves on its own, immediately — it isn't part of the big Save (F01). */
-  async function togglePause(paused: boolean) {
-    const previous = form.isHidden;
-    setForm((f) => ({ ...f, isHidden: paused }));
-    setPauseSaving(true);
-    try {
-      const res = await fetch("/api/profile/visibility", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paused }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      setForm((f) => ({ ...f, isHidden: previous }));
-      setError("Could not update Pause. Please try again.");
-    } finally {
-      setPauseSaving(false);
-    }
-  }
 
   function patch<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -955,33 +933,6 @@ export function ProfileEditForm({
           <p className="text-xs text-ink-700/55">Your traits help us show you more compatible matches.</p>
         </section>
         </div>
-
-        <div data-tab="personal" className={paneClass("personal")}>
-        <section id="visibility" className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
-          <h2 className="font-bold text-ink-950">Visibility</h2>
-          <label id="pause" className="flex items-center justify-between gap-3 py-2">
-            <span>
-              <span className="block font-semibold text-sm">Pause profile</span>
-              <span className="block text-xs text-ink-700/60">Hide from Browse temporarily</span>
-            </span>
-            <input
-              type="checkbox"
-              className="accent-rose-600 w-5 h-5"
-              checked={form.isHidden}
-              disabled={pauseSaving}
-              onChange={(e) => void togglePause(e.target.checked)}
-            />
-          </label>
-          <p className="text-xs text-ink-700/55" aria-live="polite">
-            {pauseSaving
-              ? "Saving…"
-              : form.isHidden
-                ? "Your profile is paused and hidden from Browse. You can still access your existing matches and chats."
-                : "Active — you appear in Browse."}
-          </p>
-        </section>
-        </div>
-
 
         <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">
