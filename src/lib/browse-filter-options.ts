@@ -1,6 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { RELOCATION_VALUES } from "@/lib/relocation";
+import { RELIGIOUS_PRACTICE_OPTIONS } from "@/lib/religious-practice";
 
 /** Title-case a value for display: "LONDON"/"london" -> "London", "united arab emirates" -> "United Arab Emirates". */
 function titleCase(s: string): string {
@@ -39,7 +40,6 @@ export const getBrowseFilterOptions = unstable_cache(
       countries,
       cities,
       sects,
-      practices,
       appearances,
       educations,
       dialects,
@@ -50,7 +50,6 @@ export const getBrowseFilterOptions = unstable_cache(
       distinctStrings("country"),
       distinctStrings("city"),
       distinctStrings("religious_methodology"),
-      distinctStrings("religious_practice"),
       distinctStrings("appearance"),
       distinctStrings("education"),
       distinctStrings("dialect"),
@@ -64,7 +63,9 @@ export const getBrowseFilterOptions = unstable_cache(
       // Fixed set — Polygamy is no longer a filter, and Widowed is always offered.
       marital: ["Annulled", "Divorced", "Never Married", "Widowed"],
       sects,
-      practices,
+      // Fixed canonical set — legacy stored labels (Moderately/Improving/Learning) are matched by
+      // the filter query but no longer offered, so onboarding, Edit Profile and Browse all agree.
+      practices: [...RELIGIOUS_PRACTICE_OPTIONS],
       // Fixed canonical set — never derived from raw stored values (PN-BROWSE-009).
       relocate: [...RELOCATION_VALUES],
       appearances,

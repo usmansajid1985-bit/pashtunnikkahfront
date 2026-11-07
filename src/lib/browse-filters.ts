@@ -6,6 +6,7 @@ import { countryByCode, toCountryCode } from "@/lib/country";
 import { parseTribeList, tribeSpellings } from "@/lib/tribes";
 import { professionGroup } from "@/lib/professions";
 import { sectSpellings } from "@/lib/islamic-background";
+import { isReligiousPracticeOption, PRACTICE_MATCH } from "@/lib/religious-practice";
 
 export {
   BROWSE_PAGE_SIZE,
@@ -118,7 +119,23 @@ export function buildProfileWhere(
   if (!opts.isGold) return { AND: and };
 
   // B09: religious practice + relocation are Gold-only (client decision, V2 QA 19 Sep).
-  eq("religious_practice", f.practice);
+  // Match the canonical option the user picked plus legacy stored spellings that map to it (e.g.
+  // "Moderately Practising", "Improving/Learning" → Occasionally), so older profiles stay
+  // discoverable even though those labels are no longer offered.
+  const practice = (f.practice ?? "").trim();
+  if (isReligiousPracticeOption(practice)) {
+    const { exact, keywords } = PRACTICE_MATCH[practice];
+    and.push({
+      OR: [
+        { religious_practice: { equals: practice, mode: "insensitive" as const } },
+        ...exact.map((v) => ({ religious_practice: { equals: v, mode: "insensitive" as const } })),
+        ...keywords.map((k) => ({ religious_practice: { contains: k, mode: "insensitive" as const } })),
+      ],
+    });
+  } else if (practice) {
+    // A legacy value still sitting in a saved search — match it literally.
+    and.push({ religious_practice: { equals: practice, mode: "insensitive" as const } });
+  }
 
   // One canonical relocation field. Match any legacy spelling of the selected preference in
   // either column, but the value the user picks is normalised (yes|maybe|no) (PN-BROWSE-009).
