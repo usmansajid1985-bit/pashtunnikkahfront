@@ -2255,6 +2255,20 @@ export function ChatApp({
                       {/* No point asking for notifications in a chat that can't receive new messages. */}
                       {matchEnded ? null : <ChatNotifyBanner />}
 
+                      {/* When the female member's wali oversight is active, show both members that
+                          the wali can read this chat (her: "Your wali"; him: "Her wali"). */}
+                      {!matchEnded && commMode === "wali_oversight" ? (
+                        <div className="flex justify-center py-1.5">
+                          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200/70 px-3.5 py-1.5 text-[12.5px] font-semibold text-emerald-700 text-center">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                              <circle cx="12" cy="12" r="3" />
+                            </svg>
+                            Wali oversight active · {isFemaleViewer ? "Your wali can read this chat" : "Her wali can read this chat"}
+                          </span>
+                        </div>
+                      ) : null}
+
                       {loadingThread ? (
                         <p className="text-center text-sm text-ink-700/50 py-10">Loading…</p>
                       ) : (
