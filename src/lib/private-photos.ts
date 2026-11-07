@@ -150,7 +150,10 @@ export async function createShare(opts: {
   // Spec §16: a new session can only be started once the previous one has fully played out.
   const inFlight = await latestShare({ requestId: opts.requestId, senderId: opts.senderId, recipientId });
   if (inFlight && deriveStatus(inFlight) !== "expired") {
-    throw new Error("Wait for the current viewing session to finish before sharing again.");
+    const code = await profileCodeOf(recipientId);
+    throw new Error(
+      `You have already sent your photos. Please wait for ${code ?? "your match"} to view your photos before sending them again.`
+    );
   }
 
   // Preserve the order the sender picked them in.

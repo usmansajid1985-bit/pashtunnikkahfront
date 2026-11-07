@@ -305,9 +305,9 @@ export default async function DashboardPage() {
             <section className={`${card} p-5`}>
               <h2 className="font-bold text-ink-950">Need help?</h2>
               <p className="mt-1.5 text-sm text-ink-700/65">Read our guides or contact our support team for assistance.</p>
-              <a href="mailto:info@pashtunnikah.com" className="mt-3 inline-block text-sm font-semibold text-rose-600 hover:text-rose-700">
+              <Link href="/support" className="mt-3 inline-block text-sm font-semibold text-rose-600 hover:text-rose-700">
                 Contact support →
-              </a>
+              </Link>
             </section>
           </div>
         </div>

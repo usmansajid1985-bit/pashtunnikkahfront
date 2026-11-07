@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { MatchedCard, ReceivedCard, SentCard, StatusLine } from "@/components/requests/request-cards";
+import { MatchedCard, ReceivedCard, SentCard } from "@/components/requests/request-cards";
 
 type Tab = "incoming" | "sent" | "matched";
 
@@ -75,7 +75,6 @@ function SegmentedTabs({
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
   const [tab, setTab] = useState<Tab>(toTab(initialTab) ?? "incoming");
-  const [sort, setSort] = useState<"newest" | "oldest" | "compat">("newest");
 
   useEffect(() => {
     const t = toTab(initialTab);
@@ -94,11 +93,9 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
     // Matched cards display the accepted/matched date (statusAt), so sort by that same timestamp —
     // sorting by the original request date contradicted the dates shown (PN-AUD matched sorting).
     const key = (c: (typeof rows)[number]) => (tab === "matched" ? c.statusAt || c.createdAt : c.createdAt);
-    if (sort === "oldest") rows.sort((a, b) => +new Date(key(a)) - +new Date(key(b)));
-    else if (sort === "compat" && tab === "matched") rows.sort((a, b) => b.compat - a.compat);
-    else rows.sort((a, b) => +new Date(key(b)) - +new Date(key(a)));
+    rows.sort((a, b) => +new Date(key(b)) - +new Date(key(a)));
     return rows;
-  }, [tab, sort, data]);
+  }, [tab, data]);
 
   // The Sent list already shows every request I sent with its status; the history sections
   // below only cover requests I received.
@@ -110,29 +107,9 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
     () => data.sent.filter((c) => (c.status || "pending") !== "pending"),
     [data.sent]
   );
-  const sentIds = useMemo(() => new Set(data.sent.map((c) => c.id)), [data.sent]);
-  const receivedDeclined = data.declined.filter((c) => !sentIds.has(c.id));
-  const receivedExpired = data.expired.filter((c) => !sentIds.has(c.id));
-
   return (
     <div>
       <SegmentedTabs tab={tab} onChange={changeTab} counts={data.counts} />
-
-      {tab === "matched" && list.length > 1 ? (
-        <div className="mt-4 flex items-center justify-end gap-2">
-          <label htmlFor="requests-sort" className="text-xs font-semibold text-ink-700/60">Sort</label>
-          <select
-            id="requests-sort"
-            className="text-sm rounded-full border border-ink-900/10 bg-white px-3 py-1.5"
-            value={sort}
-            onChange={(e) => setSort(e.target.value as typeof sort)}
-          >
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            {data.isGold ? <option value="compat">Compatibility</option> : null}
-          </select>
-        </div>
-      ) : null}
 
       {tab === "sent" && pendingSent.length === 0 && sentHistory.length === 0 ? (
         <p className="mt-4 text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
@@ -188,37 +165,6 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         )}
       </div>
       ) : null}
-
-      {tab === "incoming" && (receivedDeclined.length > 0 || receivedExpired.length > 0) ? (
-        <div className="mt-8 space-y-4">
-          {receivedDeclined.length > 0 ? (
-            <HistoryList title="Recently declined" cards={receivedDeclined} />
-          ) : null}
-          {receivedExpired.length > 0 ? <HistoryList title="Expired" cards={receivedExpired} /> : null}
-        </div>
-      ) : null}
     </div>
-  );
-}
-
-function HistoryList({ title, cards }: { title: string; cards: HubCard[] }) {
-  return (
-    <section>
-      <h3 className="text-sm font-bold text-ink-950 mb-2">{title}</h3>
-      <div className="space-y-2">
-        {cards.slice(0, 5).map((c) => (
-          <a
-            key={c.id}
-            href={`/p/${c.code}`}
-            className="flex items-center gap-3 bg-white/70 border border-ink-900/5 rounded-xl px-3 py-2.5 text-sm hover:bg-white"
-          >
-            <span className="font-semibold">{c.code}</span>
-            <span className="text-ink-700/50">
-              <StatusLine card={c} />
-            </span>
-          </a>
-        ))}
-      </div>
-    </section>
   );
 }
