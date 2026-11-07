@@ -77,7 +77,7 @@ export function VisibilityToggle({ initialPaused }: { initialPaused: boolean }) 
         <div>
           <p className="text-sm font-semibold text-ink-950">Paused mode hides your profile from Browse</p>
           <p className="mt-0.5 text-[13px] leading-relaxed text-ink-700/75">
-            You can still access your existing chats and requests, and subscription billing continues while paused.
+            You can still access your existing matches and chats, and subscription billing continues while paused.
           </p>
         </div>
       </div>
