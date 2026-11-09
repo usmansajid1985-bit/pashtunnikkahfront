@@ -316,6 +316,20 @@ export async function refundTokenForRequest(tx: Db, userId: bigint, requestId: b
     }
   }
   if (lotId == null) {
+    // The lot the token was spent from is gone (expired/closed). Basic members have no rollover —
+    // their monthly allowance expires at month end — so a late (cross-month) refund must NOT mint a
+    // new token, or it stacks on the fresh monthly 3 and pushes them to 4/3 (basic cap bug). Close
+    // the spend without granting anything. Gold cycles do carry a refund to the current cycle end.
+    const planRows = await tx.$queryRaw<{ plan: string | null }[]>`
+      SELECT plan FROM users WHERE id = ${userId}
+    `;
+    const isBasic = (planRows[0]?.plan || "").toLowerCase() !== "gold";
+    if (isBasic) {
+      if (spend) {
+        await tx.$executeRaw`UPDATE token_spends SET refunded_at = NOW(), refund_lot_id = NULL WHERE id = ${spend.id}`;
+      }
+      return before;
+    }
     const rows = await tx.$queryRaw<{ id: bigint }[]>`
       INSERT INTO token_lots (user_id, source, amount, remaining, expires_at, idempotency_key, note)
       VALUES (${userId}, 'refund', 1, 1, ${await currentCycleEnd(tx, userId)}, ${`refund_${requestId}`}, ${reason})

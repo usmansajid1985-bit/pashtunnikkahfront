@@ -47,7 +47,9 @@ export function ProfileHero({
     size === "wide"
       ? "aspect-[16/9] max-h-[540px] rounded-3xl"
       : size === "panel"
-        ? "aspect-[4/3] max-h-[440px] rounded-2xl"
+        ? // Embedded in the chat Profile tab: on phones fill the width as a tall, square-cornered
+          // portrait (not a small rounded 4:3 box); keep the compact rounded panel on desktop.
+          "aspect-[4/5] rounded-none lg:aspect-[4/3] lg:max-h-[440px] lg:rounded-2xl"
         : "aspect-[4/5]";
 
   return (

@@ -330,6 +330,12 @@ export async function getActivityFeed(
 
     let title = r.title;
     let body = r.body;
+    // PN-AUD-008: older message rows stored "N unread message(s)" as the subtitle, which goes stale
+    // after the conversation is read. The title already says "sent you N messages", so drop that
+    // subtitle here (covers rows written before the wording change, without a migration).
+    if (r.type === "message" && /^\s*\d+\s+unread messages?\s*$/i.test(body || "")) {
+      body = "";
+    }
     if (maskIdentity) {
       title = "Someone viewed your profile";
       body = "Upgrade to Gold to see who viewed you.";

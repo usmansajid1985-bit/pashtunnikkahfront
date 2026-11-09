@@ -109,18 +109,22 @@ export function ProfileDesktop({
           </div>
         )}
 
-        <ProfileHero
-          profile={profile}
-          slides={heroSlides}
-          showPhoto={photoVisible}
-          photoHidden={photoHidden}
-          fallbackSrc={avatar}
-          presence={isOwn ? null : presence}
-          size={embedded ? "panel" : "wide"}
-          photoAction={photoAction}
-          topLeft={heroTopLeft}
-          topRight={heroTopRight}
-        />
+        {/* On phones the embedded hero breaks out of the main's side padding so the photo fills the
+            width edge-to-edge; on desktop it stays within the padded column. */}
+        <div className={embedded ? "-mx-4 sm:-mx-6 lg:mx-0" : ""}>
+          <ProfileHero
+            profile={profile}
+            slides={heroSlides}
+            showPhoto={photoVisible}
+            photoHidden={photoHidden}
+            fallbackSrc={avatar}
+            presence={isOwn ? null : presence}
+            size={embedded ? "panel" : "wide"}
+            photoAction={photoAction}
+            topLeft={heroTopLeft}
+            topRight={heroTopRight}
+          />
+        </div>
 
         <div className="mt-4 space-y-3">
           {!isOwn && footer ? (

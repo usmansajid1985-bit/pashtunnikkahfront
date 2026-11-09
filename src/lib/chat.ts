@@ -591,8 +591,11 @@ export async function createMessage(opts: {
   const preview = created.body.replace(/\s+/g, " ").trim();
   inBackground("push", () => sendPushNotification(opts.receiverId, {
     title: `${senderCode} sent you a message`,
-    body: preview ? (preview.length > 120 ? `${preview.slice(0, 117)}…` : preview) : "1 unread message",
-    inApp: { title: `${senderCode} sent you a message`, body: "1 unread message" },
+    // Keep the stored body free of "N unread" wording — the title carries the count and an "unread"
+    // subtitle goes stale once the conversation is read (PN-AUD-008). Previews are only used for the
+    // OS push, never stored as the feed row's subtitle.
+    body: preview ? (preview.length > 120 ? `${preview.slice(0, 117)}…` : preview) : "",
+    inApp: { title: `${senderCode} sent you a message`, body: "" },
     url: `/chats/${opts.requestId}`,
     tag: `message-${opts.requestId}`,
     type: "message",
@@ -600,7 +603,7 @@ export async function createMessage(opts: {
     relatedRequestId: opts.requestId,
     groupKey: `message:${opts.requestId}`,
     groupedTitle: (n) => `${senderCode} sent you ${n} messages`,
-    groupedBody: (n) => `${n} unread messages`,
+    groupedBody: () => "",
   })
     .catch((err) => console.error("[push] message notification failed", err))
     .then(async () => {

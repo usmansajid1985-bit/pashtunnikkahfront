@@ -505,7 +505,10 @@ export function SignupWizard() {
                   </svg>
                   Only your age will be visible to other members. Your date of birth stays private.
                 </p>
-                {data.dob ? (
+                {/* Only validate once a plausible 4-digit year is entered. While typing the year
+                    digit by digit a date input briefly holds a tiny year (e.g. 0001), which would
+                    otherwise flash the "Maximum age is 100" error before any selection. */}
+                {data.dob && Number(data.dob.slice(0, 4)) >= 1900 ? (
                   <p
                     className={`text-sm font-semibold rounded-xl px-4 py-2.5 ${
                       isStepValid("dob", data) ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-red-700"
