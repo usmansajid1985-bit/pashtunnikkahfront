@@ -259,14 +259,14 @@ export function NotificationsView({
                   <p className="mt-5 mb-1 text-xs font-semibold uppercase tracking-wide text-ink-700/45">
                     {SECTION_LABEL[sec]}
                   </p>
-                  <div className="divide-y divide-ink-900/6">
+                  <div className="space-y-2.5">
                     {rows.map((n) => (
                       <button
                         key={n.id}
                         type="button"
                         onClick={() => openActivity(n)}
-                        className={`w-full flex items-start gap-3 py-3.5 text-left -mx-1 px-1 rounded-lg transition ${
-                          n.read ? "" : "bg-rose-50/40"
+                        className={`w-full flex items-start gap-3 p-4 text-left rounded-2xl bg-white border transition shadow-[0_4px_16px_-10px_rgba(15,13,14,0.25)] hover:shadow-[0_8px_22px_-10px_rgba(15,13,14,0.3)] ${
+                          n.read ? "border-ink-900/8" : "border-rose-200 bg-rose-50/30"
                         }`}
                       >
                         <ActivityGlyph n={n} />

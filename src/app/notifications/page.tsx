@@ -35,7 +35,7 @@ export default async function NotificationsPage({
   ]);
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] lg:pl-60">
+    <div className="min-h-screen bg-white lg:pl-60">
       <StaleSessionGuard userId={session.userId} />
       <BrowseAppNav
         profileCode={session.profileCode}
