@@ -298,15 +298,8 @@ export function PrivatePhotoShare({
               <p className="text-[11px] font-semibold text-ink-700/60 px-1">Photos viewed</p>
             ) : null}
 
-            {!outgoing || outgoing.canShare ? (
-              <button
-                type="button"
-                onClick={() => void openPicker()}
-                className="w-full py-2.5 rounded-full border border-rose-200 text-rose-700 text-sm font-semibold hover:bg-rose-50"
-              >
-                {outgoing?.status === "expired" ? "Share Photos Again" : "Share Private Photos"}
-              </button>
-            ) : null}
+            {/* The standalone "Share Private Photos" button is removed — members share via the
+                camera icon in the header or the composer "+" (T3-#29). */}
 
             {incoming && incoming.status !== "none" && incoming.waliEligible && !incoming.waliAllowed ? (
               <button

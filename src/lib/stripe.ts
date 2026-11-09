@@ -267,7 +267,7 @@ export async function handleGoldInvoicePaid(inv: InvoiceLike, metaUserId?: strin
       ? {
           type: "payment_success",
           title: "Welcome to Gold",
-          body: `Payment of ${money(inv.amount_paid, currency)} received. ${tokensLine}`,
+          body: "Welcome to Gold — Pakhair raghley! You've unlocked exclusive Gold features and more opportunities to find your future spouse.",
           lines: [
             "Assalamu Alaikum,",
             `Thank you — your payment of ${money(inv.amount_paid, currency)} was successful and your Gold membership is now active.`,

@@ -120,17 +120,17 @@ export function PhotoGallery({
             >
               ✕
             </button>
-            <span
-              className={`absolute top-1 left-1 text-[9px] font-bold uppercase tracking-wide rounded px-1 py-0.5 ${
-                p.status === "approved"
-                  ? "bg-emerald-600 text-white"
-                  : p.status === "rejected"
-                    ? "bg-rose-700 text-white"
-                    : "bg-white/90 text-ink-700"
-              }`}
-            >
-              {STATUS_LABEL[p.status]}
-            </span>
+            {/* No "Approved" badge on the image (T3-#16) — only flag photos still in review or
+                rejected, which the member needs to act on. */}
+            {p.status !== "approved" ? (
+              <span
+                className={`absolute top-1 left-1 text-[9px] font-bold uppercase tracking-wide rounded px-1 py-0.5 ${
+                  p.status === "rejected" ? "bg-rose-700 text-white" : "bg-white/90 text-ink-700"
+                }`}
+              >
+                {STATUS_LABEL[p.status]}
+              </span>
+            ) : null}
             {p.isMain ? (
               <span className="absolute bottom-1 left-1 right-1 text-[10px] font-bold uppercase tracking-wide bg-rose-600 text-white rounded px-1 py-0.5 text-center">
                 Main

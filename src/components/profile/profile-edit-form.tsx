@@ -443,6 +443,17 @@ export function ProfileEditForm({
           })}
         </div>
 
+        {/* T3-#20: while the profile is paused, show a notice below the tabs and above Profile
+            photos. Pausing/unpausing is done in Settings → Profile visibility. */}
+        {initial.isHidden ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 lg:col-span-2">
+            <p className="text-sm font-semibold text-amber-900">Your profile is paused</p>
+            <p className="mt-0.5 text-[13px] leading-relaxed text-amber-800/85">
+              Your profile is paused and hidden from Browse. You can still access your existing matches and chats.
+            </p>
+          </div>
+        ) : null}
+
         <div data-tab="personal" className={paneClass("personal")}>
         <PhotoGallery initialPhotos={photos} profileApproved={(initial.status || "").toLowerCase() === "approved"} />
         </div>
@@ -487,6 +498,9 @@ export function ProfileEditForm({
           <h2 className="font-bold text-ink-950">Personal Details</h2>
           <label className="block text-xs font-semibold">Full name</label>
           <input className={field} value={form.fullName} onChange={(e) => patch("fullName", e.target.value)} />
+          <p className="text-xs text-ink-700/60 leading-snug">
+            Your full name is kept private and will not appear on your public profile.
+          </p>
           <label className="block text-xs font-semibold">Height</label>
           <select className={field} value={form.height} onChange={(e) => patch("height", e.target.value)}>
             <option value="">Select height</option>

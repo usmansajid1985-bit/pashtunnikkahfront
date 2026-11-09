@@ -202,7 +202,7 @@ export function PrivatePhotoViewer({ photos, secondsRemaining, watermark, onClos
           ) : null}
         </div>
         <p className="mt-2 text-center text-[11px] text-white/50">
-          One-time viewing session — photos blur again when the timer ends.
+          Photos blur when the timer ends. They can be shared again.
         </p>
       </div>
       <p className="sr-only">{watermark}</p>

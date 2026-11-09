@@ -1656,7 +1656,6 @@ export function ChatApp({
   // C01/C03: the chat identifies members by profile ID, never by name.
   const displayName = peer?.code || activeThread?.peerCode || "Chat";
   const seed = peer?.avatarSeed ?? activeThread?.peerAvatarSeed ?? 1;
-  const verified = peer?.verified ?? activeThread?.peerVerified ?? false;
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
@@ -1879,11 +1878,6 @@ export function ChatApp({
                         <span className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink-950 truncate flex items-center gap-1">
                             {t.peerCode}
-                            {t.peerVerified ? (
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="#2563eb">
-                                <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
-                              </svg>
-                            ) : null}
                           </span>
                           <span className="text-[11px] text-ink-700/50 shrink-0 flex items-center gap-1.5">
                             {t.ended ? (
@@ -2012,11 +2006,6 @@ export function ChatApp({
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-ink-950 flex items-center gap-1 truncate">
                         {displayName}
-                        {verified ? (
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="#2563eb" className="shrink-0">
-                            <path d="M12 2l2.4 1.4 2.8-.3 1.2 2.5 2.5 1.2-.3 2.8L22 12l-1.4 2.4.3 2.8-2.5 1.2-1.2 2.5-2.8-.3L12 22l-2.4-1.4-2.8.3-1.2-2.5-2.5-1.2.3-2.8L2 12l1.4-2.4-.3-2.8 2.5-1.2 1.2-2.5 2.8.3Z" />
-                          </svg>
-                        ) : null}
                       </p>
                       <p
                         className={`text-[11px] truncate transition-colors ${
@@ -2590,7 +2579,10 @@ export function ChatApp({
                                 className="flex-1 resize-none bg-transparent text-[15px] outline-none max-h-28 py-2 leading-snug"
                               />
                               <span className="flex items-center gap-0.5 pb-1 text-ink-700/45">
-                                <EmojiPicker onSelect={insertEmoji} />
+                                {/* T3-#24: emoji picker on desktop only — phone keyboards have emoji built in. */}
+                                <span className="hidden sm:inline-flex">
+                                  <EmojiPicker onSelect={insertEmoji} />
+                                </span>
                                 {/* #57: one tap to share photos or wali details. */}
                                 <button
                                   type="button"

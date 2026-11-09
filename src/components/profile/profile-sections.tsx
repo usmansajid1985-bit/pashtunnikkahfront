@@ -184,7 +184,7 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
   const hasLifestyle = smoking || vaping;
   const hasFaith = hasFaithPractice || hasLifestyle || profile.islamicPractice;
   const hasLanguages = profile.languages.length > 0 || profile.dialect || pashtoLevel;
-  const hasHeritageGroup = tribeLabel(profile.tribe) || profile.ancestralRegion || profile.relocation;
+  const hasHeritageGroup = tribeLabel(profile.tribe) || profile.ancestralRegion;
 
   return (
     <>
@@ -196,21 +196,17 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
           {wantsChildren ? <Chip icon="🍼">{wantsChildren}</Chip> : null}
           {profile.weight ? <Chip>Weight: {profile.weight}</Chip> : null}
           {profile.build ? <Chip>Build: {profile.build}</Chip> : null}
+          {/* Relocation openness lives in About Me (moved out of Heritage & Languages, T3-#14). */}
+          {profile.relocation ? (
+            <Chip icon={<RelocationIcon open={profile.relocation === "Open to relocation"} />}>{profile.relocation}</Chip>
+          ) : null}
         </div>
         {profile.aboutMe ? <p className={`mt-3 ${text}`}>{profile.aboutMe}</p> : <p className="mt-3 text-sm text-ink-700/50">No about section yet.</p>}
       </Section>
 
       <Section title="I'm Looking For">
+        {/* The "Open to widowed / never married / divorced" pills are removed (T3-#15). */}
         {profile.lookingFor ? <p className={text}>{profile.lookingFor}</p> : <p className="text-sm text-ink-700/50">Preferences not added yet.</p>}
-        {profile.openTo.length ? (
-          <div className={`${chips} mt-3`}>
-            {profile.openTo.map((o) => (
-              <Chip key={o} tone="rose">
-                Open to {o}
-              </Chip>
-            ))}
-          </div>
-        ) : null}
       </Section>
 
       {marriagePlanRows.length ? (
@@ -356,9 +352,6 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
                   <Chip tone="dark" icon={<MountainIcon />}>
                     {profile.ancestralRegion.toLowerCase().startsWith("roots") ? profile.ancestralRegion : `Roots in ${profile.ancestralRegion}`}
                   </Chip>
-                ) : null}
-                {profile.relocation ? (
-                  <Chip icon={<RelocationIcon open={profile.relocation === "Open to relocation"} />}>{profile.relocation}</Chip>
                 ) : null}
               </div>
             </Group>

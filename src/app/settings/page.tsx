@@ -274,21 +274,6 @@ export default async function SettingsPage() {
         />
         <LogoutRow />
       </SettingsGroup>
-
-      <div className="mt-6 flex gap-3">
-        <Link
-          href="/profile"
-          className="flex-1 text-center py-3 rounded-full bg-[#e12d72] text-white text-sm font-semibold hover:bg-[#c41d5e]"
-        >
-          Preview my profile
-        </Link>
-        <Link
-          href="/profile/edit"
-          className="flex-1 text-center py-3 rounded-full border border-ink-900/12 text-sm font-semibold hover:border-rose-300"
-        >
-          Edit profile
-        </Link>
-      </div>
     </SettingsShell>
   );
 }
