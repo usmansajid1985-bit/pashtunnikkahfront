@@ -82,6 +82,9 @@ export type ChatThreadMeta = {
   photoVisible: boolean;
   canSharePhoto: boolean;
   isFemaleViewer: boolean;
+  /** True only when the female member of this match has at least one connected (non-revoked) wali,
+   * i.e. wali oversight is genuinely active — not merely that her communication mode is set. */
+  waliOversightActive: boolean;
   wali: Awaited<ReturnType<typeof loadWaliContact>>;
   photoOnceStatus: PhotoOnceStatus;
   canSendPhotoOnce: boolean;
@@ -350,6 +353,13 @@ export async function threadMetaFor(
   const wali =
     opts?.withWaliContact && maySeeWali && femaleId ? await loadWaliContact(femaleId) : null;
 
+  // Wali oversight is only genuinely active when the female member has a connected (non-revoked)
+  // wali — not merely when her communication mode is "wali_oversight" (T3-F: the in-chat banner must
+  // not show for matches where no wali can actually read the conversation).
+  const waliOversightActive = femaleId
+    ? (await prisma.wali_links.count({ where: { user_id: femaleId, revoked_at: null } })) > 0
+    : false;
+
   return {
     communicationMode: mode,
     privateChat,
@@ -357,6 +367,7 @@ export async function threadMetaFor(
     photoVisible,
     canSharePhoto: canSendPhotoOnce,
     isFemaleViewer,
+    waliOversightActive,
     wali,
     photoOnceStatus,
     canSendPhotoOnce,
