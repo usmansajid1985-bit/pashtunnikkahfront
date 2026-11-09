@@ -4,7 +4,7 @@ import { toCountryCode } from "@/lib/country";
 import type { ProfileView } from "@/lib/profile";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { ProfilePhotoSlider, type ProfileSlide } from "@/components/profile/profile-photo-slider";
-import { BriefcaseIcon, PeopleIcon, PracticeIcon } from "@/components/profile/pill-icons";
+import { BriefcaseIcon, PeopleIcon, PracticeIcon, RelocationIcon } from "@/components/profile/pill-icons";
 
 /**
  * The photo-led top of a member profile: photo(s) with the profile ID, age, location and headline
@@ -145,6 +145,17 @@ export function ProfileHero({
               {profile.occupation || profile.employment}
             </HeroPill>
           ) : null}
+          {/* T3-#13: also surface ancestral roots and relocation openness on the photo. */}
+          {profile.ancestralRegion ? (
+            <HeroPill wide={wide} icon={<HomeRootIcon />}>
+              {profile.ancestralRegion.toLowerCase().startsWith("roots") ? profile.ancestralRegion : `Roots in ${profile.ancestralRegion}`}
+            </HeroPill>
+          ) : null}
+          {profile.relocation ? (
+            <HeroPill wide={wide} icon={<RelocationIcon open={profile.relocation === "Open to relocation"} />}>
+              {profile.relocation}
+            </HeroPill>
+          ) : null}
         </div>
       </div>
     </div>
@@ -152,6 +163,16 @@ export function ProfileHero({
 }
 
 /** Semi-transparent so a little of the photo's colour shows through; icon + text stay solid. */
+/** Ancestral roots glyph (mountains) for the hero pill. */
+function HomeRootIcon() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m3 20 6-9 4 5 2-3 6 7" />
+      <circle cx="8" cy="6" r="1.5" />
+    </svg>
+  );
+}
+
 function HeroPill({ wide, icon, children }: { wide: boolean; icon?: ReactNode; children: ReactNode }) {
   return (
     <span

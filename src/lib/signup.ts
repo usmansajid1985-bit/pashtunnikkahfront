@@ -139,7 +139,8 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       title: "What is your tribe?",
       subtitle: "Search for your tribe.",
     },
-    { id: "openTo", title: "Who are you open to?", subtitle: "Select the marital statuses you would consider in a potential spouse." },
+    // "Who are you open to?" (marital-status openness) removed from onboarding (T3-#22); members
+    // are no longer filtered or shown by this preference.
     { id: "faith", title: "How would you describe your practice?", subtitle: "Choose the option that best reflects your current practice." },
     { id: "career", title: "Education & career", subtitle: "Highest qualification and employment." },
     {

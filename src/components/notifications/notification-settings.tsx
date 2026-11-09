@@ -49,7 +49,9 @@ async function setAllAlerts(on: boolean) {
 
 export function NotificationSettings() {
   const [status, setStatus] = useState<Status>("loading");
-  const [masterOn, setMasterOn] = useState(false);
+  // T3-#23: push notifications are on by default — the top slider shows ON unless the browser can't
+  // support them or the member has blocked/turned them off.
+  const [masterOn, setMasterOn] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,15 +64,17 @@ export function NotificationSettings() {
       const support = getPushSupport();
       if (!support.supported) {
         setStatus("unsupported");
+        setMasterOn(false);
         return;
       }
       if (typeof Notification !== "undefined" && Notification.permission === "denied") {
         setStatus("denied");
+        setMasterOn(false);
         return;
       }
       const existing = await getExistingSubscription();
       setStatus(existing ? "subscribed" : "not_subscribed");
-      if (existing) setMasterOn(true);
+      // Default stays ON when not yet subscribed, so the slider reflects the on-by-default intent.
     })();
   }, []);
 
