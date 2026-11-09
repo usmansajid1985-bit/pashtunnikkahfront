@@ -51,6 +51,7 @@ type Peer = {
   name: string;
   verified: boolean;
   avatarSeed: number;
+  lastSeenLabel?: string;
 };
 
 function avatarUrl(seed: number) {
@@ -1869,12 +1870,12 @@ export function ChatApp({
                       <img
                         src={avatarUrl(t.peerAvatarSeed)}
                         alt=""
-                        className="w-12 h-12 rounded-full object-cover shrink-0"
+                        className="w-12 h-12 rounded-full object-cover shrink-0 border border-[#E5E7EB]"
                         style={
                           t.photoVisible ? undefined : { filter: "blur(5px) saturate(0.9)" }
                         }
                       />
-                      <span className="min-w-0 flex-1">
+                      <span className="min-w-0 flex-1" style={{ fontFamily: "var(--font-poppins), var(--font-inter), system-ui, sans-serif" }}>
                         <span className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink-950 truncate flex items-center gap-1">
                             {t.peerCode}
@@ -1893,7 +1894,9 @@ export function ChatApp({
                             className={`text-[13px] truncate ${
                               typingByThread[t.requestId]
                                 ? "text-emerald-600 italic font-medium"
-                                : "text-ink-700/65"
+                                : t.unread > 0
+                                  ? "text-ink-900 font-medium"
+                                  : "text-ink-700/65"
                             }`}
                           >
                             {typingByThread[t.requestId] ? (
@@ -1996,7 +1999,7 @@ export function ChatApp({
                     <img
                       src={avatarUrl(seed)}
                       alt=""
-                      className="w-9 h-9 rounded-full object-cover"
+                      className="w-9 h-9 rounded-full object-cover ring-2 ring-rose-200"
                       style={
                         photoVisible
                           ? undefined
@@ -2004,27 +2007,31 @@ export function ChatApp({
                       }
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-ink-950 flex items-center gap-1 truncate">
+                      <p
+                        className="font-semibold text-ink-950 truncate"
+                        style={{ fontFamily: "var(--font-poppins), var(--font-inter), system-ui, sans-serif" }}
+                      >
                         {displayName}
                       </p>
+                      {/* Clean header subtitle: real-time states, otherwise the member's coarse
+                          activity status with a green dot (T3-#9) — no wali/photo text or badges. */}
                       <p
                         className={`text-[11px] truncate transition-colors ${
                           peerTyping ? "text-emerald-600 italic font-medium" : "text-ink-700/55"
                         }`}
                       >
-                        {matchEnded
-                          ? "Match ended"
-                          : peerTyping
-                          ? `${displayName} is typing…`
-                          : !connected
-                            ? "Connecting to chat…"
-                            : incomingPrivatePhotoStatus === "shared" || incomingPrivatePhotoStatus === "active"
-                              ? "🔒 Private photos available"
-                              : photoShared
-                                ? "Photo shared"
-                                : commMode === "wali_oversight"
-                                  ? "Wali oversight · photo private"
-                                  : "Matched"}
+                        {matchEnded ? (
+                          "Match ended"
+                        ) : peerTyping ? (
+                          `${displayName} is typing…`
+                        ) : !connected ? (
+                          "Connecting to chat…"
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                            {peer?.lastSeenLabel ?? "Active recently"}
+                          </span>
+                        )}
                       </p>
                     </div>
                     {!matchEnded ? (

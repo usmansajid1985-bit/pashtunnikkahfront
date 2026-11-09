@@ -3,6 +3,7 @@ import { inBackground } from "@/lib/background";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { isBlockedBetween, blockedUserIds } from "@/lib/blocking";
+import { formatLastSeen } from "@/lib/presence";
 import {
   allowsPhotoShare,
   allowsPrivateChat,
@@ -256,7 +257,7 @@ export async function loadPeer(peerId: bigint) {
   const [user, profile] = await Promise.all([
     prisma.users.findUnique({
       where: { id: peerId },
-      select: { id: true, display_name: true, email_verified: true, cultural_verified: true },
+      select: { id: true, display_name: true, email_verified: true, cultural_verified: true, last_seen_at: true },
     }),
     prisma.profiles.findUnique({
       where: { user_id: peerId },
@@ -271,6 +272,8 @@ export async function loadPeer(peerId: bigint) {
     verified: Boolean(user.email_verified || user.cultural_verified || profile.status === "approved"),
     avatarSeed: Number(profile.id % BigInt(70)),
     gender: profile.gender,
+    // Coarse activity label for the chat header (Active today / this week / …).
+    lastSeenLabel: formatLastSeen(user.last_seen_at),
   };
 }
 
