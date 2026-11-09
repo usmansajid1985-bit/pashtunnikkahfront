@@ -256,7 +256,7 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
           {hasLifestyle ? (
             <Group label="Lifestyle" first={!hasFaithPractice}>
               <div className={chips}>
-                {smoking ? <Chip icon="🚭">{smoking}</Chip> : null}
+                {smoking ? <Chip icon={profile.smoking === "Never" ? "🚭" : "🚬"}>{smoking}</Chip> : null}
                 {vaping ? <Chip icon="💨">{vaping}</Chip> : null}
               </div>
             </Group>
