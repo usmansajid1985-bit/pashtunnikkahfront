@@ -51,8 +51,9 @@ export function SupportForm({
   supportEmail: string;
   whatsappNumber: string | null;
 }) {
-  const [topic, setTopic] = useState<SupportTopic>("account");
-  const [reason, setReason] = useState<string>(SUPPORT_TOPICS.account.reasons[0]);
+  // T3-#6: Membership & Billing is the default selected category on load.
+  const [topic, setTopic] = useState<SupportTopic>("billing");
+  const [reason, setReason] = useState<string>(SUPPORT_TOPICS.billing.reasons[0]);
   const [details, setDetails] = useState("");
   const [channel, setChannel] = useState<SupportChannel>(whatsappNumber ? "whatsapp" : "email");
   const [busy, setBusy] = useState(false);

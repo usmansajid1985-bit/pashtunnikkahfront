@@ -2042,14 +2042,15 @@ export function ChatApp({
                           setFamilyModal({ step: "main", via: "manual" });
                         }}
                         disabled={!family}
-                        className={`relative h-10 flex items-center justify-center gap-2 rounded-full transition disabled:opacity-40 w-10 sm:w-auto sm:px-3.5 ${
+                        className={`relative h-10 flex items-center justify-center gap-1.5 rounded-full transition disabled:opacity-40 w-auto px-3 sm:px-3.5 ${
                           family?.shared ? "bg-emerald-50 text-emerald-700" : "bg-ink-900/[0.04] text-ink-950 hover:bg-ink-900/[0.07]"
                         }`}
                         aria-label="Involve family"
                         title="Involve family"
                       >
                         <FamilyIcon />
-                        <span className="hidden sm:inline text-[13px] font-semibold whitespace-nowrap">Involve family</span>
+                        {/* T3-#18b: show the label on mobile too (the member ID truncates to fit). */}
+                        <span className="text-[12px] sm:text-[13px] font-semibold whitespace-nowrap">Involve family</span>
                         {family && !family.shared && family.request.state === "pending" ? (
                           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E12D72] ring-2 ring-white" />
                         ) : null}

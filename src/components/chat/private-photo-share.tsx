@@ -282,9 +282,12 @@ export function PrivatePhotoShare({
     ) : null;
 
   return (
-    <div className={variant === "banner" ? "m-4" : ""}>
-      {variant === "dropdown" && !open ? null : (
-        <div className={variant === "banner" ? "" : "p-3.5"}>
+    <div className={variant === "banner" ? "" : ""}>
+      {/* The banner instance (mounted in the chat Profile tab) now only powers the viewer overlays
+          and events — its inline "Share Private Photos" UI is not shown there (T3-#4). Sharing is
+          done from the header camera / composer "+", and received photos via the in-chat card. */}
+      {variant !== "dropdown" || !open ? null : (
+        <div className="p-3.5">
           {variant === "dropdown" ? (
             <p className="text-[11px] font-bold uppercase tracking-wide text-ink-700/55">Private photos</p>
           ) : null}
