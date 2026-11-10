@@ -133,15 +133,19 @@ export function PhotoCropModal({
     const sy = -pos.y / scaleFactor;
     const sSize = FRAME / scaleFactor;
 
+    // PH-05: never enlarge. Cap the saved size at the cropped source region's own resolution, so a
+    // tiny photo (e.g. 80×80) is saved at its native size rather than upscaled to 800×800.
+    const outSize = Math.max(1, Math.min(OUTPUT, Math.round(sSize)));
+
     const canvas = document.createElement("canvas");
-    canvas.width = OUTPUT;
-    canvas.height = OUTPUT;
+    canvas.width = outSize;
+    canvas.height = outSize;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     // JPEG has no transparency: paint white first so see-through areas don't turn black (PH-02).
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, OUTPUT, OUTPUT);
-    ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, OUTPUT, OUTPUT);
+    ctx.fillRect(0, 0, outSize, outSize);
+    ctx.drawImage(img, sx, sy, sSize, sSize, 0, 0, outSize, outSize);
     onSave(canvas.toDataURL("image/jpeg", 0.92));
   }
 

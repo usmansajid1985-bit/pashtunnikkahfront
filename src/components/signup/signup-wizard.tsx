@@ -330,7 +330,21 @@ export function SignupWizard() {
       return;
     }
     const reader = new FileReader();
-    reader.onload = () => setCropSource(String(reader.result || ""));
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      // PH-01: decode and validate before opening the cropper; a corrupt file never opens it.
+      const probe = new window.Image();
+      probe.onload = () => {
+        if (!probe.naturalWidth || !probe.naturalHeight) {
+          setError("This file couldn't be opened as a photo. Please choose another one.");
+          return;
+        }
+        setCropSource(dataUrl);
+      };
+      probe.onerror = () => setError("This file couldn't be opened as a photo. Please choose another one.");
+      probe.src = dataUrl;
+    };
+    reader.onerror = () => setError("This file couldn't be opened as a photo. Please choose another one.");
     reader.readAsDataURL(file);
   }
 
