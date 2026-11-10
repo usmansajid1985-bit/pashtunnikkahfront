@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
-import { assertMatchParticipant, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
+import { assertMatchParticipant, getReactionsForMessages, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
 import { prisma } from "@/lib/prisma";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
@@ -66,8 +66,15 @@ export default async function WaliChatThreadPage({
       : [];
   const quoteMap = new Map(quoted.map((q) => [q.id.toString(), q]));
 
+  // PN-AUD-001: the wali sees the same message reactions as the member (read-only).
+  const reactionsMap = await getReactionsForMessages(rows.map((m) => m.id));
   const messages = rows.map((m) =>
-    serializeMessage(m, m.reply_to_id ? quoteMap.get(m.reply_to_id.toString()) ?? null : null)
+    serializeMessage(
+      m,
+      m.reply_to_id ? quoteMap.get(m.reply_to_id.toString()) ?? null : null,
+      undefined,
+      reactionsMap.get(m.id.toString()) ?? []
+    )
   );
 
   return (

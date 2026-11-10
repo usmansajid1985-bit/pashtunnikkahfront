@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { listThreadsForUser } from "@/lib/chat";
 import { WaliHeader } from "@/components/wali/wali-header";
+import { WaliChats, type WaliThread } from "@/components/wali/wali-chats";
 import { withOwnerPhotoUrls } from "@/lib/photos";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,16 @@ export default async function WaliDashboardPage() {
 
   const view = await withOwnerPhotoUrls(mapProfileView(profile, user));
   const threads = await listThreadsForUser(profileUserId);
+  const toWali = (t: (typeof threads)[number]): WaliThread => ({
+    requestId: t.requestId,
+    peerCode: t.peerCode,
+    avatarUrl: avatarUrl(t.peerAvatarSeed),
+    photoVisible: t.photoVisible,
+    lastMessage: t.lastMessage,
+    ended: t.ended,
+  });
+  const activeThreads = threads.filter((t) => !t.ended).map(toWali);
+  const pastThreads = threads.filter((t) => t.ended).map(toWali);
 
   return (
     <div className="min-h-screen bg-[#faf8f7] text-ink-900">
@@ -71,39 +82,17 @@ export default async function WaliDashboardPage() {
           <span className="shrink-0 text-sm font-semibold text-rose-600">View full profile →</span>
         </Link>
 
-        <section className="bg-white rounded-2xl border border-ink-900/8 overflow-hidden">
-          <div className="px-5 pt-5 pb-3">
-            <h2 className="font-bold text-ink-950">Chats</h2>
-            <p className="text-xs text-ink-700/50 mt-0.5">Read-only — you can view messages but not send any.</p>
-          </div>
-          {threads.length === 0 ? (
-            <p className="px-5 pb-5 text-sm text-ink-700/60">No conversations yet.</p>
-          ) : (
-            <div>
-              {threads.map((t) => (
-                <Link
-                  key={t.requestId}
-                  href={`/wali/chats/${t.requestId}`}
-                  className="flex items-center gap-3 px-5 py-3.5 border-t border-ink-900/6 hover:bg-ink-900/[0.03]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={avatarUrl(t.peerAvatarSeed)}
-                    alt=""
-                    className="w-11 h-11 rounded-full object-cover shrink-0"
-                    style={t.photoVisible ? undefined : { filter: "blur(5px) saturate(0.9)" }}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="font-semibold text-ink-950 block truncate">{t.peerCode}</span>
-                    <span className="text-[13px] text-ink-700/65 block truncate">
-                      {t.lastMessage || "No messages yet"}
-                    </span>
-                  </span>
-                </Link>
-              ))}
+        {threads.length === 0 ? (
+          <section className="bg-white rounded-2xl border border-ink-900/8 overflow-hidden">
+            <div className="px-5 pt-5 pb-3">
+              <h2 className="font-bold text-ink-950">Chats</h2>
+              <p className="text-xs text-ink-700/50 mt-0.5">Read-only — you can view messages but not send any.</p>
             </div>
-          )}
-        </section>
+            <p className="px-5 pb-5 text-sm text-ink-700/60">No conversations yet.</p>
+          </section>
+        ) : (
+          <WaliChats active={activeThreads} past={pastThreads} />
+        )}
       </div>
     </div>
   );

@@ -108,6 +108,22 @@ export function WaliChatView({
                     {formatTime(m.createdAt)}
                   </p>
                 </div>
+                {/* PN-AUD-001: reactions shown read-only, same as the member view. */}
+                {m.reactions && m.reactions.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {m.reactions.map((r) => (
+                      <span
+                        key={r.emoji}
+                        className="inline-flex items-center gap-0.5 rounded-full border border-ink-900/10 bg-white px-1.5 py-0.5 text-[11px] shadow-sm"
+                      >
+                        <span>{r.emoji}</span>
+                        {r.userIds.length > 1 ? (
+                          <span className="font-semibold text-ink-700/60">{r.userIds.length}</span>
+                        ) : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             );
           })
