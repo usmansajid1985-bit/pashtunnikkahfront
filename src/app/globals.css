@@ -52,7 +52,8 @@ body.pn-has-bottom-nav {
   --color-brand-700: var(--brand-700);
   --color-blush: var(--blush);
   --font-display: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* T3: Poppins is the standard app-wide UI font (Inter stays as a fallback). */
+  --font-sans: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 

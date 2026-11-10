@@ -18,11 +18,12 @@ const fraunces = Fraunces({
   subsets: ["latin"],
 });
 
-// Match Insights V2 headline (Poppins Medium).
+// Poppins is the app-wide UI font (T3): Regular 400 body, Medium 500 pills/labels,
+// SemiBold 600 section headings/buttons, Bold 700 main headings.
 const poppins = Poppins({
   variable: "--font-poppins",
   subsets: ["latin"],
-  weight: ["500", "600"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
