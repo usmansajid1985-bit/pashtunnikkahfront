@@ -406,7 +406,7 @@ export function ProfileEditForm({
             <button
               type="submit"
               disabled={pending || textBlocksSave(form, initial)}
-              className="px-5 py-2.5 rounded-full bg-rose-600 text-white text-sm font-semibold hover:bg-rose-700 disabled:opacity-60"
+              className="px-5 py-2.5 rounded-full bg-rose-700 text-white text-sm font-semibold hover:bg-[#a81751] disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save changes"}
             </button>
@@ -432,7 +432,7 @@ export function ProfileEditForm({
                 }}
                 className={`shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border text-[13.5px] font-semibold transition ${
                   active
-                    ? "bg-rose-50 border-rose-200 text-rose-600"
+                    ? "bg-rose-50 border-rose-200 text-rose-700"
                     : "bg-white border-ink-900/8 text-ink-700/70 hover:text-ink-900 hover:border-ink-900/15"
                 }`}
               >
@@ -963,7 +963,7 @@ export function ProfileEditForm({
             <button
               type="submit"
               disabled={pending || textBlocksSave(form, initial)}
-              className="w-full py-3.5 rounded-2xl bg-rose-600 text-white font-semibold hover:bg-rose-700 disabled:opacity-60"
+              className="w-full py-3.5 rounded-2xl bg-rose-700 text-white font-semibold hover:bg-[#a81751] disabled:opacity-60"
             >
               {pending ? "Saving…" : "Save changes"}
             </button>

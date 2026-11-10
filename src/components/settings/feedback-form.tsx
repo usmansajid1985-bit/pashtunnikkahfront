@@ -155,7 +155,7 @@ export function FeedbackForm() {
               aria-selected={active}
               onClick={() => setKind(k.id)}
               className={`min-w-0 h-11 rounded-full flex items-center justify-center gap-1 sm:gap-1.5 px-1 sm:px-2 text-[12px] sm:text-[14px] font-semibold tracking-tight transition [&_svg]:w-[14px] sm:[&_svg]:w-4 ${
-                active ? "bg-[#e12d72] text-white shadow-sm" : "text-ink-700/75 hover:text-ink-950"
+                active ? "bg-[#c41d5e] text-white shadow-sm" : "text-ink-700/75 hover:text-ink-950"
               }`}
             >
               {k.icon}
@@ -221,19 +221,17 @@ export function FeedbackForm() {
                   </div>
                 );
               }
-              const isNext = i === shots.length;
+              // T3-#8: all empty slots look the same as the first — pink with the "Add screenshot" label.
               return (
                 <button
                   key={i}
                   type="button"
                   onClick={() => fileRef.current?.click()}
-                  className={`aspect-square rounded-xl flex flex-col items-center justify-center gap-1.5 transition ${
-                    isNext ? "bg-rose-50 text-[#e12d72] hover:bg-rose-100" : "bg-[#f6f5f7] text-ink-700/35 hover:bg-ink-900/[0.06]"
-                  }`}
+                  className="aspect-square rounded-xl flex flex-col items-center justify-center gap-1.5 transition bg-rose-50 text-[#e12d72] hover:bg-rose-100"
                   aria-label="Add screenshot"
                 >
                   <ImageIcon />
-                  {isNext ? <span className="text-[13px] font-medium">Add screenshot</span> : null}
+                  <span className="text-[13px] font-medium">Add screenshot</span>
                 </button>
               );
             })}
@@ -246,7 +244,7 @@ export function FeedbackForm() {
           type="button"
           disabled={pending || !ready}
           onClick={submit}
-          className="w-full h-13 py-3.5 rounded-full bg-[#e12d72] hover:bg-[#c92763] text-white text-[16px] font-semibold disabled:opacity-50 transition"
+          className="w-full h-13 py-3.5 rounded-full bg-[#c41d5e] hover:bg-[#a81751] text-white text-[16px] font-semibold disabled:opacity-50 transition"
         >
           {pending ? "Sending…" : "Submit feedback"}
         </button>

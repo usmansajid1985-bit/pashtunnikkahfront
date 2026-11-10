@@ -57,7 +57,7 @@ export function BrowseAppNav({
                 key={item.key}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition ${
-                  isActive ? "bg-rose-50 text-rose-600" : "text-ink-700 hover:bg-ink-900/5"
+                  isActive ? "bg-rose-50 text-rose-700" : "text-ink-700 hover:bg-ink-900/5"
                 }`}
               >
                 {item.icon}

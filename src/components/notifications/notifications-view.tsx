@@ -232,7 +232,7 @@ export function NotificationsView({
             aria-selected={tab === t}
             onClick={() => chooseTab(t)}
             className={`h-11 rounded-xl flex items-center justify-center gap-2 transition ${
-              tab === t ? "bg-rose-50 text-rose-600 shadow-[0_1px_3px_rgba(15,13,14,0.06)]" : "text-ink-700/60 hover:text-ink-900"
+              tab === t ? "bg-rose-50 text-rose-700 shadow-[0_1px_3px_rgba(15,13,14,0.06)]" : "text-ink-700/60 hover:text-ink-900"
             }`}
           >
             {t === "activity" ? "Activity" : "Announcements"}
