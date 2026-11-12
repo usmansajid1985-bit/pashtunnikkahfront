@@ -44,7 +44,13 @@ function startPolling() {
   if (polling || typeof window === "undefined") return;
   polling = true;
 
-  const tick = async () => {
+  // Throttle: focus + visibilitychange + mount can all fire within a second of each other and each
+  // triggered its own fetch, so a short visit hit /summary ~12×. Collapse bursts to one request.
+  let lastFetch = 0;
+  const tick = async (force = false) => {
+    const now = Date.now();
+    if (!force && now - lastFetch < 5000) return;
+    lastFetch = now;
     try {
       const res = await fetch("/api/notifications/summary", { cache: "no-store" });
       if (!res.ok) return;
@@ -56,10 +62,10 @@ function startPolling() {
     }
   };
 
-  tickNow = tick;
-  void tick();
-  const id = window.setInterval(tick, 45_000);
-  window.addEventListener("focus", tick);
+  tickNow = () => tick(true); // realtime events bypass the throttle
+  void tick(true);
+  const id = window.setInterval(() => tick(true), 45_000);
+  window.addEventListener("focus", () => tick());
   window.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void tick();
   });
@@ -92,9 +98,11 @@ function useNavCounts(initial: Partial<NavCounts>): NavCounts {
 
 export function NavBell({
   initialUnread = 0,
+  active = false,
   className = "",
 }: {
   initialUnread?: number;
+  active?: boolean;
   className?: string;
 }) {
   const { bellUnread } = useNavCounts({ bellUnread: initialUnread });
@@ -102,7 +110,10 @@ export function NavBell({
     <Link
       href="/notifications"
       aria-label={bellUnread > 0 ? `Notifications (${bellUnread} unread)` : "Notifications"}
-      className={`relative inline-flex h-9 w-9 items-center justify-center rounded-full text-ink-700 hover:bg-ink-900/5 ${className}`}
+      aria-current={active ? "page" : undefined}
+      className={`relative inline-flex h-9 w-9 items-center justify-center rounded-full ${
+        active ? "bg-rose-50 text-rose-600" : "text-ink-700 hover:bg-ink-900/5"
+      } ${className}`}
     >
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />

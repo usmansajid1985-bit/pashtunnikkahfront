@@ -3,7 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BrowseAppNav } from "@/components/browse/app-nav";
 import { getNavCounts } from "@/lib/dashboard";
-import { getActivityFeed } from "@/lib/notifications";
+import { getGroupedActivity } from "@/lib/notification-groups";
 import { getAnnouncementCards } from "@/lib/announcements";
 import { NotificationsView } from "@/components/notifications/notifications-view";
 import { StaleSessionGuard } from "@/components/settings/stale-session-guard";
@@ -30,21 +30,22 @@ export default async function NotificationsPage({
   const isGold = (user?.plan ?? "").toLowerCase() === "gold";
 
   const [activity, announcements] = await Promise.all([
-    getActivityFeed(userId, { isGold }),
+    getGroupedActivity(userId, { isGold }),
     getAnnouncementCards(userId),
   ]);
 
   return (
-    <div className="min-h-screen bg-white lg:pl-60">
+    <div className="min-h-screen lg:pl-60" style={{ background: "#FAF7F5" }}>
       <StaleSessionGuard userId={session.userId} />
       <BrowseAppNav
         profileCode={session.profileCode}
-        active="overview"
+        active={null}
+        bellActive
         unreadCount={navCounts.unreadMessages}
         requestsCount={navCounts.incomingRequests}
         bellUnread={navCounts.bellUnread}
       />
-      <main className="max-w-7xl mx-auto px-4 sm:px-8 py-6 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
+      <main className="mx-auto max-w-7xl px-4 py-6 sm:px-8 lg:py-8 pb-[var(--pn-bottom-nav-h)]">
         <NotificationsView
           initialTab={initialTab}
           initialActivity={activity}

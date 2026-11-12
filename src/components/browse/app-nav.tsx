@@ -7,13 +7,15 @@ import { NavBell, NavCountBadge } from "@/components/browse/nav-notifications";
 
 type Props = {
   profileCode?: string | null;
-  active?: NavKey;
+  active?: NavKey | null;
   /** Unread chat messages — Messages/Chats nav badge. */
   unreadCount?: number;
   /** Pending incoming match requests — Introductions/Requests nav badge. */
   requestsCount?: number;
   /** Unread Activity + Updates — bell dot. */
   bellUnread?: number;
+  /** Highlight the bell (on /notifications) instead of a sidebar item. */
+  bellActive?: boolean;
 };
 
 function HelpIcon() {
@@ -36,6 +38,7 @@ export function BrowseAppNav({
   unreadCount = 0,
   requestsCount = 0,
   bellUnread = 0,
+  bellActive = false,
 }: Props) {
   return (
     <>
@@ -46,7 +49,7 @@ export function BrowseAppNav({
             <Image src="/images/logo.jpeg" alt="Pashtun Nikah" width={30} height={30} className="rounded-lg" priority />
             <span className="text-base font-semibold tracking-tight text-ink-950">Pashtun Nikah</span>
           </Link>
-          <NavBell initialUnread={bellUnread} />
+          <NavBell initialUnread={bellUnread} active={bellActive} />
         </div>
 
         <nav className="mt-7 flex-1 flex flex-col gap-1 text-sm font-medium">
@@ -100,7 +103,7 @@ export function BrowseAppNav({
             >
               <HelpIcon />
             </Link>
-            <NavBell initialUnread={bellUnread} />
+            <NavBell initialUnread={bellUnread} active={bellActive} />
             <MobileNavAuto items={NAV_ITEMS} active={active} unread={unreadCount} requests={requestsCount} />
           </div>
         </div>

@@ -24,7 +24,7 @@ export function MobileBottomNav({
   unreadCount = 0,
   requestsCount = 0,
 }: {
-  active?: NavKey;
+  active?: NavKey | null;
   unreadCount?: number;
   requestsCount?: number;
 }) {

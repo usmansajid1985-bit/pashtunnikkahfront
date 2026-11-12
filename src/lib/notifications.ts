@@ -149,6 +149,25 @@ export async function createNotification(
 
   const now = new Date();
 
+  // Handoff "No duplicates at write time": never create a second match-request notification for the
+  // same request. PNF565 had three identical "sent you a match request" rows from one request.
+  if (
+    (input.type === "match" || input.type === "request") &&
+    input.relatedRequestId != null
+  ) {
+    const dup = await prisma.notifications
+      .findFirst({
+        where: {
+          recipient_user_id: input.recipientUserId,
+          related_request_id: input.relatedRequestId,
+          type: { in: ["match", "request"] },
+        },
+        select: { id: true },
+      })
+      .catch(() => null);
+    if (dup) return { created: false, suppressed: false, id: dup.id.toString() };
+  }
+
   if (input.groupKey) {
     const existing = await prisma.notifications
       .findFirst({
@@ -226,10 +245,14 @@ export async function getBellCounts(userId: bigint): Promise<BellCounts> {
   // N52: unread = live announcements this member hasn't opened (scheduled / unpublished /
   // archived ones never count, and reads of removed ones can't push the number negative).
   const { unreadAnnouncementCount } = await import("@/lib/announcements");
+  const { getUnreadRowCount } = await import("@/lib/notification-groups");
   const [activityUnread, updatesUnread] = await Promise.all([
-    prisma.notifications.count({
-      where: { recipient_user_id: userId, read_at: null, created_at: { gte: since } },
-    }),
+    // Count unread *rows* (grouped), not raw events, so the bell matches the Activity list.
+    getUnreadRowCount(userId).catch(() =>
+      prisma.notifications.count({
+        where: { recipient_user_id: userId, read_at: null, created_at: { gte: since } },
+      })
+    ),
     unreadAnnouncementCount(userId).catch(() => 0),
   ]);
   return {

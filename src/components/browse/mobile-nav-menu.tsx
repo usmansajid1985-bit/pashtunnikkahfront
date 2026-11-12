@@ -13,7 +13,7 @@ export function MobileNavMenu({
   requests = 0,
 }: {
   items: NavItem[];
-  active: NavKey;
+  active: NavKey | null;
   unread: number;
   requests?: number;
 }) {
