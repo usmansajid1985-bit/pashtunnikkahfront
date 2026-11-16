@@ -156,6 +156,59 @@ function AgeRange({ min, max, onChange }: { min: number; max: number; onChange: 
 }
 
 
+/** Two-thumb height slider over the discrete HEIGHT_FILTER_STEPS, with the chosen heights above the thumbs. */
+function HeightRange({
+  minIdx,
+  maxIdx,
+  onChange,
+}: {
+  minIdx: number;
+  maxIdx: number;
+  onChange: (minIdx: number, maxIdx: number) => void;
+}) {
+  const N = HEIGHT_FILTER_STEPS.length - 1;
+  const pct = (v: number) => (v / N) * 100;
+  const at = (v: number) => `calc(${pct(v)}% + ${12 - pct(v) * 0.24}px)`;
+  return (
+    <div className="pn-dual relative h-6 mt-8">
+      <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-[#e7e2e0]" />
+      <div
+        className="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-rose-600"
+        style={{ left: at(minIdx), right: `calc(100% - ${at(maxIdx)})` }}
+      />
+      {[minIdx, maxIdx].map((v, i) => (
+        <span
+          key={i}
+          aria-hidden
+          className="absolute -top-7 -translate-x-1/2 whitespace-nowrap rounded-md bg-rose-50 px-1.5 py-0.5 text-[11px] font-bold text-rose-600"
+          style={{ left: at(v) }}
+        >
+          {HEIGHT_FILTER_STEPS[v].label}
+        </span>
+      ))}
+      <input
+        type="range"
+        min={0}
+        max={N}
+        value={minIdx}
+        aria-label={`Minimum height (${HEIGHT_FILTER_STEPS[minIdx].label})`}
+        onChange={(e) => onChange(Math.min(Number(e.target.value), maxIdx), maxIdx)}
+        style={{ zIndex: minIdx > N - 1 ? 3 : 1 }}
+      />
+      <input
+        type="range"
+        min={0}
+        max={N}
+        value={maxIdx}
+        aria-label={`Maximum height (${HEIGHT_FILTER_STEPS[maxIdx].label})`}
+        onChange={(e) => onChange(minIdx, Math.max(Number(e.target.value), minIdx))}
+        style={{ zIndex: 2 }}
+      />
+    </div>
+  );
+}
+
+
 function Field({
   label,
   children,
@@ -344,17 +397,20 @@ export function BrowseFiltersBar({
   );
   const shownRegions = ANCESTRAL_REGIONS.filter((r) => r.toLowerCase().includes(regionQuery.trim().toLowerCase()));
 
-  // Minimum height runs from the shortest step to the tallest — never an "Any" stop.
-  const heightIdx = (() => {
-    const cm = Number(draft.height);
-    if (!draft.height || !Number.isFinite(cm) || cm <= 0) return 0;
-    let best = 0;
+  // Height is a dual-handle range over the step list. An empty min = the shortest step (far-left
+  // thumb); an empty max = the tallest step (far-right thumb). Both ends together = "Any height".
+  const nearestHeightIdx = (raw: string, fallback: number) => {
+    const cm = Number(raw);
+    if (!raw || !Number.isFinite(cm) || cm <= 0) return fallback;
+    let best = fallback;
     HEIGHT_FILTER_STEPS.forEach((h, i) => {
       if (Math.abs(h.cm - cm) < Math.abs(HEIGHT_FILTER_STEPS[best].cm - cm)) best = i;
     });
     return best;
-  })();
-  const heightStep = HEIGHT_FILTER_STEPS[heightIdx];
+  };
+  const lastHeightIdx = HEIGHT_FILTER_STEPS.length - 1;
+  const heightIdx = nearestHeightIdx(draft.height, 0);
+  const heightMaxIdx = nearestHeightIdx(draft.heightMax, lastHeightIdx);
 
   return (
     <>
@@ -414,28 +470,37 @@ export function BrowseFiltersBar({
               {liveSavedCount}
             </span>
           </a>
-          <label className="pill-btn cursor-pointer justify-center">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 7v5l3 2" />
-            </svg>
-            <select
-              className="bg-transparent text-sm font-medium outline-none"
-              value={filters.sort === "recently_active" ? "newest" : filters.sort}
-              onChange={(e) =>
-                navigate({
-                  ...filters,
-                  sort: e.target.value as BrowseFilters["sort"],
-                })
-              }
-            >
-              {/* B23: "newest" is the activity ranking — shown as Recently active. */}
-              <option value="newest">Recently active</option>
-              <option value="best_match">{isGold ? "Compatibility" : "Compatibility (Gold)"}</option>
-              <option value="age_asc">Age ↑</option>
-              <option value="age_desc">Age ↓</option>
-            </select>
-          </label>
+          {/* Sort: Recently active (default, all members) + Just Joined (Gold-only). Basic members
+              stay on Recently active and can't change it, so they see a static label, not a dropdown. */}
+          {isGold ? (
+            <label className="pill-btn cursor-pointer justify-center">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              <select
+                className="bg-transparent text-sm font-medium outline-none"
+                value={filters.sort === "just_joined" ? "just_joined" : "newest"}
+                onChange={(e) =>
+                  navigate({
+                    ...filters,
+                    sort: e.target.value as BrowseFilters["sort"],
+                  })
+                }
+              >
+                <option value="newest">Recently active</option>
+                <option value="just_joined">Just Joined</option>
+              </select>
+            </label>
+          ) : (
+            <span className="pill-btn justify-center text-sm font-medium text-ink-700">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              Recently active
+            </span>
+          )}
         </div>
       </div>
 
@@ -689,25 +754,26 @@ export function BrowseFiltersBar({
 
                     <section className="space-y-3 border-t border-ink-900/8 pt-4">
                       <h4 className="text-sm font-bold text-ink-950">About them</h4>
-                      <Field label="Minimum height" locked={locked}>
-                        <input
-                          type="range"
-                          min={0}
-                          max={HEIGHT_FILTER_STEPS.length - 1}
-                          step={1}
-                          value={heightIdx}
-                          onChange={(e) => {
-                            const i = Number(e.target.value);
-                            setDraft({ ...draft, height: String(HEIGHT_FILTER_STEPS[i].cm) });
+                      <Field label="Height" locked={locked}>
+                        <HeightRange
+                          minIdx={heightIdx}
+                          maxIdx={heightMaxIdx}
+                          onChange={(lo, hi) => {
+                            setDraft({
+                              ...draft,
+                              height: lo <= 0 ? "" : String(HEIGHT_FILTER_STEPS[lo].cm),
+                              heightMax: hi >= lastHeightIdx ? "" : String(HEIGHT_FILTER_STEPS[hi].cm),
+                            });
                           }}
-                          className="pn-range w-full mt-1"
-                          style={{ "--pn-fill": `${(heightIdx / (HEIGHT_FILTER_STEPS.length - 1)) * 100}%` } as React.CSSProperties}
-                          aria-valuetext={`${heightStep.label} or taller`}
                         />
                         <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-ink-700/60">
                           <span>{HEIGHT_FILTER_STEPS[0].label}</span>
-                          <span className="font-semibold text-ink-950 text-center">{heightStep.label} or taller</span>
-                          <span className="text-right">{HEIGHT_FILTER_STEPS[HEIGHT_FILTER_STEPS.length - 1].label}</span>
+                          <span className="font-semibold text-ink-950 text-center">
+                            {heightIdx <= 0 && heightMaxIdx >= lastHeightIdx
+                              ? "Any height"
+                              : `${HEIGHT_FILTER_STEPS[heightIdx].label} – ${HEIGHT_FILTER_STEPS[heightMaxIdx].label}`}
+                          </span>
+                          <span className="text-right">{HEIGHT_FILTER_STEPS[lastHeightIdx].label}</span>
                         </span>
                       </Field>
                       <Field label="Education" locked={locked}>

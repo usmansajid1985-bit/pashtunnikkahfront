@@ -156,13 +156,18 @@ export default async function BrowsePage({
   });
 
   const isBestMatch = filters.sort === "best_match";
-  const useActivityRank = filters.sort === "newest" || filters.sort === "recently_active";
+  // Just Joined (most recently approved first) is Gold-only; a Basic account falls back to activity.
+  const isJustJoined = filters.sort === "just_joined" && isGold;
+  const useActivityRank =
+    !isJustJoined && (filters.sort === "newest" || filters.sort === "recently_active" || filters.sort === "just_joined");
   const orderBy: Prisma.profilesOrderByWithRelationInput =
     filters.sort === "age_asc"
       ? { age: "asc" }
       : filters.sort === "age_desc"
         ? { age: "desc" }
-        : { users: { last_seen_at: "desc" } };
+        : isJustJoined
+          ? { users: { approved_at: "desc" } }
+          : { users: { last_seen_at: "desc" } };
 
   const [
     total,
@@ -198,6 +203,12 @@ export default async function BrowsePage({
       const bb = b.age ?? 0;
       return filters.sort === "age_asc" ? aa - bb : bb - aa;
     });
+  } else if (isJustJoined) {
+    // Keep the query's approved_at-desc order (ranking would otherwise re-sort by activity).
+    const pos = new Map(profiles.map((p, i) => [String(p.user_id), i]));
+    initialItems = [...initialItems].sort(
+      (a, b) => (pos.get(String(a.userId)) ?? 0) - (pos.get(String(b.userId)) ?? 0)
+    );
   }
 
   if (isGold && me) {

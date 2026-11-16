@@ -153,13 +153,18 @@ export async function GET(req: Request) {
   }
 
   const isBestMatch = filters.sort === "best_match";
-  const useActivityRank = filters.sort === "newest" || filters.sort === "recently_active";
+  // Just Joined (most recently approved first) is Gold-only; Basic falls back to activity order.
+  const isJustJoined = filters.sort === "just_joined" && isGold;
+  const useActivityRank =
+    !isJustJoined && (filters.sort === "newest" || filters.sort === "recently_active" || filters.sort === "just_joined");
   const orderBy =
     filters.sort === "age_asc"
       ? ({ age: "asc" } as const)
       : filters.sort === "age_desc"
         ? ({ age: "desc" } as const)
-        : ({ users: { last_seen_at: "desc" } } as const);
+        : isJustJoined
+          ? ({ users: { approved_at: "desc" } } as const)
+          : ({ users: { last_seen_at: "desc" } } as const);
 
   const overFetch = isBestMatch
     ? BEST_MATCH_POOL
@@ -188,6 +193,10 @@ export async function GET(req: Request) {
       const bb = b.age ?? 0;
       return filters.sort === "age_asc" ? aa - bb : bb - aa;
     });
+  } else if (isJustJoined) {
+    // Keep the query's approved_at-desc order (ranking would otherwise re-sort by activity).
+    const pos = new Map(profiles.map((p, i) => [String(p.user_id), i]));
+    items = items.sort((a, b) => (pos.get(String(a.userId)) ?? 0) - (pos.get(String(b.userId)) ?? 0));
   }
 
   // Gold: cached one-time AI compat + heuristic fallback (never touches activity order).

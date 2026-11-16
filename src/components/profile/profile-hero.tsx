@@ -1,4 +1,5 @@
 import "flag-icons/css/flag-icons.min.css";
+import { ActivityDot } from "@/components/activity-dot";
 import type { ReactNode } from "react";
 import { toCountryCode } from "@/lib/country";
 import type { ProfileView } from "@/lib/profile";
@@ -98,7 +99,7 @@ export function ProfileHero({
           }`}
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#3d3836]/85 px-3 py-1.5 text-[12px] font-semibold text-white backdrop-blur-md">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-[#4ade3a]" />
+            <ActivityDot label={presence.label} />
             {presence.label}
           </span>
           {presence.justJoined ? (

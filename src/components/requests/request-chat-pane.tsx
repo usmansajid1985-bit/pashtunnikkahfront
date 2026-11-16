@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ActivityDot } from "@/components/activity-dot";
 import { useState } from "react";
 import { relativeStamp, type HubCard } from "@/lib/requests-hub-shared";
 import { useRequestActions, type RequestAction } from "@/components/matches/request-actions";
@@ -122,7 +123,7 @@ export function RequestChatPane({
             <p className="text-[15px] font-bold text-ink-950 truncate">{card.code}</p>
             {card.activity ? (
               <p className="flex items-center gap-1.5 text-[12px] text-ink-700/60">
-                <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden />
+                <ActivityDot label={card.activity} />
                 {card.activity}
               </p>
             ) : null}

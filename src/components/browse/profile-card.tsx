@@ -1,4 +1,5 @@
 import "flag-icons/css/flag-icons.min.css";
+import { ActivityDot } from "@/components/activity-dot";
 import { countryLabel, toCountryCode } from "@/lib/country";
 import { TribePill } from "@/components/tribe/tribe-pill";
 import { tribeLabel } from "@/lib/tribes";
@@ -94,10 +95,7 @@ export function ProfileCard({
           />
           <div className="absolute top-2.5 right-2.5 flex flex-col items-end gap-1.5">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-black/45 backdrop-blur-sm px-2.5 py-1 text-[11.5px] font-medium text-white">
-              <span
-                className="h-2 w-2 rounded-full bg-emerald-400"
-                aria-hidden
-              />
+              <ActivityDot label={presenceLabel} />
               {presenceLabel}
             </span>
             {p.justJoined ? (

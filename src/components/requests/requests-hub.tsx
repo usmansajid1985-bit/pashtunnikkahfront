@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { HubCard } from "@/lib/requests-hub-shared";
-import { MatchedCard, ReceivedCard, SentCard } from "@/components/requests/request-cards";
+import { ReceivedCard, SentCard } from "@/components/requests/request-cards";
 
-type Tab = "incoming" | "sent" | "matched";
+type Tab = "incoming" | "sent";
 
 type HubData = {
   isGold: boolean;
@@ -22,15 +23,16 @@ type HubData = {
   expired: HubCard[];
 };
 
-const TAB_IDS: Tab[] = ["incoming", "sent", "matched"];
+const TAB_IDS: Tab[] = ["incoming", "sent"];
 
-/** `?tab=received` is the new name; `incoming` keeps older links (banners, emails) working. */
+/** `?tab=received` is the new name; `incoming` keeps older links (banners, emails) working.
+ * The old "Matched" tab is gone — those links now land on Chats → Active (handled in RequestsHub). */
 function toTab(raw?: string): Tab | null {
   if (raw === "received") return "incoming";
   return TAB_IDS.includes(raw as Tab) ? (raw as Tab) : null;
 }
 
-/** Received / Sent / Matched. Only Received shows a count — the requests waiting for your answer. */
+/** Received / Sent. Only Received shows a count — the requests waiting for your answer. */
 function SegmentedTabs({
   tab,
   onChange,
@@ -43,10 +45,9 @@ function SegmentedTabs({
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: "incoming", label: "Received", count: counts.incoming },
     { id: "sent", label: "Sent", count: 0 },
-    { id: "matched", label: "Matched", count: 0 },
   ];
   return (
-    <div role="tablist" className="grid grid-cols-3 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
+    <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
       {tabs.map((t) => {
         const active = tab === t.id;
         return (
@@ -74,12 +75,18 @@ function SegmentedTabs({
 }
 
 export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: string }) {
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>(toTab(initialTab) ?? "incoming");
 
+  // Old "Matched" links now live in Chats → Active.
   useEffect(() => {
+    if (initialTab === "matched") {
+      router.replace("/chats");
+      return;
+    }
     const t = toTab(initialTab);
     if (t) setTab(t);
-  }, [initialTab]);
+  }, [initialTab, router]);
 
   const changeTab = (t: Tab) => {
     setTab(t);
@@ -89,11 +96,8 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
   };
 
   const list = useMemo(() => {
-    const rows = [...(tab === "incoming" ? data.incoming : tab === "sent" ? data.sent : data.matched)];
-    // Matched cards display the accepted/matched date (statusAt), so sort by that same timestamp —
-    // sorting by the original request date contradicted the dates shown (PN-AUD matched sorting).
-    const key = (c: (typeof rows)[number]) => (tab === "matched" ? c.statusAt || c.createdAt : c.createdAt);
-    rows.sort((a, b) => +new Date(key(b)) - +new Date(key(a)));
+    const rows = [...(tab === "incoming" ? data.incoming : data.sent)];
+    rows.sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
     return rows;
   }, [tab, data]);
 
@@ -148,20 +152,14 @@ export function RequestsHub({ data, initialTab }: { data: HubData; initialTab?: 
         </div>
       ) : null}
 
-      {tab !== "sent" ? (
+      {tab === "incoming" ? (
       <div className="mt-4 space-y-3">
         {list.length === 0 ? (
           <p className="text-sm text-ink-700/55 bg-white rounded-2xl border border-ink-900/6 px-4 py-10 text-center">
-            {tab === "incoming" ? "No requests waiting for you right now." : "No matches yet."}
+            No requests waiting for you right now.
           </p>
         ) : (
-          list.map((card) =>
-            tab === "incoming" ? (
-              <ReceivedCard key={card.id} card={card} />
-            ) : (
-              <MatchedCard key={card.id} card={card} />
-            )
-          )
+          list.map((card) => <ReceivedCard key={card.id} card={card} />)
         )}
       </div>
       ) : null}

@@ -182,11 +182,15 @@ export function buildProfileWhere(
   eq("dialect", f.dialect);
   eq("ancestral_village", f.ancestral);
 
-  // Minimum-height filter: submits a target in cm, matches validated `height_cm >= target`.
+  // Height filter: a dual-handle min/max range in cm, matched against validated `height_cm`.
   // Rows with no parsed height_cm are excluded from a height search (PN-BROWSE-010).
   const heightCm = Number(f.height);
   if (f.height && Number.isFinite(heightCm) && heightCm > 0) {
     and.push({ height_cm: { gte: heightCm } });
+  }
+  const heightMaxCm = Number(f.heightMax);
+  if (f.heightMax && Number.isFinite(heightMaxCm) && heightMaxCm > 0) {
+    and.push({ height_cm: { lte: heightMaxCm } });
   }
 
   const salah = kw(f.salah);

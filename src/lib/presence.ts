@@ -78,14 +78,24 @@ export function isActiveToday(lastSeenAt: Date | string | null | undefined, now 
   return now.getTime() - t.getTime() < 24 * 60 * 60_000 && dayKey(t) === dayKey(now);
 }
 
+/** The one label that gets the bright-green "currently using the app" dot; everything else is grey. */
+export const ACTIVE_NOW_LABEL = "Active now";
+
+/** True when an activity label should show the bright-green dot (vs the grey one). */
+export function isActiveNowLabel(label: string | null | undefined) {
+  return label === ACTIVE_NOW_LABEL;
+}
+
 /**
- * Privacy-friendly activity wording (B13/K13, V2 QA): members only ever see a coarse bucket —
- * never minutes/hours or "Online". The exact timestamp is still used internally for ranking.
+ * Activity wording (members see a coarse bucket, never minutes/hours). "Active now" is reinstated for
+ * members currently using the app (within ONLINE_IDLE_MINUTES of their last heartbeat); every other
+ * bucket stays coarse. The exact timestamp is still used internally for ranking.
  */
 export function formatLastSeen(lastSeenAt: Date | string | null | undefined, now = new Date()): string {
   if (!lastSeenAt) return "Active over a month ago";
   const t = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
   if (Number.isNaN(t.getTime())) return "Active over a month ago";
+  if (isOnline(t, now)) return ACTIVE_NOW_LABEL;
   if (isActiveToday(t, now)) return "Active today";
   const days = (now.getTime() - t.getTime()) / (24 * 60 * 60_000);
   if (days < 2 && dayKey(t) === dayKey(new Date(now.getTime() - 24 * 60 * 60_000))) return "Active yesterday";

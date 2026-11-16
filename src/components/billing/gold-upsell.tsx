@@ -205,11 +205,16 @@ export function UpgradeModal({
           ))}
         </ul>
 
+        <p className="mt-6 text-center text-[12px] leading-relaxed text-ink-700/55">
+          By continuing, I request Gold access immediately after payment. If I cancel within 14 days, a
+          proportionate service charge may apply.
+        </p>
+
         <button
           type="button"
           disabled={pending}
           onClick={onUpgrade}
-          className="mt-6 w-full h-14 rounded-full bg-gradient-to-r from-[#c2185b] via-[#ec407a] to-[#ffb74d] text-[17px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(225,45,114,0.8)] hover:brightness-105 disabled:opacity-60"
+          className="mt-2.5 w-full h-14 rounded-full bg-gradient-to-r from-[#c2185b] via-[#ec407a] to-[#ffb74d] text-[17px] font-semibold text-white shadow-[0_12px_28px_-12px_rgba(225,45,114,0.8)] hover:brightness-105 disabled:opacity-60"
         >
           {pending ? "Redirecting…" : "Upgrade to Gold →"}
         </button>
@@ -224,12 +229,15 @@ export function UpgradeModal({
           </button>
         ) : null}
         {error ? <p className="mt-2 text-center text-sm text-rose-700">{error}</p> : null}
-        <p className="mt-3 flex items-center justify-center gap-1.5 text-[13px] text-ink-700/60">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <rect x="5" y="11" width="14" height="9" rx="2" />
-            <path d="M8 11V8a4 4 0 0 1 8 0v3" />
-          </svg>
-          Secure monthly subscription · Cancel anytime.
+        <p className="mt-3 text-center text-[12px] text-ink-700/55">
+          Renews monthly until cancelled ·{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink-900">
+            Terms of Service
+          </a>{" "}
+          ·{" "}
+          <a href="/refund-policy" target="_blank" rel="noopener noreferrer" className="underline hover:text-ink-900">
+            Refund Policy
+          </a>
         </p>
       </div>
     </div>

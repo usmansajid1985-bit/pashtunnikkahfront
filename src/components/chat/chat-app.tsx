@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ActivityDot } from "@/components/activity-dot";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import {
   FormEvent,
@@ -2028,7 +2029,7 @@ export function ChatApp({
                           "Connecting to chat…"
                         ) : (
                           <span className="inline-flex items-center gap-1.5">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-500" aria-hidden />
+                            <ActivityDot label={peer?.lastSeenLabel} />
                             {peer?.lastSeenLabel ?? "Active recently"}
                           </span>
                         )}

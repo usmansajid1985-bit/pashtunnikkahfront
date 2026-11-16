@@ -32,6 +32,7 @@ export type BrowseFilters = {
   dialect: string;
   ancestral: string;
   height: string;
+  heightMax: string;
   occupation: string;
   language: string;
   /** Head covering (sisters) or beard style (brothers). */
@@ -41,7 +42,10 @@ export type BrowseFilters = {
   newMembers: boolean;
   recentlyActive: boolean;
   near: boolean;
-  sort: "newest" | "recently_active" | "age_asc" | "age_desc" | "best_match";
+  // "newest" = Recently active (default, all members). "just_joined" = most recently approved,
+  // Gold-only. The legacy values (recently_active/age_*/best_match) are still parsed so old saved
+  // searches and links don't break, but the Browse UI now only offers the two above.
+  sort: "newest" | "recently_active" | "age_asc" | "age_desc" | "best_match" | "just_joined";
   page: number;
 };
 
@@ -61,6 +65,7 @@ export const DEFAULT_FILTERS: BrowseFilters = {
   dialect: "",
   ancestral: "",
   height: "",
+  heightMax: "",
   occupation: "",
   language: "",
   dress: "",
@@ -91,6 +96,7 @@ export const GOLD_ONLY_FILTER_KEYS = [
   "dialect",
   "ancestral",
   "height",
+  "heightMax",
   "occupation",
   "language",
   "dress",
@@ -118,6 +124,7 @@ export function stripGoldFilters(f: BrowseFilters): BrowseFilters {
     dialect: "",
     ancestral: "",
     height: "",
+    heightMax: "",
     occupation: "",
     language: "",
     dress: "",
@@ -137,7 +144,8 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
     sortRaw === "recently_active" ||
     sortRaw === "age_asc" ||
     sortRaw === "age_desc" ||
-    sortRaw === "best_match"
+    sortRaw === "best_match" ||
+    sortRaw === "just_joined"
       ? sortRaw
       : "newest";
 
@@ -157,6 +165,7 @@ export function parseBrowseFilters(sp: BrowseSearchParams): BrowseFilters {
     dialect: firstTrimmed(sp.dialect),
     ancestral: firstTrimmed(sp.ancestral),
     height: firstTrimmed(sp.height),
+    heightMax: firstTrimmed(sp.heightMax),
     occupation: firstTrimmed(sp.occupation),
     language: firstTrimmed(sp.language),
     dress: firstTrimmed(sp.dress),
@@ -192,6 +201,7 @@ export function countActiveFilters(f: BrowseFilters, isGold = true): number {
     "dialect",
     "ancestral",
     "height",
+    "heightMax",
     "occupation",
     "language",
     "dress",
@@ -236,6 +246,7 @@ export function filtersToQuery(f: Partial<BrowseFilters>, extras: Record<string,
   set("dialect", f.dialect);
   set("ancestral", f.ancestral);
   set("height", f.height);
+  set("heightMax", f.heightMax);
   set("occupation", f.occupation);
   set("language", f.language);
   set("dress", f.dress);

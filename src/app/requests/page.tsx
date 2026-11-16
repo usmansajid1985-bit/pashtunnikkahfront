@@ -50,7 +50,7 @@ export default async function RequestsPage({
         <div className="hidden lg:block mb-6">
           <h1 className="text-3xl font-bold text-ink-950">Requests</h1>
           <p className="mt-1 text-sm text-ink-700/65">
-            Manage your received requests, sent requests and matches.
+            Manage your received and sent requests.
           </p>
         </div>
 
