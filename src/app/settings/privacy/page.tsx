@@ -34,6 +34,7 @@ export default async function PrivacySettingsPage() {
     peerUserId: b.blocked_id.toString(),
     code: codeByUser.get(b.blocked_id.toString()) || b.blocked_id.toString(),
     blockedAt: b.created_at.toISOString(),
+    avatarSeed: Number(b.blocked_id % 70n),
   }));
 
   return (
