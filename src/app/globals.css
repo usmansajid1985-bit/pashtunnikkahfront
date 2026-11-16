@@ -62,7 +62,10 @@ html {
 }
 
 body {
-  font-family: var(--font-sans);
+  /* Reference --font-poppins directly: Tailwind v4's `@theme inline` does NOT emit --font-sans as a
+     runtime custom property, so `var(--font-sans)` resolved to nothing and the whole app fell back to
+     the system font. --font-poppins is the next/font variable set on <body>. */
+  font-family: var(--font-poppins), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   color: var(--ink-900);
   background: white;
   overflow-x: hidden;
@@ -84,7 +87,8 @@ dialog,
 }
 
 .font-serif {
-  font-family: var(--font-serif);
+  /* --font-serif is `@theme inline` too (not emitted at runtime) — reference the next/font var. */
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
 .underline-accent {
