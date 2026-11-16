@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import type { GroupedRow, RowBadge } from "@/lib/notification-groups";
-import { useRequestActions } from "@/components/matches/request-actions";
 
 function pravatar(seed: number) {
   return `https://i.pravatar.cc/120?img=${(seed % 70) + 1}`;
@@ -131,10 +130,6 @@ function Title({ row }: { row: GroupedRow }) {
 
 export function NotificationRow({ row, onRead }: { row: GroupedRow; onRead: (ids: string[]) => void }) {
   const router = useRouter();
-  const requestId = row.action?.kind === "request" ? row.action.requestId : "";
-  const { act, pending } = useRequestActions(requestId, {
-    onDone: () => onRead(row.ids),
-  });
 
   function open() {
     onRead(row.ids);
@@ -195,26 +190,15 @@ export function NotificationRow({ row, onRead }: { row: GroupedRow; onRead: (ids
   const isActionPause = row.action?.kind === "pause" && row.action.ended;
 
   const buttons = isActionRequest ? (
-    <div className="flex gap-2">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => act("decline")}
-        className="h-10 flex-1 rounded-full border text-[13px] font-semibold disabled:opacity-50"
-        style={{ borderColor: "rgba(32,26,29,0.12)", color: "#5E5459" }}
-      >
-        Decline
-      </button>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => act("accept")}
-        className="h-10 flex-1 rounded-full text-[13px] font-semibold text-white disabled:opacity-50"
-        style={{ background: "#C8235F" }}
-      >
-        Accept
-      </button>
-    </div>
+    // Accept/Decline no longer happen in notifications — tap through to Requests → Received instead.
+    <button
+      type="button"
+      onClick={open}
+      className="h-10 rounded-full px-4 text-[13px] font-semibold text-white"
+      style={{ background: "#C8235F" }}
+    >
+      View request
+    </button>
   ) : isActionPhoto ? (
     <button
       type="button"

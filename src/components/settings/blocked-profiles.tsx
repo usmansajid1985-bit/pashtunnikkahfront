@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { SuccessToast } from "@/components/success-toast";
 
 export type BlockedProfileRow = {
   id: string;
@@ -12,6 +13,7 @@ export type BlockedProfileRow = {
 export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
   const [rows, setRows] = useState(initial);
   const [pending, startTransition] = useTransition();
+  const [toast, setToast] = useState<string | null>(null);
 
   function unblock(peerUserId: string) {
     startTransition(async () => {
@@ -20,15 +22,25 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: peerUserId }),
       });
-      if (res.ok) setRows((prev) => prev.filter((r) => r.peerUserId !== peerUserId));
+      if (res.ok) {
+        setRows((prev) => prev.filter((r) => r.peerUserId !== peerUserId));
+        setToast("User unblocked");
+      }
     });
   }
 
   if (rows.length === 0) {
-    return <p className="mt-2 text-sm text-ink-700/55">You have not blocked anyone.</p>;
+    return (
+      <>
+        <p className="mt-2 text-sm text-ink-700/55">You have not blocked anyone.</p>
+        <SuccessToast message={toast} onClose={() => setToast(null)} />
+      </>
+    );
   }
 
   return (
+    <>
+    <SuccessToast message={toast} onClose={() => setToast(null)} />
     <ul className={`mt-3 space-y-2 text-sm ${pending ? "opacity-60" : ""}`}>
       {rows.map((r) => (
         <li key={r.id} className="flex items-center justify-between gap-2">
@@ -50,5 +62,6 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
         </li>
       ))}
     </ul>
+    </>
   );
 }
