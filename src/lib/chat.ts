@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { inBackground } from "@/lib/background";
 import { ensureMatchRequestsSchema } from "@/lib/ensure-match-requests-schema";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
-import { isBlockedBetween, blockedUserIds } from "@/lib/blocking";
+import { isBlockedBetween, blockDirections } from "@/lib/blocking";
 import { formatLastSeen } from "@/lib/presence";
 import {
   allowsPhotoShare,
@@ -21,7 +21,10 @@ export type ReactionSummary = { emoji: string; userIds: string[] }[];
 /** @deprecated import from "@/lib/reactions" instead — kept for compatibility. */
 export const ALLOWED_REACTIONS = ALL_REACTIONS;
 
-export type MessageType = "text" | "contact_card";
+export type MessageType = "text" | "contact_card" | "system";
+
+/** Centred, non-bubble system events shown inline in the chat (e.g. photo shared / viewed). */
+export type SystemEvent = "photo_shared" | "photo_viewed";
 
 export type ContactCardData = {
   name: string;
@@ -48,6 +51,8 @@ export type ChatMessageDTO = {
   reactions?: ReactionSummary;
   type: MessageType;
   card?: ContactCardData | null;
+  /** For type "system": which event this line describes. The sender_id is the member who acted. */
+  systemEvent?: SystemEvent | null;
 };
 
 export type ChatThreadDTO = {
@@ -72,6 +77,9 @@ export type ChatThreadDTO = {
   endedByMe: boolean;
   /** Only the member who ended a match may ask for a rematch (older matches without a record: either). */
   canRematch: boolean;
+  /** The peer blocked this viewer: the conversation shows read-only as "Conversation unavailable"
+   * (no messages, composer, profile or rematch). The viewer can still Report or Block them. */
+  unavailable: boolean;
 };
 
 export type PhotoOnceStatus = "none" | "pending" | "viewed";
@@ -109,10 +117,15 @@ export function serializeMessage(
   clientId?: string,
   reactions?: ReactionSummary
 ): ChatMessageDTO {
-  const type: MessageType = m.message_type === "contact_card" ? "contact_card" : "text";
+  const type: MessageType =
+    m.message_type === "contact_card" ? "contact_card" : m.message_type === "system" ? "system" : "text";
   const card =
     type === "contact_card" && m.metadata && typeof m.metadata === "object"
       ? (m.metadata as ContactCardData)
+      : null;
+  const systemEvent =
+    type === "system" && m.metadata && typeof m.metadata === "object" && "systemEvent" in (m.metadata as object)
+      ? ((m.metadata as { systemEvent: SystemEvent }).systemEvent ?? null)
       : null;
   return {
     id: m.id.toString(),
@@ -138,7 +151,38 @@ export function serializeMessage(
     reactions: reactions ?? [],
     type,
     card,
+    systemEvent,
   };
+}
+
+/**
+ * Insert a centred in-chat system message (photo shared / viewed) and return its DTO. `senderId` is
+ * the member who performed the action; the client renders perspective-aware text from that. Stored
+ * read (it never counts as an unread message) with the event in `metadata.systemEvent`.
+ */
+export async function insertSystemMessage(opts: {
+  requestId: bigint;
+  senderId: bigint;
+  receiverId: bigint;
+  event: SystemEvent;
+  body: string;
+}): Promise<ChatMessageDTO> {
+  const id = await nextMessageId();
+  const created = await prisma.messages.create({
+    data: {
+      id,
+      request_id: opts.requestId,
+      sender_id: opts.senderId,
+      receiver_id: opts.receiverId,
+      body: opts.body,
+      is_read: true,
+      message_type: "system",
+      metadata: { systemEvent: opts.event },
+      created_at: new Date(),
+    },
+  });
+  await prisma.match_requests.update({ where: { id: opts.requestId }, data: { updated_at: new Date() } });
+  return serializeMessage(created, null, undefined, []);
 }
 
 export async function getReactionsForMessages(
@@ -424,7 +468,7 @@ export async function consumePhotoOnce(requestId: bigint, viewerId: bigint) {
 }
 
 export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[]> {
-  const [requests, blocked] = await Promise.all([
+  const [requests, { iBlocked, blockedMe }] = await Promise.all([
     prisma.match_requests.findMany({
       where: {
         // N53: ended matches stay listed (read-only, under "Past matches") for both members.
@@ -433,12 +477,12 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       },
       orderBy: { updated_at: "desc" },
     }),
-    blockedUserIds(userId),
+    blockDirections(userId),
   ]);
-  const blockedSet = new Set(blocked.map((id) => id.toString()));
+  // Threads I blocked are hidden entirely; threads where the peer blocked me stay as "unavailable".
   const visible = requests.filter((req) => {
-    const otherId = req.sender_id === userId ? req.receiver_id : req.sender_id;
-    return !blockedSet.has(otherId.toString());
+    const otherId = (req.sender_id === userId ? req.receiver_id : req.sender_id).toString();
+    return !iBlocked.has(otherId);
   });
 
   // Each thread's lookups are independent — run them all concurrently instead of
@@ -446,6 +490,43 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
   const built = await Promise.all(
     visible.map(async (req) => {
       const peerId = await peerUserId(req, userId);
+      const unavailable = blockedMe.has(peerId.toString());
+
+      // Unavailable (peer blocked me): show a locked placeholder — the member ID, a generic avatar,
+      // and the last-message timestamp only. Never load or leak the messages, meta or unread count.
+      if (unavailable) {
+        const [peer, last] = await Promise.all([
+          loadPeer(peerId),
+          prisma.messages.findFirst({
+            where: { request_id: req.id },
+            orderBy: { created_at: "desc" },
+            select: { created_at: true },
+          }),
+        ]);
+        if (!peer) return null;
+        return {
+          requestId: req.id.toString(),
+          peerUserId: peer.userId,
+          peerCode: peer.code,
+          peerName: peer.code,
+          peerVerified: false,
+          peerAvatarSeed: peer.avatarSeed,
+          lastMessage: null,
+          lastAt: last?.created_at.toISOString() ?? req.updated_at.toISOString(),
+          unread: 0,
+          matchedAt: req.created_at.toISOString(),
+          communicationMode: "chat" as CommMode,
+          privateChat: false,
+          photoShared: false,
+          photoVisible: false,
+          ended: true,
+          endedAt: (req.ended_at ?? req.updated_at).toISOString(),
+          endedByMe: false,
+          canRematch: false,
+          unavailable: true,
+        } satisfies ChatThreadDTO;
+      }
+
       const [peer, meta, last, unread] = await Promise.all([
         loadPeer(peerId),
         threadMetaFor(req, userId),
@@ -478,7 +559,8 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       endedAt: req.status === "ended" ? (req.ended_at ?? req.updated_at).toISOString() : null,
       endedByMe: req.status === "ended" && req.ended_by === userId,
       canRematch: req.status === "ended" && (req.ended_by == null || req.ended_by === userId),
-      };
+      unavailable: false,
+      } satisfies ChatThreadDTO;
     })
   );
 

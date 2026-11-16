@@ -25,6 +25,30 @@ export async function blockedUserIds(viewerId: bigint): Promise<bigint[]> {
   return [...ids].map((s) => BigInt(s));
 }
 
+/**
+ * Split the viewer's block relationships by direction:
+ *  - `iBlocked`  — the viewer blocked them (hide everywhere, including the viewer's chat lists).
+ *  - `blockedMe` — they blocked the viewer (hidden from Browse/profile/requests, but the chat stays
+ *    visible to the blocked viewer as a read-only "Conversation unavailable" entry).
+ */
+export async function blockDirections(
+  viewerId: bigint
+): Promise<{ iBlocked: Set<string>; blockedMe: Set<string> }> {
+  const rows = await prisma.blocks
+    .findMany({
+      where: { OR: [{ blocker_id: viewerId }, { blocked_id: viewerId }] },
+      select: { blocker_id: true, blocked_id: true },
+    })
+    .catch(() => [] as { blocker_id: bigint; blocked_id: bigint }[]);
+  const iBlocked = new Set<string>();
+  const blockedMe = new Set<string>();
+  for (const r of rows) {
+    if (r.blocker_id === viewerId) iBlocked.add(r.blocked_id.toString());
+    else blockedMe.add(r.blocker_id.toString());
+  }
+  return { iBlocked, blockedMe };
+}
+
 /** True when either user has blocked the other. */
 export async function isBlockedBetween(a: bigint, b: bigint): Promise<boolean> {
   if (a === b) return false;

@@ -71,17 +71,26 @@ export function PastMatchRow({
           active ? "border-rose-200 bg-rose-50/60" : "border-ink-900/8 bg-white hover:border-ink-900/15"
         }`}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={avatarSrc}
-          alt=""
-          className="w-14 h-14 rounded-2xl object-cover shrink-0"
-          style={{ filter: "blur(5px) saturate(0.9)" }}
-        />
+        {thread.unavailable ? (
+          <span className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center bg-ink-900/8 text-ink-700/45">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="12" cy="8" r="3.4" />
+              <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+            </svg>
+          </span>
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={avatarSrc}
+            alt=""
+            className="w-14 h-14 rounded-2xl object-cover shrink-0"
+            style={{ filter: "blur(5px) saturate(0.9)" }}
+          />
+        )}
         <span className="min-w-0 flex-1">
           <span className="block font-bold text-ink-950 truncate">{thread.peerCode}</span>
           <span className="block text-[12.5px] leading-snug text-ink-700/65">
-            {who} 💔 · {daysAgo(thread.endedAt)}
+            {thread.unavailable ? "Conversation unavailable" : `${who} 💔 · ${daysAgo(thread.endedAt)}`}
           </span>
         </span>
         <span className="flex flex-col items-end gap-2 shrink-0 self-stretch justify-between">
@@ -103,7 +112,9 @@ export function PastMatchRow({
               <circle cx="12" cy="19" r="1.8" />
             </svg>
           </button>
-          <span className="rounded-full bg-ink-900/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-ink-700/65">Ended</span>
+          <span className="rounded-full bg-ink-900/[0.06] px-2.5 py-0.5 text-[11px] font-semibold text-ink-700/65">
+            {thread.unavailable ? "Unavailable" : "Ended"}
+          </span>
         </span>
       </div>
 

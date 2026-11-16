@@ -293,6 +293,29 @@ function MessageBubble({
       : "You"
     : null;
 
+  // Centred, non-bubble system line (photo shared / viewed). Perspective-aware: `mine` means this
+  // member performed the action (shared, or opened the viewer).
+  if (msg.type === "system") {
+    const text =
+      msg.systemEvent === "photo_viewed"
+        ? mine
+          ? `You viewed ${peerName}'s photos.`
+          : `${peerName} viewed your photos.`
+        : mine
+          ? "You shared photos"
+          : `${peerName} shared photos with you`;
+    return (
+      <div className="w-full flex justify-center my-1.5">
+        <span
+          className="text-center text-[12.5px] text-[#8A8A8A]"
+          style={{ fontFamily: "var(--font-poppins), var(--font-inter), system-ui, sans-serif" }}
+        >
+          {text}
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div
       className={`group flex ${mine ? "justify-end" : "justify-start"} animate-[chatIn_220ms_ease-out]`}
@@ -599,6 +622,7 @@ export function ChatApp({
   const [toast, setToast] = useState<string | null>(null);
   const [chatWarning, setChatWarning] = useState<string | null>(null);
   const [matchEnded, setMatchEnded] = useState(false);
+  const [unavailMenu, setUnavailMenu] = useState(false);
   const [endReason, setEndReason] = useState<string | null>(null);
   const [endedByMe, setEndedByMe] = useState(false);
   const [rematchBusy, setRematchBusy] = useState(false);
@@ -610,6 +634,7 @@ export function ChatApp({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const atBottomRef = useRef(true);
   const messagesRef = useRef<ChatMessageDTO[]>([]);
+  const threadsRef = useRef(initialThreads);
   const hasMoreOlderRef = useRef(false);
   const loadingOlderRef = useRef(false);
   const prependAdjustRef = useRef<{ prevHeight: number; prevTop: number } | null>(null);
@@ -755,6 +780,10 @@ export function ChatApp({
 
   // Keep a ref copy so scroll handlers read the latest messages without re-binding.
   useEffect(() => {
+    threadsRef.current = threads;
+  }, [threads]);
+
+  useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
 
@@ -818,6 +847,20 @@ export function ChatApp({
       if (!opts?.soft) setLoadingThread(true);
       // K08/C12: restore this conversation's unsent draft when switching to it.
       if (requestId !== activeIdRef.current) setText(readDrafts(userId)[requestId] ?? "");
+
+      // The peer blocked this viewer: open the locked "Conversation unavailable" panel without
+      // fetching anything (the message API 404s by design — no messages/meta are ever loaded).
+      if (threadsRef.current.find((t) => t.requestId === requestId)?.unavailable) {
+        setActiveId(requestId);
+        setMessages([]);
+        messagesRef.current = [];
+        setPeer(null);
+        setTab("chat");
+        setReplyTo(null);
+        setLoadingThread(false);
+        return;
+      }
+
       // Guidelines prompt: known on this device → instant; otherwise wait for the server's answer.
       setChatConsent(localStorage.getItem(`chat-consent-${requestId}`) === "1" ? true : null);
       setTab("chat");
@@ -971,11 +1014,12 @@ export function ChatApp({
         );
       });
 
-      if (msg.senderId !== userId) markRead(msg.requestId);
+      const isSystem = msg.type === "system";
+      if (msg.senderId !== userId && !isSystem) markRead(msg.requestId);
 
       if (atBottomRef.current || msg.senderId === userId) {
         scrollToBottom(true);
-      } else if (msg.senderId !== userId) {
+      } else if (msg.senderId !== userId && !isSystem) {
         setUnseenCount((n) => n + 1);
       }
     };
@@ -1610,6 +1654,7 @@ export function ChatApp({
   }, []);
 
   const activeThread = threads.find((t) => t.requestId === activeId) || null;
+  const activeUnavailable = Boolean(activeThread?.unavailable);
   // When the open match ends (by either member) its card moves to Past matches — follow it there.
   const activeEnded = Boolean(activeThread?.ended);
   useEffect(() => {
@@ -1973,6 +2018,99 @@ export function ChatApp({
                       ? "Open a request to read the full introduction message."
                       : "Open one of your matches to start chatting."}
                   </p>
+                </div>
+              </div>
+            ) : activeUnavailable && activeThread ? (
+              /* The peer blocked this viewer — a locked, read-only "Conversation unavailable" screen:
+                 member ID header + ⋮ (Report / Block), a generic avatar, and no messages/composer. */
+              <div className="flex-1 flex flex-col">
+                <div className="relative sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6">
+                  <div className="px-3 sm:px-4 h-14 flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
+                      onClick={() => {
+                        setActiveId(null);
+                        window.history.replaceState(null, "", "/chats");
+                      }}
+                      aria-label="Back"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="m15 18-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink-900/8 text-ink-700/60">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <circle cx="12" cy="8" r="3.4" />
+                        <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+                      </svg>
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-ink-950 truncate">{activeThread.peerCode}</p>
+                      <p className="text-[12px] text-ink-700/50">Unavailable</p>
+                    </div>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setUnavailMenu((v) => !v)}
+                        aria-label="More"
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                          <circle cx="12" cy="5" r="1.9" />
+                          <circle cx="12" cy="12" r="1.9" />
+                          <circle cx="12" cy="19" r="1.9" />
+                        </svg>
+                      </button>
+                      {unavailMenu ? (
+                        <>
+                          <button type="button" className="fixed inset-0 z-10 cursor-default" aria-hidden onClick={() => setUnavailMenu(false)} />
+                          <div className="absolute right-0 top-11 z-20 w-52 rounded-2xl border border-ink-900/10 bg-white p-1.5 shadow-xl">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUnavailMenu(false);
+                                setReportTarget({ userId: activeThread.peerUserId, code: activeThread.peerCode, requestId: activeThread.requestId });
+                              }}
+                              className="w-full text-left px-3 py-2.5 rounded-xl text-[14px] font-medium text-ink-950 hover:bg-ink-900/5"
+                            >
+                              Report member
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUnavailMenu(false);
+                                void blockMember("User blocked", { userId: activeThread.peerUserId, requestId: activeThread.requestId });
+                              }}
+                              className="w-full text-left px-3 py-2.5 rounded-xl text-[14px] font-medium text-rose-600 hover:bg-rose-50"
+                            >
+                              Block member
+                            </button>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center px-6 py-10 text-center">
+                  <div className="max-w-xs">
+                    <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-ink-900/8 text-ink-700/50">
+                      <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+                        <circle cx="12" cy="8" r="3.4" />
+                        <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
+                      </svg>
+                    </span>
+                    <p className="mt-4 text-[17px] font-bold text-ink-950">{activeThread.peerCode} is unavailable</p>
+                    {activeThread.lastAt ? (
+                      <p className="mt-1 text-[12px] text-ink-700/45">
+                        Last message {new Date(activeThread.lastAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 text-[14px] leading-relaxed text-ink-700/65">
+                      This conversation is no longer available. {activeThread.peerCode} may have ended the match or blocked you.
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (

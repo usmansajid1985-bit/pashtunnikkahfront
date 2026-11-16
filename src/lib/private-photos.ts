@@ -1,9 +1,45 @@
 import { prisma } from "@/lib/prisma";
 import { inBackground } from "@/lib/background";
 import { ensurePrivatePhotosSchema } from "@/lib/ensure-private-photos-schema";
-import { assertAcceptedParticipant, chatAccessError, peerUserId } from "@/lib/chat";
+import { assertAcceptedParticipant, chatAccessError, insertSystemMessage, peerUserId, type SystemEvent } from "@/lib/chat";
+import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 import { profileCodeOf } from "@/lib/notifications";
 import { sendPushNotification } from "@/lib/push/server";
+
+/**
+ * Post a centred in-chat system message for a photo share/view and push it live to both members
+ * (and any active wali). The sender_id is the member who acted, so each client can render
+ * perspective-aware text ("You shared photos" vs "PNM581 shared photos with you").
+ */
+async function postPhotoSystemMessage(opts: {
+  requestId: bigint;
+  actorId: bigint;
+  otherId: bigint;
+  event: SystemEvent;
+}) {
+  try {
+    const [actorCode, otherCode] = await Promise.all([
+      profileCodeOf(opts.actorId),
+      profileCodeOf(opts.otherId),
+    ]);
+    const body =
+      opts.event === "photo_shared"
+        ? `${actorCode ?? "A member"} shared photos`
+        : `${actorCode ?? "A member"} viewed ${otherCode ?? "the"}'s photos`;
+    const dto = await insertSystemMessage({
+      requestId: opts.requestId,
+      senderId: opts.actorId,
+      receiverId: opts.otherId,
+      event: opts.event,
+      body,
+    });
+    const raw = opts.requestId.toString();
+    broadcastChat("message:new", [`thread:${raw}`], dto);
+    await broadcastToWalis("message:new", opts.requestId, dto);
+  } catch (err) {
+    console.error("[private-photos] system message failed", err);
+  }
+}
 
 /** Spec §9: one continuous 60-second session per share, server-authoritative. */
 export const VIEW_DURATION_SEC = 60;
@@ -170,6 +206,14 @@ export async function createShare(opts: {
   });
   await log(created.id, "shared", opts.senderId);
 
+  // Centred in-chat system message for both members: "{sender} shared photos" (spec: photo events).
+  await postPhotoSystemMessage({
+    requestId: opts.requestId,
+    actorId: opts.senderId,
+    otherId: recipientId,
+    event: "photo_shared",
+  });
+
   const senderCode = await profileCodeOf(opts.senderId);
   inBackground("wali activity", () => import("@/lib/wali-activity")
     .then(({ notifyWalisOfActivity }) =>
@@ -224,6 +268,13 @@ export async function startViewing(shareId: bigint, recipientId: bigint) {
     throw new Error("This share is no longer available.");
   }
   await log(shareId, "start_viewing", recipientId);
+  // First open of the viewer → one centred "viewed" event in both chats (not on re-open/expiry).
+  await postPhotoSystemMessage({
+    requestId: share.match_request_id,
+    actorId: recipientId,
+    otherId: share.sender_id,
+    event: "photo_viewed",
+  });
   return (await loadShareById(shareId))!;
 }
 
