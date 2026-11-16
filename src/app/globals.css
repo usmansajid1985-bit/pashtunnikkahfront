@@ -69,6 +69,20 @@ body {
   padding-top: env(safe-area-inset-top);
 }
 
+/* T3 — Poppins everywhere. Native form controls and dialogs render in the OS system font unless told
+   to inherit, which is what made buttons, inputs, selects, textareas and date/select popups look off
+   next to the rest of the UI. Force them (and option lists) to inherit the app font. `.font-serif`
+   below is the one deliberate opt-out (the Fraunces display face). */
+button,
+input,
+select,
+optgroup,
+textarea,
+dialog,
+::placeholder {
+  font-family: inherit;
+}
+
 .font-serif {
   font-family: var(--font-serif);
 }
