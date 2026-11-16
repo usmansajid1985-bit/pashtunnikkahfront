@@ -5,9 +5,10 @@ import { NAV_ITEMS, type NavKey } from "@/components/browse/nav-items";
 import { NavCountBadge } from "@/components/browse/nav-notifications";
 
 const BOTTOM_TABS: { key: NavKey; label: string }[] = [
+  // Order per the approved design: Browse sits in the middle.
   { key: "overview", label: "Overview" },
-  { key: "browse", label: "Browse" },
   { key: "requests", label: "Requests" },
+  { key: "browse", label: "Browse" },
   { key: "messages", label: "Chats" },
   { key: "profile", label: "Profile" },
   // Settings opens from the gear in My Profile's header on phones (desktop keeps it in the sidebar).
