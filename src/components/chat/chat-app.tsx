@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ActivityDot } from "@/components/activity-dot";
+import { SuccessToast } from "@/components/success-toast";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import {
   FormEvent,
@@ -2366,11 +2367,7 @@ export function ChatApp({
                         </div>
                       ) : null}
 
-                      {toast ? (
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-4 py-2 rounded-full bg-ink-950 text-white text-[13px] font-medium shadow-[0_8px_24px_-8px_rgba(15,13,14,0.5)] animate-[chatIn_160ms_ease-out]">
-                          {toast}
-                        </div>
-                      ) : null}
+                      <SuccessToast message={toast} onClose={() => setToast(null)} />
                     </div>
 
                     {/* Composer / Photo share */}

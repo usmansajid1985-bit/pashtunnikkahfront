@@ -11,6 +11,8 @@ import { ProfileViewsCard } from "@/components/dashboard/profile-views-card";
 import { GreetingMemo } from "@/components/dashboard/greeting-memo";
 import { withOwnerPhotoUrls } from "@/lib/photos";
 import { ReactivatedNotice } from "@/components/settings/reactivated-notice";
+import { CompletenessBanner } from "@/components/profile/completeness-banner";
+import { profileCompletion } from "@/lib/profile-completeness";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +127,14 @@ export default async function DashboardPage() {
             <p className="mt-1.5 text-ink-700/65">Salamuna! May your day be filled with barakah.</p>
           </div>
         </header>
+
+        <div className="mt-6">
+          <CompletenessBanner
+            percent={profileCompletion(profile).percent}
+            missing={profileCompletion(profile).missing}
+            completeHref={profileCompletion(profile).completeHref}
+          />
+        </div>
 
         {/* Quick overview: conversations, waiting requests, browse */}
         <div className="mt-7 grid gap-4 md:grid-cols-3">

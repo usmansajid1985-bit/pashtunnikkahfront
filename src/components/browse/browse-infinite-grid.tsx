@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { ProfileCard, type ProfileCardData } from "@/components/browse/profile-card";
 import { emitSavedChange } from "@/components/browse/saved-count";
+import { SuccessToast } from "@/components/success-toast";
 import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
 import { useChatSocket } from "@/hooks/use-chat-socket";
@@ -363,11 +364,7 @@ export function BrowseInfiniteGrid({
         ))}
       </div>
 
-      {toast ? (
-        <div className="fixed bottom-[calc(1.5rem+var(--pn-bottom-nav-h))] left-1/2 -translate-x-1/2 z-40 px-4 py-2.5 rounded-full bg-ink-950 text-white text-sm font-medium shadow-lg">
-          {toast}
-        </div>
-      ) : null}
+      <SuccessToast message={toast} onClose={() => setToast(null)} />
 
       <div ref={sentinelRef} className="h-10 w-full" aria-hidden />
 

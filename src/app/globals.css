@@ -166,6 +166,18 @@ body {
   }
 }
 
+/* Bottom-sheet: slide up from the bottom edge (filters, etc.). */
+@keyframes pnSheetUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes chatIn {
   from {
     opacity: 0;

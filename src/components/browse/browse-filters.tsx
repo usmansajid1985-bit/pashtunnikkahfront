@@ -505,9 +505,9 @@ export function BrowseFiltersBar({
       </div>
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <button type="button" className="absolute inset-0 bg-ink-950/30" aria-label="Close filters" onClick={closePanel} />
-          <aside className="relative w-full max-w-md h-full bg-white shadow-xl flex flex-col animate-in">
+        <div className="fixed inset-0 z-50 flex items-end justify-center sm:p-4">
+          <button type="button" className="absolute inset-0 bg-ink-950/40 backdrop-blur-sm" aria-label="Close filters" onClick={closePanel} />
+          <aside className="relative w-full sm:max-w-lg max-h-[90vh] sm:max-h-[86vh] overflow-hidden bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-[pnSheetUp_240ms_ease-out]">
             {locationOpen ? (
               <LocationFilter
                 active={draft.near}
@@ -618,7 +618,6 @@ export function BrowseFiltersBar({
                 <div className="px-5 py-4 border-b border-ink-900/8 flex items-center justify-between">
                   <div>
                     <h2 className="font-bold text-ink-950 text-xl">Filters</h2>
-                    <p className="text-xs text-ink-700/60 mt-0.5">Refine your search and find a better match</p>
                   </div>
                   <button
                     type="button"
@@ -634,9 +633,7 @@ export function BrowseFiltersBar({
                   <section className="space-y-3">
                     <h3 className="text-base font-bold text-ink-950">Basic filters</h3>
                     <div>
-                      <span className="text-xs font-semibold text-ink-900">
-                        Age ({draft.ageMin} – {draft.ageMax})
-                      </span>
+                      <span className="text-xs font-semibold text-ink-900">Age</span>
                       <AgeRange
                         min={draft.ageMin}
                         max={draft.ageMax}
@@ -690,24 +687,14 @@ export function BrowseFiltersBar({
                     </Field>
                   </section>
 
-                  <div className="rounded-2xl border border-amber-200/60 bg-gradient-to-b from-amber-50/70 to-rose-50/40 p-4 space-y-5">
+                  <div className="border-t border-ink-900/10 pt-6 space-y-5">
                     <div>
-                      <h3 className="flex items-center gap-2 text-base font-bold text-[#e12d72]">
+                      <h3 className="flex items-center gap-2 text-base font-bold text-ink-950">
                         Advanced filters
-                        <span className="rounded-full bg-gradient-to-r from-[#c2185b] via-[#ec407a] to-[#ffb74d] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white shadow-sm">
+                        <span className="rounded-full bg-gradient-to-r from-[#f9cfe0] to-[#fbe3c4] px-2.5 py-0.5 text-[11px] font-semibold text-ink-950 shadow-sm">
                           Gold
                         </span>
                       </h3>
-                      {locked ? (
-                        <button
-                          type="button"
-                          onClick={() => openGoldUpsell("gold_filter")}
-                          className="mt-2.5 block w-full text-left rounded-xl border border-amber-200 bg-white/70 px-3.5 py-2.5 text-xs text-amber-900 hover:bg-white"
-                        >
-                          <span className="font-bold">Upgrade to Gold</span> to search by distance, tribe, faith,
-                          education and more. Age, country and marital status are always available.
-                        </button>
-                      ) : null}
                     </div>
 
                     <section className="space-y-3">

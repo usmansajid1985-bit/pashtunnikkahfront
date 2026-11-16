@@ -18,7 +18,9 @@ import { ensureP1Schema } from "@/lib/ensure-p1-schema";
 import { getNavCounts } from "@/lib/dashboard";
 import { firstExpansionStage } from "@/lib/browse-expansion";
 import { BrowseAppNav } from "@/components/browse/app-nav";
-import { CompletenessBanner, PremiumBanner } from "@/components/browse/banners";
+import { PremiumBanner } from "@/components/browse/banners";
+import { CompletenessBanner } from "@/components/profile/completeness-banner";
+import { profileCompletion } from "@/lib/profile-completeness";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
 import { BrowseInfiniteGrid } from "@/components/browse/browse-infinite-grid";
 import { browseTopic } from "@/lib/realtime-topics";
@@ -36,35 +38,6 @@ import {
 } from "@/lib/browse-rank";
 
 export const dynamic = "force-dynamic";
-
-function profileCompleteness(p: {
-  about_me: string | null;
-  height: string | null;
-  city: string | null;
-  occupation: string | null;
-  education: string | null;
-  tribe: string | null;
-  religious_practice: string | null;
-  appearance: string | null;
-  ancestral_village: string | null;
-  phone: string | null;
-} | null): number {
-  if (!p) return 11;
-  const checks = [
-    p.about_me,
-    p.height,
-    p.city,
-    p.occupation,
-    p.education,
-    p.tribe,
-    p.religious_practice,
-    p.appearance,
-    p.ancestral_village,
-    p.phone,
-  ];
-  const filled = checks.filter((x) => x && String(x).trim()).length;
-  return Math.max(11, Math.round((filled / checks.length) * 100));
-}
 
 export default async function BrowsePage({
   searchParams,
@@ -109,6 +82,7 @@ export default async function BrowsePage({
         location_country_only: true,
         location_country: true,
         location_country_code: true,
+        interests: true,
       },
     }),
     prisma.users.findUnique({
@@ -223,7 +197,7 @@ export default async function BrowsePage({
     initialItems.map((p) => BigInt(p.userId))
   );
 
-  const completeness = profileCompleteness(me);
+  const pc = profileCompletion(me);
   const initialHasMore = isBestMatch
     ? BROWSE_PAGE_SIZE < Math.min(total, BEST_MATCH_POOL)
     : BROWSE_PAGE_SIZE < total;
@@ -235,7 +209,7 @@ export default async function BrowsePage({
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]">
         <div className="flex flex-col gap-4 empty:hidden">
           <PremiumBanner isGold={isGold} />
-          <CompletenessBanner percent={completeness} />
+          <CompletenessBanner percent={pc.percent} missing={pc.missing} completeHref={pc.completeHref} />
           {!meUser?.email_verified ? (
             <EmailVerificationBanner emailVerified={false} compact />
           ) : null}

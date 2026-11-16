@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { ReportDialog, type ReportTarget } from "@/components/chat/report-dialog";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
+import { SuccessToast } from "@/components/success-toast";
 
 const glass =
   "pointer-events-auto inline-flex items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-md border border-white/15 hover:bg-black/55 transition";
@@ -31,13 +32,7 @@ export function HeroMoreMenu({ userId, code, afterBlockHref = "/browse" }: { use
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2400);
-    return () => clearTimeout(t);
-  }, [toast]);
-
-  async function block(doneMessage = "Member blocked") {
+  async function block(doneMessage = "User blocked") {
     setBusy(true);
     const res = await fetch("/api/blocks", {
       method: "POST",
@@ -142,14 +137,7 @@ export function HeroMoreMenu({ userId, code, afterBlockHref = "/browse" }: { use
         }}
       />
 
-      {toast && typeof document !== "undefined"
-        ? createPortal(
-            <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[90] px-4 py-2.5 rounded-full bg-ink-950 text-white text-sm font-medium shadow-lg">
-              {toast}
-            </div>,
-            document.body
-          )
-        : null}
+      <SuccessToast message={toast} onClose={() => setToast(null)} />
     </>
   );
 }
