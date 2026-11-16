@@ -10,7 +10,7 @@ import { SupportForm } from "@/components/support/support-form";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Help & Support | Pashtun Nikah",
+  title: "Help & Support",
 };
 
 function Intro() {

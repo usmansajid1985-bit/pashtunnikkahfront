@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Community Guidelines & Safety — Pashtun Nikah",
+  title: "Community Guidelines & Safety",
   description:
     "How members of Pashtun Nikah are expected to behave: respect, serious marriage intentions, halal conversations, privacy and safety.",
 };

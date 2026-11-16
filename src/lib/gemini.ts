@@ -1,6 +1,6 @@
-// Primary is Gemini 3.5 Flash; the rest are fallbacks the loop drops to if a model is
+// Primary is Gemini 3.1 Flash Lite; the rest are fallbacks the loop drops to if a model is
 // unavailable on the key or times out, so output never breaks on a model change.
-const MODELS = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
+const MODELS = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest"];
 
 type GeminiPart = { text?: string };
 type GeminiResponse = {

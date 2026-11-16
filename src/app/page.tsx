@@ -11,7 +11,9 @@ import { poppins } from "@/components/home/landing-font";
 import { getSession } from "@/lib/auth";
 
 export const metadata = {
-  title: "Pashtun Nikah — Where Pashtuns marry",
+  // `absolute` so the root "%s | Pashtun Nikah" template isn't appended — the title already
+  // carries the brand name, and appending it again repeats "Pashtun Nikah".
+  title: { absolute: "Pashtun Nikah — Where Pashtuns marry" },
 };
 
 export default async function HomePage() {

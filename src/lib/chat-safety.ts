@@ -108,6 +108,38 @@ function joinSpacedLetters(s: string) {
   return s.replace(/\b(?:[a-z0-9*@$]\s){3,}[a-z0-9*@$]\b/gi, (m) => m.replace(/\s+/g, ""));
 }
 
+/**
+ * SEC-9: map every Unicode decimal digit — Arabic-Indic (٠٧٧), Persian/Urdu (۰۷۷), Devanagari,
+ * Bengali, full-width (０７７), etc. — to ASCII 0–9 before any digit/word rule runs, so writing a
+ * phone number in a non-Latin digit script can't slip it past the contact filter. NFKC alone does
+ * not fold Arabic-Indic/Persian digits, so this maps by each script's zero code point.
+ */
+const DIGIT_ZERO_BASES = [
+  0x0660, // Arabic-Indic
+  0x06f0, // Extended Arabic-Indic (Persian / Urdu)
+  0x0966, // Devanagari
+  0x09e6, // Bengali
+  0x0a66, // Gurmukhi
+  0x0ae6, // Gujarati
+  0x0be6, // Tamil
+  0x0c66, // Telugu
+  0x0ce6, // Kannada
+  0x0d66, // Malayalam
+  0x0e50, // Thai
+  0x0ed0, // Lao
+  0xff10, // Fullwidth
+];
+function foldDigits(s: string) {
+  return s.replace(/\p{Nd}/gu, (ch) => {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp >= 0x30 && cp <= 0x39) return ch;
+    for (const base of DIGIT_ZERO_BASES) {
+      if (cp >= base && cp <= base + 9) return String(cp - base);
+    }
+    return ch;
+  });
+}
+
 /** "1nstagr4m" → "instagram", "f*cking" → "fucking". Only used for word matching, never digits. */
 function unLeet(s: string) {
   return s.replace(/[a-z0-9@$*!|]+/gi, (word) => {
@@ -124,7 +156,7 @@ function unLeet(s: string) {
 }
 
 export function squashContactText(raw: string) {
-  let s = stripInvisible(raw.toLowerCase());
+  let s = foldDigits(stripInvisible(raw.normalize("NFKC").toLowerCase()));
   // Drop brackets/parens used to wrap obfuscations ("[at]", "(dot)") so the word rules below still
   // fire — otherwise "qa [at] example [dot] com" slips past the email check (PN-AUD-022).
   s = s.replace(/[[\]{}()<>]/g, " ");
@@ -144,7 +176,7 @@ function digitRun(s: string) {
 
 /** Lower-cased text with hiding tricks undone, for word rules (not for digit counting). */
 function wordForm(raw: string) {
-  return unLeet(joinSpacedLetters(stripInvisible(raw.toLowerCase()))).replace(/\s+/g, " ");
+  return unLeet(joinSpacedLetters(foldDigits(stripInvisible(raw.normalize("NFKC").toLowerCase())))).replace(/\s+/g, " ");
 }
 
 /** True when the text has something a person can see — not just spaces or zero-width marks. */

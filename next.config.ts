@@ -14,6 +14,20 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        // SEC-6: baseline security headers on every response. Clickjacking defence (X-Frame-Options
+        // + frame-ancestors), MIME-sniffing off, a privacy-safe referrer policy and a locked-down
+        // Permissions-Policy. A full Content-Security-Policy still needs tuning (Next inline scripts,
+        // Stripe, Firebase, Supabase, Google Fonts) — rolled out Report-Only first; see the live checklist.
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+        ],
+      },
+      {
         source: "/uploads/hero/:path*",
         headers: [
           {

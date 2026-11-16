@@ -10,7 +10,7 @@ import { poppins } from "@/components/home/landing-font";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Gold | Pashtun Nikah",
+  title: "Gold",
   description: "How Pashtun Nikah Gold works: more Match Tokens, advanced filters, Match Insights and more.",
 };
 

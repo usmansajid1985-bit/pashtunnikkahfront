@@ -16,7 +16,7 @@ type Params = { params: Promise<{ slug: string }>; searchParams: Promise<{ previ
 export async function generateMetadata({ params, searchParams }: Params): Promise<Metadata> {
   const [{ slug }, { preview }] = await Promise.all([params, searchParams]);
   const page = await getAnnouncementPage(decodeURIComponent(slug), null, preview);
-  return { title: page ? `${page.pageTitle} — Pashtun Nikah` : "Announcement — Pashtun Nikah" };
+  return { title: page ? page.pageTitle : "Announcement" };
 }
 
 const LIST_HREF = "/notifications?tab=announcements";
