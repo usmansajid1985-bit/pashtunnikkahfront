@@ -483,7 +483,7 @@ export function ProfileEditForm({
 
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-4 lg:col-span-2">
           <div>
-            <h2 className="font-bold text-ink-950">Marriage Plans <span className="font-normal text-ink-700/55">(optional)</span></h2>
+            <h2 className="font-bold text-ink-950">Marriage Plans</h2>
             <p className="text-xs text-ink-700/60 mt-0.5 leading-snug">
               Your marriage timeframe and living arrangements. These are shared on your profile and help
               Match Insights, and are separate from your Browse filters.
@@ -642,7 +642,7 @@ export function ProfileEditForm({
             ))}
           </select>
           <label htmlFor="edit-islamic-practice" className="block text-xs font-semibold">
-            Describe your Islamic practice <span className="font-normal text-ink-700/55">(optional)</span>
+            Describe your Islamic practice
           </label>
           <textarea
             id="edit-islamic-practice"
@@ -659,7 +659,7 @@ export function ProfileEditForm({
         <div data-tab="personal" className={paneClass("personal")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">
-            Appearance <span className="font-normal text-ink-700/55">(optional)</span>
+            Appearance
           </h2>
           {isSister ? (
             (() => {
@@ -757,7 +757,7 @@ export function ProfileEditForm({
             <>
               <PashtoLevelQuestion compact value={form.pashtoLevel} onChange={(v) => patch("pashtoLevel", v)} />
               <label htmlFor="edit-dialect" className="block pt-2 text-xs font-semibold">
-                Which Pashto dialect do you speak? <span className="font-normal text-ink-700/55">(optional)</span>
+                Which Pashto dialect do you speak?
               </label>
               <select
                 id="edit-dialect"
@@ -779,7 +779,7 @@ export function ProfileEditForm({
         <div data-tab="roots" className={paneClass("roots")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">
-            About children <span className="font-normal text-ink-700/55">(optional)</span>
+            About children
           </h2>
           <p className="text-xs font-semibold">Do you have children?</p>
           <ChoiceGrid count={2}>
@@ -878,7 +878,7 @@ export function ProfileEditForm({
         <div data-tab="faith" className={paneClass("faith")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3">
           <h2 className="font-bold text-ink-950">
-            Health &amp; lifestyle <span className="font-normal text-ink-700/55">(optional)</span>
+            Health &amp; lifestyle
           </h2>
           <p className="text-xs font-semibold">Smoking</p>
           <ChoiceGrid count={3}>
@@ -916,7 +916,7 @@ export function ProfileEditForm({
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="font-bold text-ink-950">
-                Interests <span className="text-xs font-normal text-ink-700/55">(optional)</span>
+                Interests
               </h2>
               <p className="text-xs text-ink-700/60">Pick up to {MAX_INTERESTS} hobbies, activities and topics you enjoy.</p>
             </div>
@@ -937,7 +937,7 @@ export function ProfileEditForm({
         <div data-tab="about" className={paneClass("about")}>
         <section className="bg-white rounded-2xl border border-ink-900/8 p-5 space-y-3 lg:col-span-2">
           <h2 className="font-bold text-ink-950">
-            Personality traits <span className="text-xs font-normal text-ink-700/55">(optional)</span>
+            Personality traits
           </h2>
           <p className="text-xs font-semibold text-ink-900">Pashtun values</p>
           <ChipPicker choices={PASHTUN_TRAITS} selected={form.personality} onChange={(next) => patch("personality", next)} />

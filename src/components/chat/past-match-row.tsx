@@ -72,7 +72,7 @@ export function PastMatchRow({
         }`}
       >
         {thread.unavailable ? (
-          <span className="w-14 h-14 rounded-2xl shrink-0 flex items-center justify-center bg-ink-900/8 text-ink-700/45">
+          <span className="w-14 h-14 rounded-full shrink-0 flex items-center justify-center bg-ink-900/8 text-ink-700/45">
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
               <circle cx="12" cy="8" r="3.4" />
               <path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6" />
@@ -83,7 +83,7 @@ export function PastMatchRow({
           <img
             src={avatarSrc}
             alt=""
-            className="w-14 h-14 rounded-2xl object-cover shrink-0"
+            className="w-14 h-14 rounded-full object-cover shrink-0"
             style={{ filter: "blur(5px) saturate(0.9)" }}
           />
         )}
