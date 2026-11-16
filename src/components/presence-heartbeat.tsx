@@ -37,6 +37,14 @@ export function PresenceHeartbeat() {
       if (document.visibilityState === "visible") {
         lastInteraction = Date.now();
         void beat(true);
+      } else {
+        // Backgrounded / locked: tell the server we've gone away so the "Active now" dot drops in
+        // seconds instead of lingering for the full online window. Beacon survives the page freezing.
+        try {
+          navigator.sendBeacon?.("/api/presence/heartbeat?away=1");
+        } catch {
+          /* ignore */
+        }
       }
     };
     const onActivity = () => {

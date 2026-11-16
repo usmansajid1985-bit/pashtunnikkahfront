@@ -12,8 +12,12 @@ export type NavCounts = {
 const EVENT = "pn:nav-counts";
 let polling = false;
 let tickNow: (() => Promise<void>) | null = null;
-/** Last counts seen by the shared poller — the base for optimistic nudges. */
+/** Last counts seen by the shared poller — the base for optimistic nudges, and the value every nav
+ * badge island re-mounts to so it never flashes back to zero on a client-side page navigation. */
 let lastCounts: NavCounts = { bellUnread: 0, incomingRequests: 0, unreadMessages: 0 };
+/** True once a real count (server poll or a page's initial props) has been applied, so later mounts
+ * seed from `lastCounts` rather than briefly showing a default/zero while the next poll lands. */
+let seeded = false;
 
 /** Re-fetch badge counts immediately — called by LiveUpdates on realtime events (Q02/N07). */
 export function refreshNavCounts() {
@@ -56,6 +60,7 @@ function startPolling() {
       if (!res.ok) return;
       const data = (await res.json()) as NavCounts;
       lastCounts = data;
+      seeded = true;
       window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: data }));
     } catch {
       /* offline — keep last known counts */
@@ -73,17 +78,28 @@ function startPolling() {
 }
 
 function useNavCounts(initial: Partial<NavCounts>): NavCounts {
-  const [counts, setCounts] = useState<NavCounts>({
-    bellUnread: initial.bellUnread ?? 0,
-    incomingRequests: initial.incomingRequests ?? 0,
-    unreadMessages: initial.unreadMessages ?? 0,
-  });
+  // On a client-side navigation the module already holds the last confirmed counts — start from
+  // those so the badge keeps its number instead of flashing to zero. Only the very first mount of
+  // the session (before any poll or initial has been applied) falls back to this page's props.
+  const [counts, setCounts] = useState<NavCounts>(() =>
+    seeded
+      ? { ...lastCounts }
+      : {
+          bellUnread: initial.bellUnread ?? 0,
+          incomingRequests: initial.incomingRequests ?? 0,
+          unreadMessages: initial.unreadMessages ?? 0,
+        }
+  );
   useEffect(() => {
     // Seed the shared base from this island's server-provided initial before the first poll lands,
     // so an optimistic bump (e.g. opening a notification) starts from the right number.
-    if (initial.bellUnread != null && lastCounts.bellUnread === 0) lastCounts.bellUnread = initial.bellUnread;
-    if (initial.incomingRequests != null && lastCounts.incomingRequests === 0) lastCounts.incomingRequests = initial.incomingRequests;
-    if (initial.unreadMessages != null && lastCounts.unreadMessages === 0) lastCounts.unreadMessages = initial.unreadMessages;
+    if (!seeded) {
+      if (initial.bellUnread != null) lastCounts.bellUnread = initial.bellUnread;
+      if (initial.incomingRequests != null) lastCounts.incomingRequests = initial.incomingRequests;
+      if (initial.unreadMessages != null) lastCounts.unreadMessages = initial.unreadMessages;
+      seeded = true;
+      setCounts({ ...lastCounts });
+    }
     startPolling();
     const onEvt = (e: Event) => {
       lastCounts = (e as CustomEvent<NavCounts>).detail;
@@ -120,7 +136,7 @@ export function NavBell({
         <path d="M13.7 21a2 2 0 0 1-3.4 0" />
       </svg>
       {bellUnread > 0 ? (
-        <span className="absolute -right-0.5 -top-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10.5px] font-bold leading-none flex items-center justify-center ring-2 ring-white tabular-nums">
+        <span className="absolute -right-0.5 -top-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#e12d72] text-white text-[10.5px] font-bold leading-none flex items-center justify-center ring-2 ring-white tabular-nums">
           {bellUnread > 99 ? "99+" : bellUnread}
         </span>
       ) : null}
@@ -147,7 +163,7 @@ export function NavCountBadge({
   if (n <= 0) return null;
   return (
     <span
-      className={`min-w-5 h-5 px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold flex items-center justify-center ${className}`}
+      className={`min-w-5 h-5 px-1.5 rounded-full bg-[#e12d72] text-white text-[11px] font-bold flex items-center justify-center ${className}`}
     >
       {n > 99 ? "99+" : n}
     </span>
