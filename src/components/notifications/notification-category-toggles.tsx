@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IN_APP_BANNERS_EVENT } from "@/components/notifications/live-updates";
+import { SUCCESS_TOAST_OFF_KEY } from "@/components/success-toast";
 
 type Key =
   | "notify_requests"
@@ -129,6 +130,49 @@ export function NotificationCategoryToggles() {
         <div className="mt-1 divide-y divide-ink-900/6">{PUSH_ROWS.map(row)}</div>
       </div>
       <div className={`${card} py-1`}>{row(BANNER_ROW)}</div>
+      <div className={`${card} py-1`}>
+        <SuccessToastToggle />
+      </div>
     </>
+  );
+}
+
+/** Per-device toggle for the white success toasts ("Match request sent", "Profile updated"…). */
+function SuccessToastToggle() {
+  const [on, setOn] = useState(true);
+  useEffect(() => {
+    try {
+      setOn(localStorage.getItem(SUCCESS_TOAST_OFF_KEY) !== "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  function toggle() {
+    const next = !on;
+    setOn(next);
+    try {
+      if (next) localStorage.removeItem(SUCCESS_TOAST_OFF_KEY);
+      else localStorage.setItem(SUCCESS_TOAST_OFF_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+  }
+  return (
+    <div className="flex items-center justify-between gap-4 py-3.5">
+      <div className="min-w-0">
+        <p className="text-[15px] font-semibold text-ink-950">Confirmation toasts</p>
+        <p className="text-[13px] text-ink-700/55">The small pop-ups like &ldquo;Match request sent&rdquo; (this device).</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={on}
+        aria-label="Confirmation toasts"
+        onClick={toggle}
+        className={`relative h-7 w-12 shrink-0 rounded-full transition ${on ? "bg-[#e12d72]" : "bg-ink-900/15"}`}
+      >
+        <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition ${on ? "left-[22px]" : "left-0.5"}`} />
+      </button>
+    </div>
   );
 }

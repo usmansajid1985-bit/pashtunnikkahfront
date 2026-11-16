@@ -1,7 +1,18 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+
+/** Per-device opt-out, toggled in Settings → Notifications. */
+export const SUCCESS_TOAST_OFF_KEY = "pn_success_toasts_off";
+
+function successToastsDisabled() {
+  try {
+    return localStorage.getItem(SUCCESS_TOAST_OFF_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 /**
  * The one global success toast: a compact white rounded pill with a subtle grey border and shadow,
@@ -19,13 +30,18 @@ export function SuccessToast({
   onClose: () => void;
   duration?: number;
 }) {
+  const [disabled, setDisabled] = useState(false);
   useEffect(() => {
-    if (!message) return;
+    setDisabled(successToastsDisabled());
+  }, [message]);
+
+  useEffect(() => {
+    if (!message || disabled) return;
     const t = setTimeout(onClose, duration);
     return () => clearTimeout(t);
-  }, [message, duration, onClose]);
+  }, [message, duration, onClose, disabled]);
 
-  if (!message || typeof document === "undefined") return null;
+  if (!message || disabled || typeof document === "undefined") return null;
 
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 top-4 z-[100] flex justify-center px-4">

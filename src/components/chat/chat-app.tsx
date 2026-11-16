@@ -2008,18 +2008,29 @@ export function ChatApp({
             } flex-col max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:top-[var(--chat-vtop,0px)] max-lg:h-[var(--chat-vh,100dvh)] lg:h-full lg:min-h-0 bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
             {!activeId ? (
-              <div className="flex-1 flex items-center justify-center text-center px-6">
-                <div>
-                  <p className="font-bold text-lg text-ink-950">
-                    {inboxTab === "requests" ? "Select a request" : "Select a conversation"}
-                  </p>
-                  <p className="mt-1 text-sm text-ink-700/60">
-                    {inboxTab === "requests"
-                      ? "Open a request to read the full introduction message."
-                      : "Open one of your matches to start chatting."}
-                  </p>
-                </div>
-              </div>
+              (() => {
+                // Spec: distinct empty-list vs nothing-selected copy for chats and requests.
+                const chatsEmpty = activeThreads.length === 0 && pastThreads.length === 0;
+                const isRequests = inboxTab === "requests";
+                const title = isRequests
+                  ? "Select a request"
+                  : chatsEmpty
+                    ? "No chats to display"
+                    : "Select a chat";
+                const body = isRequests
+                  ? "Choose a request from the list to view its details."
+                  : chatsEmpty
+                    ? "Your chats will appear here once you've matched with someone."
+                    : "Choose a match from the list to start chatting.";
+                return (
+                  <div className="flex-1 flex items-center justify-center text-center px-6">
+                    <div>
+                      <p className="font-bold text-lg text-ink-950">{title}</p>
+                      <p className="mt-1 text-sm text-ink-700/60">{body}</p>
+                    </div>
+                  </div>
+                );
+              })()
             ) : activeUnavailable && activeThread ? (
               /* The peer blocked this viewer — a locked, read-only "Conversation unavailable" screen:
                  member ID header + ⋮ (Report / Block), a generic avatar, and no messages/composer. */
