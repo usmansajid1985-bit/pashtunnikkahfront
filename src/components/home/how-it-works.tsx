@@ -13,8 +13,10 @@ const steps: { title: string; body: ReactNode; icon: ReactNode }[] = [
     ),
     icon: (
       <>
-        <circle cx="10.5" cy="10.5" r="6" />
-        <path d="m20 20-5-5" />
+        <circle cx="10.5" cy="10" r="6" />
+        <circle cx="10.5" cy="8.4" r="1.6" />
+        <path d="M7.5 13c0-1.7 1.4-2.7 3-2.7s3 1 3 2.7" />
+        <path d="m19.5 19.5-3.9-3.9" />
       </>
     ),
   },
@@ -45,7 +47,11 @@ const steps: { title: string; body: ReactNode; icon: ReactNode }[] = [
     ),
     icon: (
       <>
-        <path d="M4 5h11a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+        <path d="M3 6.6A1.6 1.6 0 0 1 4.6 5h7.3A1.6 1.6 0 0 1 13.5 6.6v2.8A1.6 1.6 0 0 1 11.9 11H7.2L4.6 13v-2A1.6 1.6 0 0 1 3 9.4Z" />
+        <circle cx="6" cy="8" r="0.5" fill="#e12d72" stroke="none" />
+        <circle cx="8.2" cy="8" r="0.5" fill="#e12d72" stroke="none" />
+        <circle cx="10.4" cy="8" r="0.5" fill="#e12d72" stroke="none" />
+        <path d="M14 13.2A1.4 1.4 0 0 1 15.4 11.8h4.2A1.4 1.4 0 0 1 21 13.2v1.8A1.4 1.4 0 0 1 19.6 16.4h-.4v1.6l-2.3-1.6h-1.5A1.4 1.4 0 0 1 14 15Z" />
       </>
     ),
   },
@@ -59,10 +65,12 @@ const steps: { title: string; body: ReactNode; icon: ReactNode }[] = [
     ),
     icon: (
       <>
-        <circle cx="8" cy="9" r="2.6" />
-        <circle cx="16" cy="9" r="2.6" />
-        <path d="M3.5 19c0-3 2-4.6 4.5-4.6S12.5 16 12.5 19" />
-        <path d="M11.5 19c0-3 2-4.6 4.5-4.6S20.5 16 20.5 19" />
+        <circle cx="12" cy="7" r="2.3" />
+        <circle cx="5.5" cy="9" r="1.9" />
+        <circle cx="18.5" cy="9" r="1.9" />
+        <path d="M7.8 15.5c0-2.3 1.9-3.7 4.2-3.7s4.2 1.4 4.2 3.7" />
+        <path d="M2 15.8c0-1.9 1.2-3.2 3-3.3" />
+        <path d="M22 15.8c0-1.9-1.2-3.2-3-3.3" />
       </>
     ),
   },
@@ -76,10 +84,12 @@ const steps: { title: string; body: ReactNode; icon: ReactNode }[] = [
     ),
     icon: (
       <>
-        <circle cx="8.5" cy="8" r="2.4" />
-        <circle cx="15.5" cy="8" r="2.4" />
-        <path d="M4 13h16v6H4z" />
-        <path d="M4 13V12a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v1" />
+        <circle cx="7" cy="7.2" r="2.1" />
+        <circle cx="17" cy="7.2" r="2.1" />
+        <path d="M3.6 13c0-2 1.5-3.1 3.4-3.1s3.4 1.1 3.4 3.1" />
+        <path d="M13.6 13c0-2 1.5-3.1 3.4-3.1s3.4 1.1 3.4 3.1" />
+        <path d="M2.5 14.5h19" />
+        <path d="M5.5 14.5v3.5M18.5 14.5v3.5" />
       </>
     ),
   },
@@ -93,9 +103,9 @@ const steps: { title: string; body: ReactNode; icon: ReactNode }[] = [
     ),
     icon: (
       <>
-        <circle cx="9" cy="14" r="4.5" />
-        <circle cx="15" cy="14" r="4.5" />
-        <path d="M9 9.5 10.5 6h3L15 9.5" />
+        <circle cx="9.5" cy="14.5" r="4.2" />
+        <circle cx="15" cy="14.5" r="4.2" />
+        <path d="M13 7.6 15 5l2 2.6-2 1.9z" />
       </>
     ),
   },
@@ -160,10 +170,10 @@ export function HowItWorks({ loggedIn }: { loggedIn: boolean }) {
 
           {/* Right elbow: rounded pipe wrapping from the top row down to the bottom row. */}
           <div
-            className="pointer-events-none absolute right-[17px] top-[21px] h-[228px] w-[34px] rounded-r-[17px] border-[2.4px] border-l-0 border-[#e12d72]"
+            className="pointer-events-none absolute right-[17px] top-[21px] h-[235px] w-[34px] rounded-r-[17px] border-[2.4px] border-l-0 border-[#e12d72]"
             aria-hidden
           />
-          <Chevron dir="down" className="right-[14px] top-[122px]" />
+          <Chevron dir="down" className="right-[14px] top-[124px]" />
 
           {/* Bottom row */}
           <div className="relative mt-8 grid grid-cols-3 gap-x-3">
