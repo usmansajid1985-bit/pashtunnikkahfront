@@ -108,7 +108,7 @@ function Step({ index }: { index: number }) {
   const step = steps[index];
   return (
     <div className="flex flex-col items-start text-left">
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#e12d72] text-[15px] font-bold text-white">
+      <span className="relative z-10 flex h-11 w-11 items-center justify-center rounded-full bg-[#e12d72] text-[15px] font-bold text-white">
         {String(index + 1).padStart(2, "0")}
       </span>
       <span className="mt-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#fdeef3]">
