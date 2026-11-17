@@ -122,15 +122,20 @@ function Step({ index }: { index: number }) {
   );
 }
 
-/** Horizontal connector arrow, aligned with the number circles. `dir` = flow direction. */
-function ArrowH({ dir }: { dir: "right" | "left" }) {
+/** A single right/left/down chevron drawn on the connector pipe. */
+function Chevron({ dir, className }: { dir: "right" | "left" | "down"; className?: string }) {
+  const rot = dir === "left" ? "rotate-180" : dir === "down" ? "rotate-90" : "";
   return (
-    <div className="flex items-start pt-[18px]" aria-hidden>
-      <svg width="46" height="14" viewBox="0 0 46 14" fill="none" className={dir === "left" ? "rotate-180" : ""}>
-        <path d="M0 7h38" stroke={BRAND} strokeWidth="2.2" />
-        <path d="M36 2l7 5-7 5" stroke={BRAND} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
+    <svg
+      width="11"
+      height="13"
+      viewBox="0 0 11 13"
+      fill="none"
+      aria-hidden
+      className={`absolute ${rot} ${className ?? ""}`}
+    >
+      <path d="M2 2l6 4.5-6 4.5" stroke={BRAND} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -140,35 +145,34 @@ export function HowItWorks({ loggedIn }: { loggedIn: boolean }) {
       <SectionHeading title="How Pashtun Nikah works" subtitle="The first Pashtun marriage app." />
 
       <div className="reveal mx-auto mt-14 max-w-5xl px-5 sm:px-8 sm:mt-20">
-        {/* Desktop / tablet: the snaking flow (01→02→03 ↓ 04←05←06). */}
-        <div className="hidden sm:block">
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-3">
+        {/* Desktop / tablet: one continuous rounded pipe — 01→02→03, round the right edge, 04←05←06. */}
+        <div className="hidden sm:block relative">
+          {/* Top row */}
+          <div className="relative grid grid-cols-3 gap-x-3">
+            {/* Continuous line from the 01 circle across to the right edge (where the elbow begins). */}
+            <div className="pointer-events-none absolute left-[22px] right-[17px] top-[21px] h-[2.4px] rounded bg-[#e12d72]" aria-hidden />
+            <Chevron dir="right" className="top-[15px] left-[16.666%] -translate-x-1/2" />
+            <Chevron dir="right" className="top-[15px] left-[50%] -translate-x-1/2" />
             <Step index={0} />
-            <ArrowH dir="right" />
             <Step index={1} />
-            <ArrowH dir="right" />
             <Step index={2} />
           </div>
 
-          {/* Down connector from 03 to 04 (rightmost column). */}
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] my-5">
-            <div />
-            <div />
-            <div />
-            <div />
-            <div className="flex justify-center" aria-hidden>
-              <svg width="14" height="40" viewBox="0 0 14 40" fill="none">
-                <path d="M7 0v31" stroke={BRAND} strokeWidth="2.2" />
-                <path d="M2 29l5 7 5-7" stroke={BRAND} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-          </div>
+          {/* Right elbow: rounded pipe wrapping from the top row down to the bottom row. */}
+          <div
+            className="pointer-events-none absolute right-[17px] top-[21px] h-[228px] w-[34px] rounded-r-[17px] border-[2.4px] border-l-0 border-[#e12d72]"
+            aria-hidden
+          />
+          <Chevron dir="down" className="right-[14px] top-[122px]" />
 
-          <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-3">
+          {/* Bottom row */}
+          <div className="relative mt-8 grid grid-cols-3 gap-x-3">
+            {/* Continuous line from the right edge back to the 06 circle. */}
+            <div className="pointer-events-none absolute left-[22px] right-[17px] top-[21px] h-[2.4px] rounded bg-[#e12d72]" aria-hidden />
+            <Chevron dir="left" className="top-[15px] left-[16.666%] -translate-x-1/2" />
+            <Chevron dir="left" className="top-[15px] left-[50%] -translate-x-1/2" />
             <Step index={5} />
-            <ArrowH dir="left" />
             <Step index={4} />
-            <ArrowH dir="left" />
             <Step index={3} />
           </div>
         </div>
