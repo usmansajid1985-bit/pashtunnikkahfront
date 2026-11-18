@@ -382,7 +382,7 @@ export function ProfileEditForm({
 
       <form
         onSubmit={onSubmit}
-        className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(7rem+var(--pn-bottom-nav-h))] lg:pb-12"
+        className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(1.5rem+var(--pn-bottom-nav-h))] lg:pb-12"
       >
         {/* Desktop tabs + Save — stays pinned to the top while scrolling */}
         <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 lg:py-3 bg-white/95 backdrop-blur border-b border-ink-900/8">
@@ -948,26 +948,26 @@ export function ProfileEditForm({
         </section>
         </div>
 
-        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-4 pb-5 lg:hidden">
-          <div className="max-w-lg mx-auto px-4">
-            {saved && !error ? (
-              <p className="mb-2 text-center text-sm font-medium text-emerald-700" aria-live="polite">
-                Your profile has been updated
-              </p>
-            ) : null}
-            {error ? (
-              <p className="mb-2 text-center text-sm font-medium text-rose-700" aria-live="polite">
-                {error}
-              </p>
-            ) : null}
-            <button
-              type="submit"
-              disabled={pending || textBlocksSave(form, initial)}
-              className="w-full py-3.5 rounded-2xl bg-rose-700 text-white font-semibold hover:bg-[#a81751] disabled:opacity-60"
-            >
-              {pending ? "Saving…" : "Save changes"}
-            </button>
-          </div>
+        {/* Mobile Save: inline at the end of the active section (no fixed bar, so the section
+            ends naturally after its last field instead of leaving a big gap above a pinned bar). */}
+        <div className="lg:hidden">
+          {saved && !error ? (
+            <p className="mb-2 text-center text-sm font-medium text-emerald-700" aria-live="polite">
+              Your profile has been updated
+            </p>
+          ) : null}
+          {error ? (
+            <p className="mb-2 text-center text-sm font-medium text-rose-700" aria-live="polite">
+              {error}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            disabled={pending || textBlocksSave(form, initial)}
+            className="w-full py-3.5 rounded-2xl bg-rose-700 text-white font-semibold hover:bg-[#a81751] disabled:opacity-60"
+          >
+            {pending ? "Saving…" : "Save changes"}
+          </button>
         </div>
       </form>
     </div>

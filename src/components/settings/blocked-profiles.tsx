@@ -43,6 +43,7 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
     });
   }
 
+  const menuRow = rows.find((r) => r.id === menuId) ?? null;
   const toastEl = <SuccessToast message={toast} onClose={() => setToast(null)} />;
 
   if (rows.length === 0) {
@@ -90,36 +91,69 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
               </svg>
             </button>
 
-            {menuId === r.id ? (
-              <>
-                <button type="button" className="fixed inset-0 z-10 cursor-default" aria-hidden onClick={() => setMenuId(null)} />
-                <div className="absolute right-3 top-12 z-20 w-48 rounded-2xl border border-ink-900/10 bg-white p-1.5 shadow-xl">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuId(null);
-                      setConfirm(r);
-                    }}
-                    className="w-full rounded-xl px-3 py-2.5 text-left text-[14px] font-medium text-ink-950 hover:bg-ink-900/5"
-                  >
-                    Unblock {r.code}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuId(null);
-                      setReport({ userId: r.peerUserId, code: r.code });
-                    }}
-                    className="w-full rounded-xl px-3 py-2.5 text-left text-[14px] font-medium text-ink-950 hover:bg-ink-900/5"
-                  >
-                    Report {r.code}
-                  </button>
-                </div>
-              </>
-            ) : null}
           </li>
         ))}
       </ul>
+
+      {/* 3-dots action sheet: slides up over a blurred backdrop (Unblock / Report / Cancel). */}
+      {menuRow && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[70] flex items-end justify-center bg-ink-950/35 backdrop-blur-sm p-3"
+              onClick={() => setMenuId(null)}
+            >
+              <div
+                role="menu"
+                aria-label={`Options for ${menuRow.code}`}
+                className="w-full max-w-sm space-y-2 pb-[env(safe-area-inset-bottom)] animate-[pnSheetUp_240ms_ease-out]"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="overflow-hidden rounded-2xl bg-white shadow-[0_12px_40px_-12px_rgba(15,13,14,0.4)]">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      const row = menuRow;
+                      setMenuId(null);
+                      setConfirm(row);
+                    }}
+                    className="flex w-full items-center gap-3.5 px-5 py-4 text-left text-[15px] font-semibold text-ink-950 hover:bg-ink-900/[0.03]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M9 14 4 9l5-5" />
+                      <path d="M4 9h11a5 5 0 0 1 0 10h-4" />
+                    </svg>
+                    Unblock {menuRow.code}
+                  </button>
+                  <div className="h-px bg-ink-900/8" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      const row = menuRow;
+                      setMenuId(null);
+                      setReport({ userId: row.peerUserId, code: row.code });
+                    }}
+                    className="flex w-full items-center gap-3.5 px-5 py-4 text-left text-[15px] font-semibold text-ink-950 hover:bg-ink-900/[0.03]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d="M5 21V5m0 0 1.5 1h5l1 2h5v8h-6l-1-2H5" />
+                    </svg>
+                    Report {menuRow.code}
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMenuId(null)}
+                  className="w-full rounded-2xl bg-white py-4 text-center text-[15px] font-bold text-ink-950 shadow-[0_12px_40px_-12px_rgba(15,13,14,0.4)] hover:bg-ink-900/[0.02]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       {/* Unblock confirmation modal — blurred/darkened backdrop, circular blurred photo. */}
       {confirm && typeof document !== "undefined"
@@ -143,8 +177,10 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
                 />
                 <h3 className="mt-4 text-[18px] font-bold text-ink-950">Unblock {confirm.code}?</h3>
                 <p className="mt-2 text-[14px] leading-relaxed text-ink-700/65">
-                  Their profile can become visible to you again, but your previous match won&apos;t be restored.
+                  Unblocking this member will allow you to view each other&apos;s profiles and interact again. Your
+                  previous match will not be restored.
                 </p>
+                <p className="mt-2 text-[14px] font-semibold text-ink-900">Are you sure you want to unblock them?</p>
                 <div className="mt-5 flex gap-3">
                   <button
                     type="button"
