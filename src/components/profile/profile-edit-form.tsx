@@ -948,7 +948,7 @@ export function ProfileEditForm({
         </section>
         </div>
 
-        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-[#faf8f7] via-[#faf8f7] to-transparent pt-4 pb-5 lg:hidden">
+        <div className="fixed bottom-[var(--pn-bottom-nav-h)] inset-x-0 bg-gradient-to-t from-white via-white to-transparent pt-4 pb-5 lg:hidden">
           <div className="max-w-lg mx-auto px-4">
             {saved && !error ? (
               <p className="mb-2 text-center text-sm font-medium text-emerald-700" aria-live="polite">

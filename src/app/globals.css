@@ -359,7 +359,7 @@ dialog,
   background:
     radial-gradient(1200px 500px at 10% -10%, #fbe0ea 0%, transparent 55%),
     radial-gradient(900px 420px at 100% 0%, #fdf6f3 0%, transparent 50%),
-    #faf8f7;
+    #ffffff;
 }
 .field {
   width: 100%;
