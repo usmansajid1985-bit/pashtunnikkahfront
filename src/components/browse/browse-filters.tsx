@@ -65,7 +65,8 @@ type Props = {
 };
 
 /** Phone toolbar: every pill fills its grid cell at one consistent height. */
-const MOBILE_PILL = "max-sm:w-full max-sm:h-11 max-sm:justify-center max-sm:gap-2 max-sm:px-3 max-sm:text-[15px]";
+const MOBILE_PILL =
+  "max-sm:w-full max-sm:h-11 max-sm:justify-center max-sm:gap-1.5 max-sm:px-2.5 max-sm:text-[14px] max-sm:whitespace-nowrap";
 
 function Pill({
   active,
@@ -480,7 +481,7 @@ export function BrowseFiltersBar({
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
               <path d="M6 3.5h12v17l-6-4.2-6 4.2v-17Z" />
             </svg>
-            <span className="text-sm max-sm:text-[15px] font-semibold text-ink-950">My saves</span>
+            <span className="text-sm max-sm:text-[14px] font-semibold text-ink-950">My saves</span>
             <span className="min-w-[1.5rem] h-6 px-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center tabular-nums">
               {liveSavedCount}
             </span>
@@ -494,7 +495,7 @@ export function BrowseFiltersBar({
                 <path d="M12 7v5l3 2" />
               </svg>
               <select
-                className="bg-transparent text-sm max-sm:text-[15px] font-medium outline-none"
+                className="appearance-none bg-transparent text-sm max-sm:text-[14px] font-medium outline-none cursor-pointer"
                 value={filters.sort === "just_joined" ? "just_joined" : "newest"}
                 onChange={(e) =>
                   navigate({
@@ -506,6 +507,10 @@ export function BrowseFiltersBar({
                 <option value="newest">Recently active</option>
                 <option value="just_joined">Just Joined</option>
               </select>
+              {/* Our own chevron (native select arrows vary by browser and eat width on phones). */}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="pointer-events-none shrink-0" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </label>
           ) : (
             <span className={`pill-btn justify-center text-sm font-medium text-ink-700 ${MOBILE_PILL} max-sm:order-3`}>
