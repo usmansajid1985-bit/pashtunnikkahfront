@@ -36,7 +36,7 @@ export function MobileBottomNav({
       className="lg:hidden fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pointer-events-none"
       aria-label="Primary"
     >
-      <div className="pointer-events-auto mx-auto max-w-md rounded-[24px] border border-white/50 bg-white/70 backdrop-blur-xl shadow-[0_10px_30px_rgba(17,17,24,0.14)]">
+      <div className="pointer-events-auto mx-auto max-w-md rounded-[24px] border border-white/40 bg-white/55 backdrop-blur-2xl shadow-[0_10px_30px_rgba(17,17,24,0.14)]">
         <div className="grid grid-cols-5 h-[62px]">
           {BOTTOM_TABS.map(({ key, label }) => {
             const item = NAV_ITEMS.find((n) => n.key === key);
@@ -54,21 +54,25 @@ export function MobileBottomNav({
               >
                 <span className="relative flex items-center justify-center w-9 h-9">
                   {isActive ? <span aria-hidden className="absolute inset-0 rounded-full bg-rose-500/12" /> : null}
-                  <span className="relative">{item.icon}</span>
-                  {key === "messages" ? (
-                    <NavCountBadge
-                      kind="messages"
-                      initialCount={unreadCount}
-                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 text-[9px]"
-                    />
-                  ) : null}
-                  {key === "requests" ? (
-                    <NavCountBadge
-                      kind="requests"
-                      initialCount={requestsCount}
-                      className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 text-[9px]"
-                    />
-                  ) : null}
+                  {/* Badge is anchored to the icon glyph and tucked just outside its top-right
+                      corner (with a white ring) so it never covers the icon. */}
+                  <span className="relative flex items-center justify-center">
+                    {item.icon}
+                    {key === "messages" ? (
+                      <NavCountBadge
+                        kind="messages"
+                        initialCount={unreadCount}
+                        className="absolute -top-2 -right-2.5 ring-2 ring-white !h-[18px] !min-w-[18px] !px-1 !text-[10px]"
+                      />
+                    ) : null}
+                    {key === "requests" ? (
+                      <NavCountBadge
+                        kind="requests"
+                        initialCount={requestsCount}
+                        className="absolute -top-2 -right-2.5 ring-2 ring-white !h-[18px] !min-w-[18px] !px-1 !text-[10px]"
+                      />
+                    ) : null}
+                  </span>
                 </span>
                 <span className="truncate max-w-[4rem]">{label}</span>
               </Link>
