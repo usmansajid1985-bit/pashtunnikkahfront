@@ -64,20 +64,25 @@ type Props = {
   savedCount?: number;
 };
 
+/** Phone toolbar: every pill fills its grid cell at one consistent height. */
+const MOBILE_PILL = "max-sm:w-full max-sm:h-11 max-sm:justify-center max-sm:gap-2 max-sm:px-3 max-sm:text-[15px]";
+
 function Pill({
   active,
   children,
   onClick,
+  className = "",
 }: {
   active?: boolean;
   children: React.ReactNode;
   onClick: () => void;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="pill-btn"
+      className={`pill-btn ${className}`}
       style={active ? { borderColor: "#f0c3d3", color: "#e12d72" } : undefined}
     >
       {children}
@@ -414,13 +419,21 @@ export function BrowseFiltersBar({
 
   return (
     <>
-      <div className={`mt-5 flex flex-wrap items-center gap-3 ${pending ? "opacity-70" : ""}`}>
-        <Pill active={filters.ageMin !== 18 || filters.ageMax !== 60} onClick={() => openPanel()}>
+      {/* Phones: a 2×2 grid of equal pills — Age | Filters, Recently active | My saves (location
+          lives inside Filters). sm+: the original single row with the saves/sort column on the right. */}
+      <div
+        className={`mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3 ${pending ? "opacity-70" : ""}`}
+      >
+        <Pill
+          active={filters.ageMin !== 18 || filters.ageMax !== 60}
+          onClick={() => openPanel()}
+          className={`${MOBILE_PILL} max-sm:order-1`}
+        >
           {filters.ageMin} – {filters.ageMax} yrs
         </Pill>
 
         {locked ? (
-          <button type="button" onClick={() => openGoldUpsell("gold_filter")} className="pill-btn" title="Distance search is a Gold feature">
+          <button type="button" onClick={() => openGoldUpsell("gold_filter")} className="pill-btn max-sm:hidden" title="Distance search is a Gold feature">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="1.8">
               <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
               <circle cx="12" cy="10.5" r="2" />
@@ -431,7 +444,7 @@ export function BrowseFiltersBar({
             </span>
           </button>
         ) : (
-          <Pill active={filters.near} onClick={() => openPanel(true)}>
+          <Pill active={filters.near} onClick={() => openPanel(true)} className="max-sm:hidden">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="1.8">
               <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
               <circle cx="12" cy="10.5" r="2" />
@@ -442,17 +455,18 @@ export function BrowseFiltersBar({
 
         <button
           type="button"
-          className="pill-btn"
+          className={`pill-btn ${MOBILE_PILL} max-sm:order-2`}
           style={activeCount > 0 ? { borderColor: "#f0c3d3", color: "#e12d72" } : undefined}
           onClick={() => openPanel()}
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <path d="M4 6h16M8 6v3M4 12h16M14 12v3M4 18h16M10 18v3" />
-            <circle cx="8" cy="9" r="1.6" fill="white" stroke="currentColor" />
-            <circle cx="14" cy="15" r="1.6" fill="white" stroke="currentColor" />
-            <circle cx="10" cy="21" r="1.6" fill="white" stroke="currentColor" />
+          {/* Two-slider "filters" icon, as in the approved mobile design. */}
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+            <path d="M3 7h5M12 7h9M3 17h11M18 17h3" />
+            <circle cx="10" cy="7" r="2.3" />
+            <circle cx="16" cy="17" r="2.3" />
           </svg>
-          More Filters
+          <span className="sm:hidden">Filters</span>
+          <span className="max-sm:hidden">More Filters</span>
           {activeCount > 0 ? (
             <span className="w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] flex items-center justify-center font-bold">
               {activeCount}
@@ -460,12 +474,13 @@ export function BrowseFiltersBar({
           ) : null}
         </button>
 
-        <div className="ml-auto flex flex-col items-stretch gap-2">
-          <a href="/browse/saved" className="pill-btn justify-center gap-2">
+        {/* `contents` on phones so these two pills join the 2×2 grid directly. */}
+        <div className="contents sm:flex sm:ml-auto sm:flex-col sm:items-stretch sm:gap-2">
+          <a href="/browse/saved" className={`pill-btn justify-center gap-2 ${MOBILE_PILL} max-sm:order-4`}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
               <path d="M6 3.5h12v17l-6-4.2-6 4.2v-17Z" />
             </svg>
-            <span className="text-sm font-semibold text-ink-950">My saves</span>
+            <span className="text-sm max-sm:text-[15px] font-semibold text-ink-950">My saves</span>
             <span className="min-w-[1.5rem] h-6 px-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-semibold flex items-center justify-center tabular-nums">
               {liveSavedCount}
             </span>
@@ -473,13 +488,13 @@ export function BrowseFiltersBar({
           {/* Sort: Recently active (default, all members) + Just Joined (Gold-only). Basic members
               stay on Recently active and can't change it, so they see a static label, not a dropdown. */}
           {isGold ? (
-            <label className="pill-btn cursor-pointer justify-center">
+            <label className={`pill-btn cursor-pointer justify-center ${MOBILE_PILL} max-sm:order-3`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <circle cx="12" cy="12" r="9" />
                 <path d="M12 7v5l3 2" />
               </svg>
               <select
-                className="bg-transparent text-sm font-medium outline-none"
+                className="bg-transparent text-sm max-sm:text-[15px] font-medium outline-none"
                 value={filters.sort === "just_joined" ? "just_joined" : "newest"}
                 onChange={(e) =>
                   navigate({
@@ -493,7 +508,7 @@ export function BrowseFiltersBar({
               </select>
             </label>
           ) : (
-            <span className="pill-btn justify-center text-sm font-medium text-ink-700">
+            <span className={`pill-btn justify-center text-sm font-medium text-ink-700 ${MOBILE_PILL} max-sm:order-3`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                 <circle cx="12" cy="12" r="9" />
                 <path d="M12 7v5l3 2" />
