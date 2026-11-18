@@ -3,6 +3,7 @@ import type { profiles, users } from "@/generated/prisma/client";
 import { relocationLabel } from "@/lib/relocation";
 import { displayHeight } from "@/lib/height";
 import { cleanMarriagePrefs, type MarriagePrefs } from "@/lib/marriage-prefs";
+import { profileCompletion, profileCompletionFields } from "@/lib/profile-completeness";
 
 export type ProfileExtras = {
   smoking?: string;
@@ -174,9 +175,16 @@ export function mapProfileView(
     },
   ];
 
-  const fillable = checklist.filter((c) => c.action !== "review");
-  const doneCount = fillable.filter((c) => c.done).length;
-  const completeness = Math.round((doneCount / fillable.length) * 100);
+  // One source of truth: the same calculation the "N profile details left to add" banner uses,
+  // so Overview, Profile and Browse never disagree (e.g. 91% vs 100%).
+  const canonical = profileCompletion(profile);
+  const completeness = canonical.percent;
+  const reviewItems = checklist.filter((c) => c.action === "review");
+  checklist.length = 0;
+  checklist.push(
+    ...profileCompletionFields(profile).map((f) => ({ label: f.label, done: f.filled, action: "edit" as const })),
+    ...reviewItems
+  );
 
   const code = profile.profile_code || "Member";
   const name = profile.full_name || user.display_name || code;

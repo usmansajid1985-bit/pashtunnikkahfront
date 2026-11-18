@@ -214,11 +214,11 @@ export default async function SettingsPage() {
         <SettingsRow
           href="/settings/privacy"
           title="Privacy &amp; data"
-          description="Privacy controls and data export"
+          description="Download your account data"
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></svg>}
         />
         <SettingsRow
-          href="/settings/privacy#blocked"
+          href="/settings/privacy/blocked"
           title="Blocked members"
           description={blockedCount === 0 ? "You haven't blocked anyone" : `${blockedCount} blocked · manage or unblock`}
           icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="9" /><path d="m5.6 5.6 12.8 12.8" /></svg>}

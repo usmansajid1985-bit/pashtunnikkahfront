@@ -40,7 +40,7 @@ export default async function BlockedMembersPage() {
   return (
     <SettingsShell
       title="Blocked members"
-      backHref="/settings/privacy"
+      backHref="/settings"
       profileCode={session.profileCode ?? undefined}
       unreadCount={unreadCount}
       userId={session.userId}
