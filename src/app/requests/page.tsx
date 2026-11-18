@@ -25,12 +25,12 @@ export default async function RequestsPage({
   ]);
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       <div className="hidden lg:block">
         <BrowseAppNav profileCode={session.profileCode} active="requests" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
       </div>
 
-      <header className="lg:hidden sticky top-0 z-20 bg-[#faf8f7] border-b border-ink-900/6">
+      <header className="lg:hidden sticky top-0 z-20 bg-white border-b border-ink-900/6">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <Link href="/browse" className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

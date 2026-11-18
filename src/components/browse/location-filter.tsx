@@ -371,7 +371,7 @@ export function LocationFilter({ active, onClose, onUse }: Props) {
       ? "Your live location"
       : "The area you've chosen";
   const mapButton =
-    "flex h-10 w-10 items-center justify-center rounded-xl bg-white text-ink-950 shadow-md hover:bg-[#faf8f7]";
+    "flex h-10 w-10 items-center justify-center rounded-xl bg-white text-ink-950 shadow-md hover:bg-white";
 
   return (
     <div className="relative flex flex-col h-full min-h-0 bg-white">
@@ -436,11 +436,11 @@ export function LocationFilter({ active, onClose, onUse }: Props) {
               </svg>
             </button>
             <div className="absolute bottom-3 right-3 z-[3] overflow-hidden rounded-xl bg-white shadow-md">
-              <button type="button" onClick={() => zoomBy(1)} aria-label="Zoom in" className="flex h-10 w-10 items-center justify-center text-xl text-ink-950 hover:bg-[#faf8f7]">
+              <button type="button" onClick={() => zoomBy(1)} aria-label="Zoom in" className="flex h-10 w-10 items-center justify-center text-xl text-ink-950 hover:bg-white">
                 +
               </button>
               <div className="h-px bg-ink-900/10" />
-              <button type="button" onClick={() => zoomBy(-1)} aria-label="Zoom out" className="flex h-10 w-10 items-center justify-center text-xl text-ink-950 hover:bg-[#faf8f7]">
+              <button type="button" onClick={() => zoomBy(-1)} aria-label="Zoom out" className="flex h-10 w-10 items-center justify-center text-xl text-ink-950 hover:bg-white">
                 −
               </button>
             </div>
@@ -482,13 +482,13 @@ export function LocationFilter({ active, onClose, onUse }: Props) {
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search country, city or area"
                 aria-label="Search for another area"
-                className="w-full rounded-xl border border-ink-900/10 bg-[#faf8f7] px-4 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white"
+                className="w-full rounded-xl border border-ink-900/10 bg-white px-4 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white"
               />
               {results.length > 0 ? (
                 <ul className="mt-1.5 max-h-48 overflow-y-auto rounded-2xl border border-ink-900/8 bg-white shadow-lg">
                   {results.map((r, i) => (
                     <li key={`${r.lat}-${r.lng}-${i}`}>
-                      <button type="button" onClick={() => pickResult(r)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-[#faf8f7]">
+                      <button type="button" onClick={() => pickResult(r)} className="w-full px-4 py-2.5 text-left text-sm hover:bg-white">
                         {r.label}
                       </button>
                     </li>

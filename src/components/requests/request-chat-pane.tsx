@@ -164,7 +164,7 @@ export function RequestChatPane({
         ) : null}
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto bg-[#faf8f7] px-4 py-6">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-white px-4 py-6">
         <p className="flex items-center justify-center gap-1.5 text-[12.5px] text-ink-700/65">
           <ClockIcon />
           <span>

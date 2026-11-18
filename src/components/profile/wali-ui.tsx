@@ -86,7 +86,7 @@ export function IconBadge({ children }: { children: ReactNode }) {
 }
 
 const fieldBase =
-  "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] pl-10 pr-3.5 py-2.5 text-sm text-ink-950 placeholder:text-ink-700/35 focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
+  "w-full rounded-xl border border-[#ece7e6] bg-white pl-10 pr-3.5 py-2.5 text-sm text-ink-950 placeholder:text-ink-700/35 focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
 /** A labelled text input with a leading icon inside the field. */
 export function IconField({

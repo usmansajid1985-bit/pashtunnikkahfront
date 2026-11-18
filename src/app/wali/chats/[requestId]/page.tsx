@@ -18,7 +18,7 @@ export default async function WaliChatThreadPage({
   const session = await getWaliSession();
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">This wali access link is invalid or has been revoked.</p>
       </div>
     );
@@ -34,7 +34,7 @@ export default async function WaliChatThreadPage({
   const req = await assertMatchParticipant(requestId, profileUserId);
   if (!req) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">Chat not found.</p>
       </div>
     );
@@ -78,7 +78,7 @@ export default async function WaliChatThreadPage({
   );
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900">
+    <div className="min-h-screen bg-white text-ink-900">
       <WaliHeader wardCode={wardCode} />
       <div className="max-w-2xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between mb-3">

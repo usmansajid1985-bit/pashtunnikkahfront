@@ -10,7 +10,7 @@ export function AppPageSkeleton({
   variant?: "list" | "grid" | "detail";
 }) {
   return (
-    <div className="min-h-screen bg-[#faf8f7] lg:pl-60">
+    <div className="min-h-screen bg-white lg:pl-60">
       {/* Desktop sidebar placeholder */}
       <aside className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-60 lg:flex-col lg:border-r lg:border-ink-900/8 lg:bg-white px-4 py-6">
         <div className="flex items-center gap-2.5 px-1">

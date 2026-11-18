@@ -54,6 +54,7 @@ export type BrowseCardDTO = {
   country: string | null;
   city: string | null;
   occupation: string | null;
+  education: string | null;
   aboutMe: string | null;
   avatarSeed: number;
   photoUrl: string | null;
@@ -214,6 +215,7 @@ export async function rankBrowseProfiles(
         country: r.country,
         city: r.city,
         occupation: r.occupation,
+        education: r.education,
         aboutMe: r.about_me,
         avatarSeed: Number(r.id % BigInt(70)),
         photoUrl,

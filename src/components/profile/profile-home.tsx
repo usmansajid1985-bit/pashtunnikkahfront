@@ -209,7 +209,7 @@ export function ProfileHome({
 
           {/* EDIT — slides in over Preview */}
           <div
-            className="absolute inset-0 z-[25] bg-[#faf8f7] overflow-y-auto"
+            className="absolute inset-0 z-[25] bg-white overflow-y-auto"
             style={{
               // Once Edit is fully in place, drop the transform: a transformed ancestor would pin the
               // "fixed" Save bar to this panel instead of the screen (it ended up mid-page, over the questions).

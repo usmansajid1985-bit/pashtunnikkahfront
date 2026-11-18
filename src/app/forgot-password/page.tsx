@@ -38,7 +38,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 flex flex-col">
+    <div className="min-h-screen bg-white text-ink-900 flex flex-col">
       <header className="bg-white border-b border-ink-900/8">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">

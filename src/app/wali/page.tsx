@@ -17,7 +17,7 @@ export default async function WaliDashboardPage() {
   const session = await getWaliSession();
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <div className="max-w-sm text-center">
           <p className="font-bold text-lg text-ink-950">Link not valid</p>
           <p className="mt-2 text-sm text-ink-700/65">
@@ -37,7 +37,7 @@ export default async function WaliDashboardPage() {
 
   if (!user || !profile) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">Profile not found.</p>
       </div>
     );
@@ -57,7 +57,7 @@ export default async function WaliDashboardPage() {
   const pastThreads = threads.filter((t) => t.ended).map(toWali);
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900">
+    <div className="min-h-screen bg-white text-ink-900">
       <WaliHeader wardCode={view.profileCode} />
 
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">

@@ -220,7 +220,7 @@ export function CompatibilityPanel({
             <SectionHead icon={<ChatIcon />} tone="bg-rose-50 text-[#e12d72]" title="Questions worth asking" />
             <div className="mt-2.5 space-y-2.5">
               {shownQuestions.map((q) => (
-                <div key={q} className="rounded-xl border border-ink-900/10 bg-[#faf8f7] px-3.5 py-3 text-[13.5px] leading-relaxed text-ink-900">
+                <div key={q} className="rounded-xl border border-ink-900/10 bg-white px-3.5 py-3 text-[13.5px] leading-relaxed text-ink-900">
                   {q}
                 </div>
               ))}

@@ -17,7 +17,7 @@ export default async function WaliPeerProfilePage({
   const session = await getWaliSession();
   if (!session) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">This wali access link is invalid or has been revoked.</p>
       </div>
     );
@@ -28,7 +28,7 @@ export default async function WaliPeerProfilePage({
   const req = await assertAcceptedParticipant(BigInt(raw), profileUserId);
   if (!req) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">Chat not found.</p>
       </div>
     );
@@ -41,7 +41,7 @@ export default async function WaliPeerProfilePage({
   ]);
   if (!user || !profile) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <p className="text-sm text-ink-700/65">Profile not found.</p>
       </div>
     );
@@ -55,7 +55,7 @@ export default async function WaliPeerProfilePage({
   const view = { ...mapped, fullName: mapped.profileCode };
 
   return (
-    <div className="bg-[#faf8f7] text-ink-900">
+    <div className="bg-white text-ink-900">
       <WaliHeader wardCode={wardCode} />
       <ProfilePreview
         profile={view}

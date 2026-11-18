@@ -539,7 +539,7 @@ export function SignupWizard() {
             )}
 
             {step.id === "height" && (
-              <div className="rounded-2xl bg-[#f7f4f2] px-4 py-5">
+              <div className="rounded-2xl bg-white px-4 py-5">
                 <p className="text-center text-lg font-bold text-ink-950">
                   {data.height || HEIGHT_SLIDER_DEFAULT}
                 </p>

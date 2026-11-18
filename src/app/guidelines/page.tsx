@@ -223,8 +223,8 @@ function Bullets({ items }: { items: string[] }) {
 /** Public page (no sign-in needed) — linked from the chat guidelines prompt, warnings and the footer. */
 export default function GuidelinesPage() {
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900">
-      <header className="sticky top-0 z-20 bg-[#faf8f7]/90 backdrop-blur border-b border-ink-900/6">
+    <div className="min-h-screen bg-white text-ink-900">
+      <header className="sticky top-0 z-20 bg-white/90 backdrop-blur border-b border-ink-900/6">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <Image src="/images/logo.jpeg" alt="" width={28} height={28} className="rounded-md object-cover" />

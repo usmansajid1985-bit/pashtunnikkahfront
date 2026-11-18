@@ -22,7 +22,7 @@ export default async function ChatThreadPage({
   // refuse other chats, but the shell used to show "Matched", a composer and End match anyway.
   if (!threads.some((t) => t.requestId === requestId)) {
     return (
-      <main className="min-h-dvh bg-[#f7f4f2] flex items-center justify-center px-6">
+      <main className="min-h-dvh bg-white flex items-center justify-center px-6">
         <div className="max-w-sm text-center">
           <div className="mx-auto w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">

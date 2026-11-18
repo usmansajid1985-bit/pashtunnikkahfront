@@ -67,7 +67,7 @@ export function ProfileDesktop({
   const outstanding = profile.checklist.filter((c) => !c.done);
 
   return (
-    <div className={embedded ? "text-ink-900" : `min-h-screen bg-[#faf8f7] text-ink-900 ${hideNav ? "" : "lg:pl-60"}`}>
+    <div className={embedded ? "text-ink-900" : `min-h-screen bg-white text-ink-900 ${hideNav ? "" : "lg:pl-60"}`}>
       {hideNav || embedded ? null : (
         <BrowseAppNav
           profileCode={navProfileCode ?? (isOwn ? profile.profileCode : null)}

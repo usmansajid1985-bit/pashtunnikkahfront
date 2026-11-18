@@ -63,7 +63,7 @@ function LoginForm() {
   }
 
   const field =
-    "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#e12d72] focus:bg-white focus:ring-3 focus:ring-[#e12d72]/15";
+    "w-full rounded-xl border border-[#ece7e6] bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:border-[#e12d72] focus:bg-white focus:ring-3 focus:ring-[#e12d72]/15";
 
   return (
     <div className="w-full max-w-[420px]">
@@ -164,7 +164,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 flex flex-col">
+    <div className="min-h-screen bg-white text-ink-900 flex flex-col">
       <header className="bg-white border-b border-ink-900/8">
         <div className="max-w-7xl mx-auto px-5 sm:px-8 h-16 sm:h-20 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5">

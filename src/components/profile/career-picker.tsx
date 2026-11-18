@@ -82,7 +82,7 @@ export function CareerPicker({
               }}
               placeholder="Search..."
               aria-label="Search"
-              className="w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3 py-2 text-sm focus:outline-none focus:border-rose-300 focus:bg-white"
+              className="w-full rounded-xl border border-[#ece7e6] bg-white px-3 py-2 text-sm focus:outline-none focus:border-rose-300 focus:bg-white"
             />
           </div>
           <div id={listId} role="listbox" className="max-h-64 overflow-y-auto py-1">

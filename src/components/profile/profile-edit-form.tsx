@@ -46,7 +46,7 @@ import { CareerPicker } from "@/components/profile/career-picker";
 import { matchTribe } from "@/lib/tribes";
 
 const field =
-  "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
+  "w-full rounded-xl border border-[#ece7e6] bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
 /** Editor for the optional Marriage Plans: two questions (timeframe, living arrangements), each a
  * simple choice. An empty value means the row is simply not set. */
@@ -354,7 +354,7 @@ export function ProfileEditForm({
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       {leaveDialog}
       <div className="hidden lg:block">
         <BrowseAppNav profileCode={initial.profileCode} active="profile" unreadCount={unreadCount} />
@@ -385,7 +385,7 @@ export function ProfileEditForm({
         className="max-w-lg lg:max-w-5xl mx-auto px-4 lg:px-8 py-6 lg:py-10 space-y-6 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-6 pb-[calc(7rem+var(--pn-bottom-nav-h))] lg:pb-12"
       >
         {/* Desktop tabs + Save — stays pinned to the top while scrolling */}
-        <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 lg:py-3 bg-[#faf8f7]/95 backdrop-blur border-b border-ink-900/8">
+        <div className="hidden lg:flex lg:col-span-2 items-center justify-between gap-4 mb-2 lg:sticky lg:top-0 lg:z-20 lg:-mx-8 lg:px-8 lg:py-3 bg-white/95 backdrop-blur border-b border-ink-900/8">
           <div className="flex gap-8 text-[15px]">
             <Link href="/profile" className="pb-2 font-medium text-ink-700/50 hover:text-ink-900">
               Preview

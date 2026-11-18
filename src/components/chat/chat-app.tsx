@@ -1706,7 +1706,7 @@ export function ChatApp({
   const seed = peer?.avatarSeed ?? activeThread?.peerAvatarSeed ?? 1;
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       {/* Cross-tab logout: if another tab logs out (or logs in as someone else), this tab reloads
           and redirects to login instead of leaving a usable-looking chat/composer (PN-AUD-018). */}
       <StaleSessionGuard userId={userId} />
@@ -1739,7 +1739,7 @@ export function ChatApp({
               paneOpen ? "hidden lg:flex" : "flex"
             } flex-col min-h-screen lg:min-h-0 lg:bg-white lg:rounded-2xl lg:border lg:border-ink-900/8 lg:overflow-hidden`}
           >
-            <div className="sticky top-0 z-20 bg-[#faf8f7] lg:bg-white border-b border-ink-900/6 px-4 h-14 flex items-center justify-between lg:rounded-t-2xl">
+            <div className="sticky top-0 z-20 bg-white lg:bg-white border-b border-ink-900/6 px-4 h-14 flex items-center justify-between lg:rounded-t-2xl">
               <Link href="/browse" className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="m15 18-6-6 6-6" />
@@ -1753,7 +1753,7 @@ export function ChatApp({
                 for its composer, not a persistent tab bar competing for space. */}
             {!paneOpen ? <MobileBottomNavGate active="messages" unreadCount={unreadCount} /> : null}
 
-            <div className="px-4 pt-3 pb-2 bg-[#faf8f7] lg:bg-white">
+            <div className="px-4 pt-3 pb-2 bg-white lg:bg-white">
               <div role="tablist" className="grid grid-cols-2 gap-1 rounded-full bg-ink-900/[0.04] border border-ink-900/6 p-1">
                 {(["chats", "requests"] as const).map((t) => (
                   <button
@@ -2559,7 +2559,7 @@ export function ChatApp({
                       ) : (
                         <>
                           {replyTo ? (
-                            <div className="mb-2 flex items-start gap-2 rounded-xl bg-[#f7f4f2] px-3 py-2">
+                            <div className="mb-2 flex items-start gap-2 rounded-xl bg-white px-3 py-2">
                               <div
                                 className="flex-1 min-w-0"
                                 style={{ borderLeft: "3px solid #e12d72", paddingLeft: 10 }}
@@ -2718,7 +2718,7 @@ export function ChatApp({
                             </>
                           ) : null}
                           <form onSubmit={onSubmit} className="relative z-50 flex items-end gap-2">
-                            <div className="flex-1 flex items-end rounded-full border border-ink-900/10 bg-[#faf8f7] focus-within:bg-white focus-within:border-rose-300 focus-within:ring-3 focus-within:ring-rose-600/10 pl-4 pr-2 py-1.5 transition">
+                            <div className="flex-1 flex items-end rounded-full border border-ink-900/10 bg-white focus-within:bg-white focus-within:border-rose-300 focus-within:ring-3 focus-within:ring-rose-600/10 pl-4 pr-2 py-1.5 transition">
                               <textarea
                                 ref={inputRef}
                                 rows={1}

@@ -53,7 +53,7 @@ export function WaliRevocationGuard({ topic, children }: { topic: string; childr
 
   if (revoked) {
     return (
-      <div className="min-h-screen bg-[#faf8f7] flex items-center justify-center px-6">
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <div className="max-w-sm text-center space-y-2">
           <p className="text-lg font-semibold text-ink-950">Access revoked</p>
           <p className="text-sm text-ink-700/65">

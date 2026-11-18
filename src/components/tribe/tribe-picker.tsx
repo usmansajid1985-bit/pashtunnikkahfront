@@ -158,7 +158,7 @@ export function TribePicker({
       })}
 
       {q && groups.length === 0 ? (
-        <p className="rounded-xl bg-[#faf8f7] px-4 py-3 text-sm text-ink-700/70">
+        <p className="rounded-xl bg-white px-4 py-3 text-sm text-ink-700/70">
           No tribe matches “{query.trim()}”. Try another spelling, or choose Unsure.
         </p>
       ) : null}

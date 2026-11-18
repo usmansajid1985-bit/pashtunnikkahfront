@@ -203,7 +203,7 @@ export default async function BrowsePage({
     : BROWSE_PAGE_SIZE < total;
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       <BrowseAppNav profileCode={session.profileCode} active="browse" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
 
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]">

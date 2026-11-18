@@ -249,7 +249,7 @@ function Field({
 }
 
 const selectClass =
-  "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white";
+  "w-full rounded-xl border border-[#ece7e6] bg-white px-3 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white";
 
 export function BrowseFiltersBar({
   filters,

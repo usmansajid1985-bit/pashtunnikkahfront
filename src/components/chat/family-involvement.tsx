@@ -629,7 +629,7 @@ export function FamilyModal({
         <p className="mt-1.5 text-[13px] text-ink-700/70 leading-relaxed">
           These details will be shared with {peer}.
         </p>
-        <div className="mt-4 rounded-2xl border border-ink-900/10 bg-[#faf8f7] px-4 py-3 text-left">
+        <div className="mt-4 rounded-2xl border border-ink-900/10 bg-white px-4 py-3 text-left">
           <p className="font-bold text-ink-950 break-words">{family.wali.name}</p>
           {family.wali.relation ? <p className="text-[13px] text-ink-700/70">{family.wali.relation}</p> : null}
           <p className="mt-1.5 text-sm font-semibold break-all" style={{ color: PN_PINK }}>

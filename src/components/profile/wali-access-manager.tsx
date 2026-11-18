@@ -282,7 +282,7 @@ export function WaliAccessManager() {
                     <input
                       readOnly
                       value={l.link}
-                      className="flex-1 min-w-[160px] rounded-lg border border-ink-900/10 bg-[#faf8f7] px-2.5 py-1.5 text-xs text-ink-700/70"
+                      className="flex-1 min-w-[160px] rounded-lg border border-ink-900/10 bg-white px-2.5 py-1.5 text-xs text-ink-700/70"
                       onFocus={(e) => e.target.select()}
                     />
                     <button

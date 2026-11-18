@@ -113,7 +113,7 @@ export default async function DashboardPage() {
   const complete = view.completeness >= 100;
 
   return (
-    <div className="min-h-screen bg-[#faf8f7] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       <BrowseAppNav profileCode={session.profileCode} active="overview" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} bellUnread={navCounts.bellUnread} />
       <GreetingMemo shown={greeting} />
 

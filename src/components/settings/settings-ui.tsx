@@ -24,7 +24,7 @@ export function SettingsShell({
   children: ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-[#f7f4f2] text-ink-900 lg:pl-60">
+    <div className="min-h-screen bg-white text-ink-900 lg:pl-60">
       {userId ? <StaleSessionGuard userId={userId} /> : null}
       {/* Desktop nav */}
       {profileCode ? (
@@ -34,7 +34,7 @@ export function SettingsShell({
       ) : null}
 
       {/* Mobile header */}
-      <header className="sticky top-0 z-30 bg-[#f7f4f2] lg:hidden">
+      <header className="sticky top-0 z-30 bg-white lg:hidden">
         <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
           <Link
             href={backHref}

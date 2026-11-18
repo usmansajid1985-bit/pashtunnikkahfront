@@ -72,7 +72,7 @@ export function TribeConfirmGate() {
             We&apos;ve improved how tribes are organised on Pashtun Nikah. Please confirm your tribe to continue.
           </p>
           {ask.suggestion && ask.previous && ask.suggestion.toLowerCase() !== ask.previous.toLowerCase() ? (
-            <p className="mt-2 rounded-xl bg-[#faf8f7] px-3.5 py-2.5 text-[13px] text-ink-700">
+            <p className="mt-2 rounded-xl bg-white px-3.5 py-2.5 text-[13px] text-ink-700">
               You entered “{ask.previous}” before — we&apos;ve selected <span className="font-semibold">{ask.suggestion}</span>.
               Change it if that isn&apos;t right.
             </p>

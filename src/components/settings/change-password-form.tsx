@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 
 const field =
-  "w-full rounded-xl border border-[#ece7e6] bg-[#faf8f7] px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
+  "w-full rounded-xl border border-[#ece7e6] bg-white px-3.5 py-2.5 text-sm focus:outline-none focus:border-rose-300 focus:bg-white focus:ring-3 focus:ring-rose-600/10";
 
 export function ChangePasswordForm() {
   const [open, setOpen] = useState(false);

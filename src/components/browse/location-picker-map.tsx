@@ -213,7 +213,7 @@ export function LocationPickerMap({ initialLat, initialLng, photoUrl, onClose, o
                     <button
                       type="button"
                       onClick={() => pickResult(r)}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-[#faf8f7] flex items-center gap-2"
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-white flex items-center gap-2"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="1.8" className="shrink-0">
                         <path d="M12 21s-6-5.5-6-10.5A6 6 0 0 1 18 10.5C18 15.5 12 21 12 21Z" />
