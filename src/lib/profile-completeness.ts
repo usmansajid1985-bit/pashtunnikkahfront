@@ -27,9 +27,66 @@ type ProfileLike = {
   ancestral_village?: string | null;
   dialect?: string | null;
   interests?: string | null;
+  /** JSON extras — holds the member's `languages` list. */
+  traits?: string | null;
+  home_language?: string | null;
 } | null | undefined;
 
 const has = (v: unknown) => Boolean(v && String(v).trim());
+
+/**
+ * Does the member speak Pashto? `null` = we weren't given their languages, so we can't tell.
+ * The dialect question only exists for Pashto speakers (the server clears it otherwise), so it
+ * must never be reported as "missing" for someone who doesn't speak Pashto.
+ */
+function speaksPashto(p: NonNullable<ProfileLike>): boolean | null {
+  if (!("traits" in p) && !("home_language" in p)) return null;
+  let langs: string[] = [];
+  try {
+    const parsed = p.traits ? JSON.parse(p.traits) : null;
+    if (parsed && Array.isArray(parsed.languages)) langs = parsed.languages.map(String);
+  } catch {
+    /* not JSON — fall back to home_language */
+  }
+  if (langs.length === 0 && p.home_language) langs = p.home_language.split(/[,|]/).map((s) => s.trim());
+  return langs.some((l) => l.toLowerCase() === "pashto");
+}
+
+/**
+ * Where each field lives on /profile/edit: an element id if it has one, otherwise the exact
+ * label/heading text to find it by. `fallbackText` is used when the field itself isn't rendered.
+ */
+export const FIELD_ANCHORS: Record<string, { id?: string; text?: string; fallbackText?: string }> = {
+  about_me: { id: "edit-about-me" },
+  height: { text: "Height" },
+  city: { text: "City / town" },
+  occupation: { text: "Career" },
+  education: { text: "Education" },
+  tribe: { text: "Tribe" },
+  religious_practice: { text: "Faith" },
+  appearance: { text: "Appearance" },
+  ancestral_village: { text: "Ancestral region" },
+  dialect: { id: "edit-dialect", fallbackText: "Languages" },
+  interests: { text: "Interests" },
+};
+
+const FIELD_LABELS: Record<string, string> = {
+  about_me: "About me",
+  height: "Height",
+  city: "City",
+  occupation: "Occupation",
+  education: "Education",
+  tribe: "Tribe",
+  religious_practice: "Islamic practice",
+  appearance: "Appearance",
+  ancestral_village: "Ancestral region",
+  dialect: "Pashto dialect",
+  interests: "Interests",
+};
+export const profileCompletionLabel = (key: string) => FIELD_LABELS[key] ?? "this detail";
+
+/** Deep link that opens Edit profile on the right tab, scrolled to and highlighting the field. */
+export const fieldHref = (key: string) => `/profile/edit#field-${key}`;
 
 /**
  * Only fields the caller actually loaded are counted — an unselected Prisma column comes back
@@ -55,7 +112,14 @@ export function profileCompletionFields(p: ProfileLike): CompletionField[] {
     { key: "religious_practice", label: "Islamic practice", section: "faith", filled: has(p.religious_practice), known: present("religious_practice") },
     { key: "appearance", label: "Appearance", section: "personal", filled: has(p.appearance), known: present("appearance") },
     { key: "ancestral_village", label: "Ancestral region", section: "heritage", filled: has(p.ancestral_village), known: present("ancestral_village") },
-    { key: "dialect", label: "Pashto dialect", section: "heritage", filled: has(p.dialect), known: present("dialect") },
+    {
+      key: "dialect",
+      label: "Pashto dialect",
+      section: "heritage",
+      filled: has(p.dialect),
+      // Only asked of Pashto speakers. If we can't tell, only count it when it's already set.
+      known: present("dialect") && (speaksPashto(p) ?? has(p.dialect)),
+    },
     { key: "interests", label: "Interests", section: "about", filled: has(p.interests), known: present("interests") },
   ];
   return all.filter((f) => f.known).map(({ known: _known, ...f }) => f);
@@ -78,7 +142,7 @@ export function profileCompletion(p: ProfileLike): ProfileCompletion {
   return {
     percent,
     missing,
-    completeHref: first ? `/profile/edit#${first.section}` : "/profile/edit",
+    completeHref: first ? fieldHref(first.key) : "/profile/edit",
   };
 }
 

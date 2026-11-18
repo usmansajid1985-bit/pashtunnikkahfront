@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileView } from "@/lib/profile";
+import { FIELD_ANCHORS, profileCompletionLabel } from "@/lib/profile-completeness";
 import {
   ANCESTRAL_REGIONS,
   COUNTRIES,
@@ -247,17 +248,49 @@ export function ProfileEditForm({
   // chosen tab's sections are shown; "contents" keeps them in the two-column grid on desktop.
   const [editTab, setEditTab] = useState<EditTab>("personal");
   const paneClass = (tab: EditTab) => (editTab === tab ? "contents" : "hidden");
+  // "Complete my profile" hint: which missing field we jumped to (shown above the tabs).
+  const [focusHint, setFocusHint] = useState<string | null>(null);
+
   // Deep links like /profile/edit#wali-contact open the tab that holds that section.
+  // /profile/edit#field-<key> (from the completeness banner) also scrolls to that exact field
+  // and briefly highlights its card, so members don't have to hunt for what's missing.
   useEffect(() => {
+    const findField = (key: string): HTMLElement | null => {
+      const a = FIELD_ANCHORS[key];
+      if (!a) return null;
+      const byText = (t?: string) =>
+        t
+          ? [...document.querySelectorAll<HTMLElement>("form label, form h2, form p")].find(
+              (el) => el.textContent?.replace(/\s+/g, " ").trim() === t
+            ) ?? null
+          : null;
+      return (a.id ? document.getElementById(a.id) : null) ?? byText(a.text) ?? byText(a.fallbackText);
+    };
     const jump = () => {
       const id = window.location.hash.slice(1);
       if (!id) return;
-      const pane = document.getElementById(id)?.closest<HTMLElement>("[data-tab]");
+      const fieldKey = id.startsWith("field-") ? id.slice(6) : null;
+      const target = fieldKey ? findField(fieldKey) : document.getElementById(id);
+      const pane = target?.closest<HTMLElement>("[data-tab]");
       const tab = pane?.dataset.tab as EditTab | undefined;
-      if (tab && EDIT_TABS.some((t) => t.id === tab)) {
-        setEditTab(tab);
-        window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+      if (!target || !tab || !EDIT_TABS.some((t) => t.id === tab)) return;
+      setEditTab(tab);
+      if (fieldKey) {
+        const label = profileCompletionLabel(fieldKey);
+        setFocusHint(label);
       }
+      window.setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (fieldKey) {
+          const card = target.closest<HTMLElement>("section") ?? target;
+          card.classList.add("pn-field-focus");
+          window.setTimeout(() => card.classList.remove("pn-field-focus"), 3200);
+          const input = (target.matches("input,select,textarea") ? target : card.querySelector("input,select,textarea")) as
+            | HTMLElement
+            | null;
+          input?.focus({ preventScroll: true });
+        }
+      }, 80);
     };
     jump();
     window.addEventListener("hashchange", jump);
@@ -412,6 +445,29 @@ export function ProfileEditForm({
             </button>
           </div>
         </div>
+
+        {focusHint ? (
+          <div
+            role="status"
+            className="lg:col-span-2 flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13.5px] text-ink-900"
+          >
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#e12d72] text-[11px] font-bold text-white">
+              !
+            </span>
+            <span className="flex-1">
+              <span className="font-semibold">Add your {focusHint}</span> — it&apos;s highlighted below. Save when you&apos;re
+              done and your profile will be complete.
+            </span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setFocusHint(null)}
+              className="shrink-0 text-ink-700/50 hover:text-ink-900"
+            >
+              ×
+            </button>
+          </div>
+        ) : null}
 
         <div
           role="tablist"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { listAnd, type CompletionField } from "@/lib/profile-completeness";
+import { fieldHref, type CompletionField } from "@/lib/profile-completeness";
 
 const DISMISS_KEY = "pn_completeness_banner_dismissed_until";
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
@@ -18,7 +18,7 @@ export function CompletenessBanner({
   completeHref,
 }: {
   percent: number;
-  missing: Pick<CompletionField, "label">[];
+  missing: Pick<CompletionField, "label" | "key">[];
   completeHref: string;
 }) {
   const [hidden, setHidden] = useState(true);
@@ -77,8 +77,16 @@ export function CompletenessBanner({
         <p className="text-[14px] font-semibold text-ink-950">
           {missing.length} profile detail{missing.length === 1 ? "" : "s"} left to add
         </p>
-        <p className="mt-0.5 truncate text-[12.5px] text-ink-700/65">
-          {listAnd(missing.map((m) => m.label))}.{" "}
+        <p className="mt-0.5 text-[12.5px] text-ink-700/65">
+          {missing.map((m, i) => (
+            <span key={m.key}>
+              {i > 0 ? (i === missing.length - 1 ? " and " : ", ") : null}
+              <Link href={fieldHref(m.key)} className="font-medium text-ink-900 underline decoration-ink-900/25 underline-offset-2 hover:text-[#e12d72]">
+                {m.label}
+              </Link>
+            </span>
+          ))}
+          .{" "}
           <span className="text-ink-700/50">Completed profiles appear higher in Browse.</span>
         </p>
         <Link href={completeHref} className="mt-1 inline-block text-[13px] font-semibold text-[#e12d72] hover:underline">

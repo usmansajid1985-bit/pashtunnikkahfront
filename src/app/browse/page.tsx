@@ -71,6 +71,8 @@ export default async function BrowsePage({
         religious_practice: true,
         religious_methodology: true,
         dialect: true,
+        traits: true,
+        home_language: true,
         willing_to_relocate: true,
         appearance: true,
         ancestral_village: true,
