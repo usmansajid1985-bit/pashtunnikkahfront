@@ -10,11 +10,11 @@ export function MobileNavAuto({
   items,
   active,
   unread,
-  requests = 0,
+  requests,
 }: {
   items: NavItem[];
   active: NavKey | null;
-  unread: number;
+  unread?: number;
   requests?: number;
 }) {
   const [style] = useMobileNavStyle();

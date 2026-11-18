@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import { useRouter } from "next/navigation";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import React, { FormEvent, useState, useTransition } from "react";
@@ -90,6 +92,7 @@ export function MatchActions({
         return;
       }
       setStatus({ state: "pending_sent", requestId: data.requestId });
+      flashToast("Match request sent");
       router.refresh();
     });
   }

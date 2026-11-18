@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import Link from "next/link";
 import { ActivityDot } from "@/components/activity-dot";
 import { SuccessToast } from "@/components/success-toast";
@@ -45,6 +47,7 @@ import { MessageActionMenu } from "@/components/chat/message-action-menu";
 import { ProfileDesktop } from "@/components/profile/profile-desktop";
 import { ChatNotifyBanner } from "@/components/notifications/chat-notify-banner";
 import type { HubCard } from "@/lib/requests-hub-shared";
+import { useLivePresence } from "@/hooks/use-live-presence";
 import { RequestChatPane, RequestListRow, type RequestSub } from "@/components/requests/request-chat-pane";
 
 type Peer = {
@@ -574,6 +577,9 @@ export function ChatApp({
   const [activeId, setActiveId] = useState<string | null>(initialRequestId);
   const [messages, setMessages] = useState<ChatMessageDTO[]>([]);
   const [peer, setPeer] = useState<Peer | null>(null);
+  // Header activity stays live: re-read the open conversation's member status every ~20s.
+  const peerLive = useLivePresence(peer?.userId ? [peer.userId] : []);
+  const peerLiveLabel = (peer?.userId && peerLive[peer.userId]) || peer?.lastSeenLabel;
   const [tab, setTab] = useState<"chat" | "profile">("chat");
   const [text, setText] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -952,6 +958,41 @@ export function ChatApp({
     void joinThread(activeId);
   }, [connected, activeId, joinThread]);
 
+  // Catch up after being offline / backgrounded / disconnected: broadcasts sent meanwhile were
+  // missed, so re-read the thread list and merge any missed messages into the open conversation
+  // (by id/clientId — never duplicates, keeps unconfirmed outgoing messages).
+  useEffect(() => {
+    return on("realtime:resync", async () => {
+      const list = await fetch("/api/chats", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (list?.threads) {
+        setThreads(list.threads);
+        threadsRef.current = list.threads;
+      }
+      const id = activeIdRef.current;
+      if (!id) return;
+      const res = await fetch(`/api/chats/${id}`, { cache: "no-store" }).catch(() => null);
+      if (!res?.ok || activeIdRef.current !== id) return;
+      const data = await res.json().catch(() => null);
+      const fresh: ChatMessageDTO[] = data?.messages || [];
+      setMessages((prev) => {
+        const byKey = new Map<string, ChatMessageDTO>();
+        for (const m of prev) byKey.set(m.id || m.clientId || "", m);
+        for (const m of fresh) {
+          const existing = prev.find((p) => p.id === m.id || (m.clientId && p.clientId === m.clientId));
+          if (existing) byKey.delete(existing.id || existing.clientId || "");
+          byKey.set(m.id, { ...existing, ...m });
+        }
+        const merged = [...byKey.values()].sort(
+          (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+        messagesRef.current = merged;
+        return merged;
+      });
+      if (data?.matchEnded) setMatchEnded(true);
+      if (document.visibilityState === "visible") markRead(id);
+    });
+  }, [on, markRead]);
+
   useEffect(() => {
     if (initialRequestId) {
       void openThread(initialRequestId);
@@ -1256,7 +1297,8 @@ export function ChatApp({
         setToast(data.error || "Could not request a rematch");
         return;
       }
-      setToast(data.message === "Request already sent" ? "Rematch request already sent" : "Rematch request sent");
+      // Parked so it shows after the page change below (a plain toast would vanish with it).
+      flashToast(data.message === "Request already sent" ? "Rematch request already sent" : "Rematch request sent");
       window.location.assign("/requests?tab=sent");
     } finally {
       setRematchBusy(false);
@@ -2179,8 +2221,8 @@ export function ChatApp({
                           "Connecting to chat…"
                         ) : (
                           <span className="inline-flex items-center gap-1.5">
-                            <ActivityDot label={peer?.lastSeenLabel} />
-                            {peer?.lastSeenLabel ?? "Active recently"}
+                            <ActivityDot label={peerLiveLabel} />
+                            {peerLiveLabel ?? "Active recently"}
                           </span>
                         )}
                       </p>

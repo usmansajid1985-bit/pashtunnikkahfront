@@ -1,16 +1,20 @@
 "use client";
 
 import { useEffect } from "react";
+import { FOREGROUND_IDLE_MS, HEARTBEAT_INTERVAL_MS } from "@/lib/presence";
 
-const INTERVAL_MS = 60_000;
-const ACTIVITY_THROTTLE_MS = 45_000;
+const INTERVAL_MS = HEARTBEAT_INTERVAL_MS;
+/** A tap after a quiet spell re-beats quickly, but scrolling doesn't spam the server. */
+const ACTIVITY_THROTTLE_MS = 15_000;
 /** B04: an open-but-idle tab stops counting as active once nobody has touched it for this long. */
-const IDLE_AFTER_MS = 3 * 60_000;
+const IDLE_AFTER_MS = FOREGROUND_IDLE_MS;
 
 /**
- * Keeps last_seen_at fresh only while the member is genuinely using the app — a visible tab
- * with no taps/keys/scrolls for IDLE_AFTER_MS no longer heartbeats, so the server-side live
- * state expires after ~3–5 minutes of no meaningful activity.
+ * Keeps last_seen_at fresh only while the member is genuinely using the app in the foreground:
+ * - foreground + touched within 5 min → heartbeat every 20s ("Active now" within ~1s of opening);
+ * - backgrounded / locked → an "away" beacon drops the dot within seconds;
+ * - app killed / signal lost (no beacon) → heartbeats stop, dot expires after the 45s window.
+ * Works per device, so another device in use keeps the member active.
  */
 export function PresenceHeartbeat() {
   useEffect(() => {
@@ -52,6 +56,15 @@ export function PresenceHeartbeat() {
       void beat(false);
     };
 
+    // iOS PWAs swiped away don't always fire visibilitychange — pagehide still lets the beacon go.
+    const onHide = () => {
+      try {
+        navigator.sendBeacon?.("/api/presence/heartbeat?away=1");
+      } catch {
+        /* ignore */
+      }
+    };
+    window.addEventListener("pagehide", onHide);
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("focus", onVis);
     window.addEventListener("pointerdown", onActivity, { passive: true });
@@ -61,6 +74,7 @@ export function PresenceHeartbeat() {
     return () => {
       cancelled = true;
       clearInterval(id);
+      window.removeEventListener("pagehide", onHide);
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", onVis);
       window.removeEventListener("pointerdown", onActivity);

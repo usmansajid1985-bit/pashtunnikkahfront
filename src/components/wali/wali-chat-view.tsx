@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChatMessageDTO } from "@/lib/chat";
 import { useChatSocket } from "@/hooks/use-chat-socket";
+import { useRouter } from "next/navigation";
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -28,6 +29,7 @@ export function WaliChatView({
   ended?: boolean;
 }) {
   const [messages, setMessages] = useState(initialMessages);
+  const router = useRouter();
   // Live messages arrive on this wali link's own topic, joined by WaliRevocationGuard — the
   // server stops publishing to it the moment access is revoked.
   const { connected, on } = useChatSocket(true, profileUserId);
@@ -41,8 +43,21 @@ export function WaliChatView({
         scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
       });
     };
-    return on("message:new", onNew);
-  }, [requestId, on]);
+    // Blocked / ended while the wali is watching: re-render the page so the server-side gate
+    // replaces the conversation with "no longer available" at once (no stale view in an open tab).
+    const onClosed = (e: { requestId?: string; reason?: string }) => {
+      if (e?.requestId === requestId) router.refresh();
+    };
+    const offNew = on("message:new", onNew);
+    const offClosed = on("match:closed", onClosed);
+    // Back from background/offline: messages sent meanwhile were missed — reload from the server.
+    const offResync = on("realtime:resync", () => router.refresh());
+    return () => {
+      offNew();
+      offClosed();
+      offResync();
+    };
+  }, [requestId, on, router]);
 
   return (
     <div className="bg-white rounded-2xl border border-ink-900/8 overflow-hidden flex flex-col h-[70vh]">

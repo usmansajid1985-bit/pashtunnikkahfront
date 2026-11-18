@@ -1,5 +1,6 @@
 "use client";
 
+import { clearNavCountsCache } from "@/components/browse/nav-notifications";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { writeSessionMarker } from "@/lib/session-marker";
@@ -12,7 +13,8 @@ export function LogoutButton() {
   async function logout() {
     setLoading(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      clearNavCountsCache();
+    await fetch("/api/auth/logout", { method: "POST" });
       clearChatDeviceState();
       writeSessionMarker(null);
       router.push("/login");

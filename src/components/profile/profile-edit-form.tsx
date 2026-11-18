@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -378,6 +380,7 @@ export function ProfileEditForm({
           return;
         }
         setSaved(true);
+        flashToast("Profile updated");
         setSavedSnapshot(snapshot(form));
         router.refresh();
       } catch {
@@ -426,11 +429,6 @@ export function ProfileEditForm({
             <span className="pb-2 font-bold text-ink-950 border-b-[3px] border-rose-600">Edit</span>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            {saved && !error ? (
-              <p className="text-sm font-medium text-emerald-700" aria-live="polite">
-                Your profile has been updated
-              </p>
-            ) : null}
             {error ? (
               <p className="text-sm font-medium text-rose-700 max-w-xs text-right" aria-live="polite">
                 {error}
@@ -1007,11 +1005,6 @@ export function ProfileEditForm({
         {/* Mobile Save: inline at the end of the active section (no fixed bar, so the section
             ends naturally after its last field instead of leaving a big gap above a pinned bar). */}
         <div className="lg:hidden">
-          {saved && !error ? (
-            <p className="mb-2 text-center text-sm font-medium text-emerald-700" aria-live="polite">
-              Your profile has been updated
-            </p>
-          ) : null}
           {error ? (
             <p className="mb-2 text-center text-sm font-medium text-rose-700" aria-live="polite">
               {error}

@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import Link from "next/link";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { useRouter } from "next/navigation";
@@ -27,7 +29,10 @@ export function ProfileViewsCard({ data }: { data: ProfileViewsData }) {
       setBusyId(null);
       if (!res.ok && body.code === "out_of_tokens") return openGoldUpsell("out_of_tokens");
       if (body.status === "accepted") router.push(`/chats/${body.requestId}`);
-      else router.refresh();
+      else {
+        if (res.ok) flashToast("Match request sent");
+        router.refresh();
+      }
     });
   }
 

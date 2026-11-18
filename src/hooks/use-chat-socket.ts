@@ -40,6 +40,29 @@ class RealtimeManager {
   private subscribedKeys = new Set<string>();
   private listeners = new Set<Listener>();
   private eventBus = new Map<string, Set<EventHandler>>();
+  /** Channels that dropped at least once — their next SUBSCRIBED is a *re*connect. */
+  private lostKeys = new Set<string>();
+  private lastResync = 0;
+
+  constructor() {
+    if (typeof window === "undefined") return;
+    // Anything broadcast while we were offline / backgrounded / locked is gone for good, so on
+    // recovery every screen must refetch. One "realtime:resync" event drives that everywhere.
+    window.addEventListener("online", () => this.resync());
+    let hiddenAt = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") hiddenAt = Date.now();
+      else if (hiddenAt && Date.now() - hiddenAt > 8_000) this.resync();
+    });
+  }
+
+  /** Tell every screen to catch up with the server (throttled so bursts collapse to one). */
+  resync() {
+    const now = Date.now();
+    if (now - this.lastResync < 2_000) return;
+    this.lastResync = now;
+    this.dispatch("realtime:resync", {});
+  }
 
   subscribe(fn: Listener) {
     this.listeners.add(fn);
@@ -77,14 +100,26 @@ class RealtimeManager {
     return channel;
   }
 
+  /** Is this still the live channel for `key`? (Old channels fire CLOSED after being replaced.) */
+  private isCurrent(key: string, channel: RealtimeChannel) {
+    if (key === "user") return this.userChannel === channel;
+    return this.threadChannels.get(key.slice("thread:".length)) === channel;
+  }
+
   private subscribeChannel(key: string, channel: RealtimeChannel): Promise<boolean> {
     return new Promise((resolve) => {
       channel.subscribe((status) => {
+        if (!this.isCurrent(key, channel)) {
+          resolve(false);
+          return;
+        }
         if (status === "SUBSCRIBED") {
           this.subscribedKeys.add(key);
           this.emitChange();
+          if (this.lostKeys.delete(key)) this.resync(); // came back after a drop → catch up
           resolve(true);
         } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+          if (this.subscribedKeys.has(key)) this.lostKeys.add(key);
           this.subscribedKeys.delete(key);
           this.emitChange();
           resolve(false);

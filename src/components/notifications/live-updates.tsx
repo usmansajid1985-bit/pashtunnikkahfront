@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useChatSocket } from "@/hooks/use-chat-socket";
-import { refreshNavCounts } from "@/components/browse/nav-notifications";
+import { refreshNavCounts, setNavCountsOwner } from "@/components/browse/nav-notifications";
 
 type Banner = {
   key: string;
@@ -108,6 +108,7 @@ export function LiveUpdates() {
       if (!res || cancelled) return; // offline — don't guess
       const d = res.ok ? await res.json().catch(() => null) : null;
       const userId = d?.userId ? String(d.userId) : null;
+      setNavCountsOwner(userId); // cached badge counts belong to this account only
       if (shownUserId !== undefined && userId !== shownUserId) {
         window.location.reload();
         return;
@@ -258,6 +259,12 @@ export function LiveUpdates() {
       on("match:closed", onGeneric),
       on("private-photo:update", onPhoto),
       on("account:status", (e: AccountEvent) => onAccountOnce(e.status)),
+      // Back from offline / background / a dropped socket: events sent meanwhile were missed, so
+      // re-read badges and the current page (Requests, profiles, Overview) from the server.
+      on("realtime:resync", () => {
+        refreshNavCounts();
+        refreshPage();
+      }),
     ];
     // The focus re-check (above) reports the same change too — the realtime event and the
     // re-check can both fire for one approval, so only the first one per status acts.

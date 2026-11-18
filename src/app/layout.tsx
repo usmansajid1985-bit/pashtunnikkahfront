@@ -3,6 +3,7 @@ import { Fraunces, Inter, Poppins } from "next/font/google";
 import { ServiceWorkerRegistrar } from "@/components/notifications/service-worker-registrar";
 import { PresenceHeartbeat } from "@/components/presence-heartbeat";
 import { LiveUpdates } from "@/components/notifications/live-updates";
+import { FlashToastHost } from "@/components/flash-toast";
 import { GoldUpsellHost } from "@/components/billing/gold-upsell";
 import { MemberWarningGate } from "@/components/notifications/member-warning-gate";
 import { TribeConfirmGate } from "@/components/tribe/tribe-confirm-gate";
@@ -66,6 +67,7 @@ export default function RootLayout({
         <ServiceWorkerRegistrar />
         <PresenceHeartbeat />
         <LiveUpdates />
+        <FlashToastHost />
         <GoldUpsellHost />
         <MemberWarningGate />
         <TribeConfirmGate />

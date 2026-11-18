@@ -1,5 +1,6 @@
 "use client";
 
+import { clearNavCountsCache } from "@/components/browse/nav-notifications";
 import { useState } from "react";
 import { writeSessionMarker } from "@/lib/session-marker";
 import { clearChatDeviceState } from "@/lib/chat-outbox";
@@ -11,7 +12,8 @@ export function LogoutRow() {
     if (busy) return;
     setBusy(true);
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+      clearNavCountsCache();
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
       clearChatDeviceState();
     } finally {
       writeSessionMarker(null);

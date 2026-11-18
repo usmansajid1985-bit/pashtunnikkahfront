@@ -8,6 +8,7 @@ import { SuccessToast } from "@/components/success-toast";
 import { useRouter } from "next/navigation";
 import { filtersToQuery, type BrowseFilters } from "@/lib/browse-filters-shared";
 import { useChatSocket } from "@/hooks/use-chat-socket";
+import { useLivePresence } from "@/hooks/use-live-presence";
 
 const FRESH_CHECK_MS = 60_000;
 
@@ -40,6 +41,8 @@ export function BrowseInfiniteGrid({
   browseTopic,
 }: Props) {
   const [items, setItems] = useState(initialItems);
+  // Activity dots stay live: re-read the on-screen members' status every ~20s (no refresh).
+  const liveLabels = useLivePresence(items.map((it) => it.userId));
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [loading, setLoading] = useState(false);
@@ -354,7 +357,7 @@ export function BrowseInfiniteGrid({
             {strictCount != null && strictCount > 0 && i === strictCount ? expandedDivider : null}
           <ProfileCard
             key={p.id}
-            p={p}
+            p={liveLabels[p.userId] ? { ...p, lastSeenLabel: liveLabels[p.userId] } : p}
             saved={savedIds.has(p.userId)}
             saveBusy={savingIds.has(p.userId)}
             onToggleSave={() => void toggleSave(p.userId)}

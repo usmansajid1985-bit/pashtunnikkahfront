@@ -10,11 +10,11 @@ export function MobileNavMenu({
   items,
   active,
   unread,
-  requests = 0,
+  requests,
 }: {
   items: NavItem[];
   active: NavKey | null;
-  unread: number;
+  unread?: number;
   requests?: number;
 }) {
   const [open, setOpen] = useState(false);

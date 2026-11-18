@@ -11,8 +11,8 @@ import type { NavKey } from "@/components/browse/nav-items";
  */
 export function MobileBottomNavGate({
   active,
-  unreadCount = 0,
-  requestsCount = 0,
+  unreadCount,
+  requestsCount,
 }: {
   active?: NavKey;
   unreadCount?: number;

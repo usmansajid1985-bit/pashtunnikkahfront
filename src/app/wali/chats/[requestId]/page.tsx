@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
 import { assertMatchParticipant, getReactionsForMessages, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
 import { prisma } from "@/lib/prisma";
+import { isBlockedBetween } from "@/lib/blocking";
 import { WaliHeader } from "@/components/wali/wali-header";
 import { WaliChatView } from "@/components/wali/wali-chat-view";
 import { profileCodeOf } from "@/lib/notifications";
@@ -41,6 +42,15 @@ export default async function WaliChatThreadPage({
   }
 
   const peerId = await peerUserId(req, profileUserId);
+  // A block (either way) ends wali oversight of that conversation too — old links / open tabs
+  // must not keep showing it.
+  if (await isBlockedBetween(profileUserId, peerId)) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <p className="text-sm text-ink-700/65">This conversation is no longer available.</p>
+      </div>
+    );
+  }
   const [peer, wardCode] = await Promise.all([loadPeer(peerId), profileCodeOf(profileUserId)]);
   // W09: the sister can see when her wali read which conversation.
   await logWaliConversationView(

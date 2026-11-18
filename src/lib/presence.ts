@@ -1,11 +1,16 @@
 /**
- * Presence / Online / Last Seen helpers for Browse.
- * Online = last_seen_at within ONLINE_IDLE_MINUTES (default 5).
+ * Presence / Online / Last Seen helpers.
+ * Online ("Active now") = last_seen_at within ONLINE_WINDOW_SECONDS. The client heartbeats every
+ * ~20s while the app is genuinely in use, so a member who closes the app, loses signal or whose phone
+ * dies without sending the "away" beacon drops out of Active now within ~45s (not minutes).
  */
-export const ONLINE_IDLE_MINUTES = Math.max(
-  1,
-  Number(process.env.ONLINE_IDLE_MINUTES) || 5
-);
+export const ONLINE_WINDOW_SECONDS = Math.max(20, Number(process.env.ONLINE_WINDOW_SECONDS) || 45);
+/** Kept for older callers; fractional minutes. */
+export const ONLINE_IDLE_MINUTES = ONLINE_WINDOW_SECONDS / 60;
+/** How often the foreground client heartbeats (must stay well under the online window). */
+export const HEARTBEAT_INTERVAL_MS = 20_000;
+/** Foreground but untouched for this long = no longer "Active now". */
+export const FOREGROUND_IDLE_MS = 5 * 60_000;
 
 /** Extra rank nudge for brand-new members — kept short so it doesn't distort activity order. */
 export const NEW_MEMBER_BOOST_DAYS = 4;
@@ -18,7 +23,7 @@ export const JUST_JOINED_DAYS = 7;
 export const FAIR_EXPOSURE_WINDOW_DAYS = 3;
 
 export function onlineSince(now = new Date()) {
-  return new Date(now.getTime() - ONLINE_IDLE_MINUTES * 60_000);
+  return new Date(now.getTime() - ONLINE_WINDOW_SECONDS * 1000);
 }
 
 export function isOnline(lastSeenAt: Date | string | null | undefined, now = new Date()) {
@@ -51,8 +56,8 @@ export function activityBucket(lastSeenAt: Date | string | null | undefined, now
   if (!lastSeenAt) return 90;
   const t = lastSeenAt instanceof Date ? lastSeenAt : new Date(lastSeenAt);
   if (Number.isNaN(t.getTime())) return 90;
+  if (isOnline(t, now)) return 0; // online — same test as the "Active now" dot
   const mins = (now.getTime() - t.getTime()) / 60_000;
-  if (mins <= ONLINE_IDLE_MINUTES) return 0; // online
   if (mins <= 15) return 1;
   if (mins <= 60) return 2;
   if (mins <= 6 * 60) return 3;

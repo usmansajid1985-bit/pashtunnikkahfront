@@ -1,5 +1,6 @@
 import { getWaliSession } from "@/lib/wali";
 import { assertAcceptedParticipant, peerUserId } from "@/lib/chat";
+import { isBlockedBetween } from "@/lib/blocking";
 import { prisma } from "@/lib/prisma";
 import { mapProfileView } from "@/lib/profile";
 import { ProfilePreview } from "@/components/profile/profile-preview";
@@ -35,6 +36,13 @@ export default async function WaliPeerProfilePage({
   }
 
   const peerId = await peerUserId(req, profileUserId);
+  if (await isBlockedBetween(profileUserId, peerId)) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center px-6">
+        <p className="text-sm text-ink-700/65">This profile is no longer available.</p>
+      </div>
+    );
+  }
   const [user, profile] = await Promise.all([
     prisma.users.findUnique({ where: { id: peerId } }),
     prisma.profiles.findUnique({ where: { user_id: peerId } }),

@@ -22,8 +22,8 @@ const BOTTOM_TABS: { key: NavKey; label: string }[] = [
  */
 export function MobileBottomNav({
   active,
-  unreadCount = 0,
-  requestsCount = 0,
+  unreadCount,
+  requestsCount,
 }: {
   active?: NavKey | null;
   unreadCount?: number;

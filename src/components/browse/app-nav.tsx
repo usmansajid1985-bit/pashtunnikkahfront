@@ -35,9 +35,9 @@ function HelpIcon() {
  */
 export function BrowseAppNav({
   active = "browse",
-  unreadCount = 0,
-  requestsCount = 0,
-  bellUnread = 0,
+  unreadCount,
+  requestsCount,
+  bellUnread,
   bellActive = false,
 }: Props) {
   return (

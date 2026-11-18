@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import { useRouter } from "next/navigation";
 import { openGoldUpsell } from "@/components/billing/gold-upsell";
 import { useEffect, useState, useTransition } from "react";
@@ -346,6 +348,7 @@ export function BrowseFiltersBar({
     closePanel();
     // City and Interests are no longer filters — never carry an old one along invisibly.
     navigate({ ...draft, city: "", interests: "" });
+    flashToast("Filters applied");
   }
 
   function clearAll() {

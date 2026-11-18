@@ -3,7 +3,7 @@ import { cancelFamilyFlow } from "@/lib/family-flow";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { broadcastChat } from "@/lib/chat-broadcast";
+import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +78,8 @@ export async function POST(req: Request) {
       byUserId: session.userId,
       reason: "blocked",
     });
+    // Wali oversight of this conversation ends with the block — tell any wali watching it now.
+    void broadcastToWalis("match:closed", chat.id, { requestId: chat.id.toString(), reason: "blocked" }).catch(() => {});
   }
   for (const request of pendingRequests) {
     broadcastChat("request:update", userRooms, { requestId: request.id.toString(), status: "cancelled" });

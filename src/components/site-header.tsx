@@ -1,5 +1,6 @@
 "use client";
 
+import { clearNavCountsCache } from "@/components/browse/nav-notifications";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { LogoTile } from "@/components/home/cta-footer";
@@ -56,6 +57,7 @@ export function SiteHeader() {
   const loggedIn = Boolean(me);
 
   async function logout() {
+    clearNavCountsCache();
     await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     clearChatDeviceState();
     setMe(null);

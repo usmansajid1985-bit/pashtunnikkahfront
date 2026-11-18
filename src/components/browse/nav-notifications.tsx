@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+
+/** useLayoutEffect in the browser (runs before paint), useEffect on the server (no warning). */
+const useIsoLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 export type NavCounts = {
   bellUnread: number;
@@ -10,14 +13,74 @@ export type NavCounts = {
 };
 
 const EVENT = "pn:nav-counts";
+/** Per-tab cache of the last confirmed counts, so a full page load starts from real numbers
+ * instead of flashing 0 → N while the first poll is in flight. Cleared on logout / account switch. */
+const CACHE_KEY = "pn_nav_counts";
 let polling = false;
 let tickNow: (() => Promise<void>) | null = null;
 /** Last counts seen by the shared poller — the base for optimistic nudges, and the value every nav
  * badge island re-mounts to so it never flashes back to zero on a client-side page navigation. */
 let lastCounts: NavCounts = { bellUnread: 0, incomingRequests: 0, unreadMessages: 0 };
-/** True once a real count (server poll or a page's initial props) has been applied, so later mounts
- * seed from `lastCounts` rather than briefly showing a default/zero while the next poll lands. */
+/** True once a real count (server poll, cache or a page's initial props) has been applied, so later
+ * mounts seed from `lastCounts` rather than briefly showing a default/zero. */
 let seeded = false;
+let cacheOwner: string | null = null;
+
+function readCache() {
+  if (typeof window === "undefined") return;
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as { owner?: string | null; counts?: NavCounts };
+    if (parsed.counts) {
+      lastCounts = { ...lastCounts, ...parsed.counts };
+      cacheOwner = parsed.owner ?? null;
+      seeded = true;
+    }
+  } catch {
+    /* storage blocked — just start from server props */
+  }
+}
+readCache();
+
+function writeCache() {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ owner: cacheOwner, counts: lastCounts }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function broadcast() {
+  writeCache();
+  window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: lastCounts }));
+}
+
+/** Forget cached badge counts — call on logout so the next account never sees the previous one's. */
+export function clearNavCountsCache() {
+  try {
+    sessionStorage.removeItem(CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+  lastCounts = { bellUnread: 0, incomingRequests: 0, unreadMessages: 0 };
+  seeded = false;
+  cacheOwner = null;
+}
+
+/** Tie the cache to the signed-in account; a different account wipes it and re-fetches at once. */
+export function setNavCountsOwner(userId: string | null) {
+  if (typeof window === "undefined") return;
+  if (cacheOwner && userId !== cacheOwner) {
+    clearNavCountsCache();
+    cacheOwner = userId;
+    broadcast();
+    refreshNavCounts();
+    return;
+  }
+  cacheOwner = userId;
+  writeCache();
+}
 
 /** Re-fetch badge counts immediately — called by LiveUpdates on realtime events (Q02/N07). */
 export function refreshNavCounts() {
@@ -36,7 +99,7 @@ export function bumpNavCounts(delta: Partial<NavCounts>) {
     incomingRequests: Math.max(0, lastCounts.incomingRequests + (delta.incomingRequests ?? 0)),
     unreadMessages: Math.max(0, lastCounts.unreadMessages + (delta.unreadMessages ?? 0)),
   };
-  window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: lastCounts }));
+  broadcast();
 }
 
 /**
@@ -61,7 +124,7 @@ function startPolling() {
       const data = (await res.json()) as NavCounts;
       lastCounts = data;
       seeded = true;
-      window.dispatchEvent(new CustomEvent<NavCounts>(EVENT, { detail: data }));
+      broadcast();
     } catch {
       /* offline — keep last known counts */
     }
@@ -78,28 +141,35 @@ function startPolling() {
 }
 
 function useNavCounts(initial: Partial<NavCounts>): NavCounts {
-  // On a client-side navigation the module already holds the last confirmed counts — start from
-  // those so the badge keeps its number instead of flashing to zero. Only the very first mount of
-  // the session (before any poll or initial has been applied) falls back to this page's props.
-  const [counts, setCounts] = useState<NavCounts>(() =>
-    seeded
-      ? { ...lastCounts }
-      : {
-          bellUnread: initial.bellUnread ?? 0,
-          incomingRequests: initial.incomingRequests ?? 0,
-          unreadMessages: initial.unreadMessages ?? 0,
-        }
-  );
-  useEffect(() => {
-    // Seed the shared base from this island's server-provided initial before the first poll lands,
-    // so an optimistic bump (e.g. opening a notification) starts from the right number.
-    if (!seeded) {
-      if (initial.bellUnread != null) lastCounts.bellUnread = initial.bellUnread;
-      if (initial.incomingRequests != null) lastCounts.incomingRequests = initial.incomingRequests;
-      if (initial.unreadMessages != null) lastCounts.unreadMessages = initial.unreadMessages;
-      seeded = true;
-      setCounts({ ...lastCounts });
+  // First render must match the server HTML (which can't see the per-tab cache), so start from the
+  // page's props; the layout effect below swaps in the cached/shared counts *before paint*, so the
+  // badge never visibly flashes. `undefined` in `initial` = "this page didn't compute it" (never 0).
+  const [counts, setCounts] = useState<NavCounts>(() => ({
+    bellUnread: initial.bellUnread ?? 0,
+    incomingRequests: initial.incomingRequests ?? 0,
+    unreadMessages: initial.unreadMessages ?? 0,
+  }));
+  useIsoLayoutEffect(() => {
+    // Fold this page's server-provided counts into the shared base (so optimistic bumps start from
+    // the right number and other islands match), then let the poll/realtime keep it fresh.
+    let changed = false;
+    if (initial.bellUnread != null && initial.bellUnread !== lastCounts.bellUnread) {
+      lastCounts = { ...lastCounts, bellUnread: initial.bellUnread };
+      changed = true;
     }
+    if (initial.incomingRequests != null && initial.incomingRequests !== lastCounts.incomingRequests) {
+      lastCounts = { ...lastCounts, incomingRequests: initial.incomingRequests };
+      changed = true;
+    }
+    if (initial.unreadMessages != null && initial.unreadMessages !== lastCounts.unreadMessages) {
+      lastCounts = { ...lastCounts, unreadMessages: initial.unreadMessages };
+      changed = true;
+    }
+    if (changed || !seeded) {
+      seeded = true;
+      broadcast();
+    }
+    setCounts({ ...lastCounts });
     startPolling();
     const onEvt = (e: Event) => {
       lastCounts = (e as CustomEvent<NavCounts>).detail;
@@ -113,7 +183,7 @@ function useNavCounts(initial: Partial<NavCounts>): NavCounts {
 }
 
 export function NavBell({
-  initialUnread = 0,
+  initialUnread,
   active = false,
   className = "",
 }: {
@@ -147,7 +217,7 @@ export function NavBell({
 /** Numbered badge for a nav item that stays in sync with the shared poll. */
 export function NavCountBadge({
   kind,
-  initialCount = 0,
+  initialCount,
   className = "",
 }: {
   kind: "requests" | "messages";
@@ -172,8 +242,8 @@ export function NavCountBadge({
 
 /** Red dot on the closed ☰ menu icon while there are unread messages or requests (Q02). */
 export function NavUnreadDot({
-  initialUnread = 0,
-  initialRequests = 0,
+  initialUnread,
+  initialRequests,
   className = "",
 }: {
   initialUnread?: number;

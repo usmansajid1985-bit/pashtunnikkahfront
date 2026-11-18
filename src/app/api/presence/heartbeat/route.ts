@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ONLINE_IDLE_MINUTES } from "@/lib/presence";
+import { ONLINE_WINDOW_SECONDS } from "@/lib/presence";
 import { maybeRunRequestLifecycleJobs } from "@/lib/request-lifecycle";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,8 @@ export async function POST(req: Request) {
 
   const away = new URL(req.url).searchParams.get("away") === "1";
   const now = new Date();
-  const seen = away ? new Date(now.getTime() - (ONLINE_IDLE_MINUTES + 1) * 60_000) : now;
+  // Away: just outside the online window, so the dot drops at once but they still read "Active today".
+  const seen = away ? new Date(now.getTime() - (ONLINE_WINDOW_SECONDS + 5) * 1000) : now;
   await prisma.users.update({
     where: { id: BigInt(session.userId) },
     data: { last_seen_at: seen, updated_at: now },
@@ -25,5 +26,5 @@ export async function POST(req: Request) {
   // response (throttled), so the heartbeat itself is never slowed.
   after(() => maybeRunRequestLifecycleJobs());
 
-  return NextResponse.json({ ok: true, onlineIdleMinutes: ONLINE_IDLE_MINUTES, at: now.toISOString() });
+  return NextResponse.json({ ok: true, onlineWindowSeconds: ONLINE_WINDOW_SECONDS, at: now.toISOString() });
 }
