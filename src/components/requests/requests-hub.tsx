@@ -63,7 +63,7 @@ function SegmentedTabs({
           >
             {t.label}
             {t.count > 0 ? (
-              <span className="min-w-6 h-6 px-1.5 rounded-full bg-rose-100 text-rose-600 text-[13px] font-bold flex items-center justify-center">
+              <span className="min-w-6 h-6 px-1.5 rounded-full bg-[#e12d72] text-white text-[13px] font-bold flex items-center justify-center">
                 {t.count}
               </span>
             ) : null}

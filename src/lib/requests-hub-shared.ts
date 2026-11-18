@@ -80,20 +80,26 @@ export function statusDateLabel(card: Pick<HubCard, "status" | "requestedAt" | "
 }
 
 /** "Expires in 6 days" / "Expires in 5 hours" for a pending request; soon = final 24 hours. */
-export function expiryCountdown(expiresAt: string, now = Date.now()): { label: string; soon: boolean; msLeft: number } {
+export function expiryCountdown(
+  expiresAt: string,
+  now = Date.now()
+): { label: string; short: string; soon: boolean; msLeft: number } {
   const msLeft = new Date(expiresAt).getTime() - now;
-  if (msLeft <= 0) return { label: "Expiring…", soon: true, msLeft };
+  if (msLeft <= 0) return { label: "Expiring…", short: "Expiring…", soon: true, msLeft };
   const hours = msLeft / 3_600_000;
   if (hours >= 24) {
     const days = Math.round(hours / 24);
-    return { label: `Expires in ${days} day${days === 1 ? "" : "s"}`, soon: false, msLeft };
+    const unit = `${days} day${days === 1 ? "" : "s"}`;
+    return { label: `Expires in ${unit}`, short: `${unit} left`, soon: false, msLeft };
   }
   if (hours >= 1) {
     const h = Math.floor(hours);
-    return { label: `Expires in ${h} hour${h === 1 ? "" : "s"}`, soon: true, msLeft };
+    const unit = `${h} hour${h === 1 ? "" : "s"}`;
+    return { label: `Expires in ${unit}`, short: `${unit} left`, soon: true, msLeft };
   }
   const mins = Math.max(1, Math.floor(msLeft / 60_000));
-  return { label: `Expires in ${mins} min${mins === 1 ? "" : "s"}`, soon: true, msLeft };
+  const unit = `${mins} min${mins === 1 ? "" : "s"}`;
+  return { label: `Expires in ${unit}`, short: `${unit} left`, soon: true, msLeft };
 }
 
 /** Lightweight compatibility heuristic for UI (0–99). */

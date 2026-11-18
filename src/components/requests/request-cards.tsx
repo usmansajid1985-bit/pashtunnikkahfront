@@ -49,6 +49,40 @@ function ExpiryNote({ expiresAt }: { expiresAt: string }) {
   return <span className={state.soon ? "text-amber-700" : "text-ink-700/50"}>{state.label}</span>;
 }
 
+/** Small light-grey pill with a clock — "7 days left" — shown next to the ⋮ on received cards. */
+function ExpiryPill({ expiresAt }: { expiresAt: string }) {
+  const router = useRouter();
+  const [state, setState] = useState<ReturnType<typeof expiryCountdown> | null>(null);
+  useEffect(() => {
+    let refreshed = false;
+    const tick = () => {
+      const next = expiryCountdown(expiresAt);
+      setState(next);
+      if (next.msLeft <= 0 && !refreshed) {
+        refreshed = true;
+        router.refresh();
+      }
+    };
+    tick();
+    const timer = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt, router]);
+  if (!state) return null;
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[12px] font-medium whitespace-nowrap ${
+        state.soon ? "bg-amber-50 text-amber-700" : "bg-ink-900/[0.05] text-ink-900/75"
+      }`}
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </svg>
+      {state.short}
+    </span>
+  );
+}
+
 /** The member's server-blurred photo (never the original), or a neutral placeholder. */
 export function RequestPhoto({ card, className = "" }: { card: HubCard; className?: string }) {
   const [failed, setFailed] = useState(false);
@@ -242,22 +276,20 @@ export function ReceivedCard({ card }: { card: HubCard }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <NameAge card={card} className="text-[17px] sm:text-lg pt-0.5" />
-            <KebabMenu
-              items={[
-                { label: "View profile", icon: UserIcon, onClick: () => router.push(`/p/${card.code}`) },
-                { label: "Block member", icon: BlockIcon, onClick: () => setConfirmBlock(true), danger: true },
-              ]}
-            />
+            <div className="flex shrink-0 items-center gap-1">
+              {card.expiresAt ? <ExpiryPill expiresAt={card.expiresAt} /> : null}
+              <KebabMenu
+                items={[
+                  { label: "View profile", icon: UserIcon, onClick: () => router.push(`/p/${card.code}`) },
+                  { label: "Block member", icon: BlockIcon, onClick: () => setConfirmBlock(true), danger: true },
+                ]}
+              />
+            </div>
           </div>
           <PlaceLine card={card} />
-          <TimeLine>
+          <p className="mt-1 text-[13px] text-ink-700/60">
             <LocalTime iso={card.requestedAt || card.createdAt} prefix="Received" />
-          </TimeLine>
-          {card.expiresAt ? (
-            <p className="mt-0.5 pl-[21px] text-[12px]">
-              <ExpiryNote expiresAt={card.expiresAt} />
-            </p>
-          ) : null}
+          </p>
         </div>
       </div>
 
@@ -265,15 +297,15 @@ export function ReceivedCard({ card }: { card: HubCard }) {
         {card.introMessage ? (
           <Link
             href={requestChatHref(card)}
-            className="pointer-events-auto mt-3 flex items-center gap-3 rounded-xl bg-rose-50/80 border border-rose-100 px-3.5 py-3 hover:bg-rose-50 transition"
+            className="pointer-events-auto mt-2.5 flex items-center gap-3 rounded-xl bg-ink-900/[0.045] px-3 py-2.5 hover:bg-ink-900/[0.07] transition"
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e11d48" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 self-start mt-0.5" aria-hidden>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e12d72" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 self-start mt-0.5" aria-hidden>
               <path d="M4 5h16v11H9l-5 4Z" />
               <path d="M8 9.5h8M8 12.5h5" />
             </svg>
             <span className="min-w-0 flex-1">
-              <span className="block text-[13px] font-semibold text-rose-600">{card.code}&apos;s introduction message</span>
-              <span className="text-[13px] text-ink-700/80 line-clamp-2">{card.introMessage}</span>
+              <span className="block text-[13.5px] font-semibold text-ink-950">New message from {card.code}</span>
+              <span className="text-[13px] text-ink-700/65 line-clamp-2">{card.introMessage}</span>
             </span>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-ink-700/40" aria-hidden>
               <path d="m9 18 6-6-6-6" />
@@ -297,12 +329,12 @@ export function ReceivedCard({ card }: { card: HubCard }) {
             </button>
           </div>
         ) : (
-          <div className="pointer-events-auto mt-3 flex gap-2.5 sm:justify-end">
+          <div className="pointer-events-auto mt-2.5 flex gap-2.5 sm:justify-end">
             <button
               type="button"
               disabled={pending}
               onClick={() => act("decline")}
-              className="flex-1 sm:flex-none sm:min-w-36 px-6 py-2.5 rounded-full border border-rose-400 bg-white text-rose-600 text-[14px] font-semibold hover:bg-rose-50 disabled:opacity-50"
+              className="flex-1 sm:flex-none sm:min-w-36 h-11 px-6 rounded-full border border-[#e12d72] bg-white text-[#e12d72] text-[14.5px] font-semibold hover:bg-rose-50 disabled:opacity-50"
             >
               Decline
             </button>
@@ -310,7 +342,7 @@ export function ReceivedCard({ card }: { card: HubCard }) {
               type="button"
               disabled={pending}
               onClick={() => act("accept")}
-              className="flex-1 sm:flex-none sm:min-w-36 px-6 py-2.5 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-700 text-[14px] font-semibold hover:bg-emerald-100 disabled:opacity-50"
+              className="flex-1 sm:flex-none sm:min-w-36 h-11 px-6 rounded-full border border-emerald-400 bg-emerald-50 text-emerald-700 text-[14.5px] font-semibold hover:bg-emerald-100 disabled:opacity-50"
             >
               Accept
             </button>

@@ -47,11 +47,8 @@ export default async function RequestsPage({
       <MobileBottomNavGate active="requests" unreadCount={navCounts.unreadMessages} requestsCount={navCounts.incomingRequests} />
 
       <main className="max-w-lg lg:max-w-3xl mx-auto px-4 lg:px-8 py-6 pb-[var(--pn-bottom-nav-h)]">
-        <div className="hidden lg:block mb-6">
+        <div className="hidden lg:block mb-6 text-center">
           <h1 className="text-3xl font-bold text-ink-950">Requests</h1>
-          <p className="mt-1 text-sm text-ink-700/65">
-            Manage your received and sent requests.
-          </p>
         </div>
 
         <RequestsHub data={hub} initialTab={tab} />
