@@ -4,6 +4,7 @@ export type GoldFeatureIconName =
   | "filters"
   | "eye"
   | "rollover"
+  | "sparkle"
   | "calendar"
   | "clock"
   | "receipt";
@@ -48,6 +49,11 @@ export function GoldFeatureIcon({ icon, className = "h-5 w-5" }: { icon: GoldFea
           <path d="M4 4v4h4" />
           <path d="M4 13a8 8 0 0 0 14.5 4.5L20 16" />
           <path d="M20 20v-4h-4" />
+        </>
+      ) : icon === "sparkle" ? (
+        <>
+          <path d="M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8z" />
+          <path d="M18.5 15.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z" />
         </>
       ) : icon === "calendar" ? (
         <>

@@ -31,6 +31,7 @@ const LEDGER_LABELS: Record<string, string> = {
   promotional_credit: "Promotional tokens",
   referral_reward: "Referral reward",
   token_expired: "Unused tokens expired",
+  basic_cap_correction: "Adjusted to the Basic monthly limit",
   gold_upgrade_reconciled: "Basic tokens replaced by Gold",
   gold_ended: "Gold tokens ended",
   admin_grant: "Added by the PN team",

@@ -221,6 +221,58 @@ async function closeLot(tx: Db, lot: LotRow, reason: string, ledgerReason = "tok
   }
 }
 
+/** Live tokens that count toward a Basic member's 3/month cap — purchased top-ups and deliberate
+ * admin grants are the member's own extras and never capped. */
+async function liveAllowanceBalance(tx: Db, userId: bigint): Promise<number> {
+  const rows = await tx.$queryRaw<{ n: bigint | null }[]>`
+    SELECT COALESCE(SUM(remaining), 0) AS n FROM token_lots
+    WHERE user_id = ${userId} AND remaining > 0 AND closed_at IS NULL
+      AND (expires_at IS NULL OR expires_at > NOW())
+      AND source NOT IN ('purchased', 'admin')
+  `;
+  return Number(rows[0]?.n ?? 0);
+}
+
+/**
+ * Basic members never hold more than their monthly allowance (excl. purchased/admin). Self-heals
+ * accounts pushed to 4/3 by a pre-fix cross-month refund: the surplus is trimmed (refund lots first,
+ * newest first) and logged so Token Activity shows the correction.
+ */
+async function enforceBasicCap(tx: Db, userId: bigint, cap: number) {
+  let over = (await liveAllowanceBalance(tx, userId)) - cap;
+  if (over <= 0) return;
+  const now = Date.now();
+  const groups: TokenSource[][] = [["refund"], ["rollover", "gold"], ["basic"]];
+  for (const sources of groups) {
+    const lots = (await openLots(tx, userId, sources))
+      .filter((l) => l.remaining > 0 && (!l.expires_at || new Date(l.expires_at).getTime() > now))
+      .reverse(); // newest first
+    for (const lot of lots) {
+      if (over <= 0) return;
+      if (lot.remaining <= over) {
+        over -= lot.remaining;
+        await closeLot(tx, lot, "basic_cap", "basic_cap_correction");
+      } else {
+        const before = await liveBalance(tx, userId);
+        await tx.$executeRaw`UPDATE token_lots SET remaining = remaining - ${over} WHERE id = ${lot.id}`;
+        const after = await syncCache(tx, userId);
+        await ledger(tx, {
+          userId,
+          amount: -over,
+          source: lot.source,
+          reason: "basic_cap_correction",
+          previous: before,
+          next: after,
+          lotId: lot.id,
+          key: `cap:${lot.id}:${monthKey()}`,
+          note: `Basic limit is ${cap} per month`,
+        });
+        over = 0;
+      }
+    }
+  }
+}
+
 async function openLots(tx: Db, userId: bigint, sources: TokenSource[]): Promise<LotRow[]> {
   return tx.$queryRaw<LotRow[]>`
     SELECT * FROM token_lots
@@ -302,6 +354,20 @@ export async function refundTokenForRequest(tx: Db, userId: bigint, requestId: b
     ORDER BY id DESC LIMIT 1
   `;
   const spend = spends[0];
+  // Basic cap: a refund may restore a token the member spent, but never take them past their
+  // monthly allowance (e.g. 3/3). If they're already at the cap, close the spend without granting.
+  {
+    const plan = await tx.$queryRaw<{ plan: string | null }[]>`SELECT plan FROM users WHERE id = ${userId}`;
+    if ((plan[0]?.plan || "").toLowerCase() !== "gold") {
+      const cap = (await getTokenSettings()).basicMonthly;
+      if ((await liveAllowanceBalance(tx, userId)) >= cap) {
+        if (spend) {
+          await tx.$executeRaw`UPDATE token_spends SET refunded_at = NOW(), refund_lot_id = NULL WHERE id = ${spend.id}`;
+        }
+        return before;
+      }
+    }
+  }
   let lotId: bigint | null = null;
   let source: string = "refund";
   if (spend) {
@@ -412,6 +478,7 @@ export async function ensureBasicAllowance(userId: bigint): Promise<number | nul
         cycleKey: monthKey(),
         reason: "monthly_free_allowance",
       });
+      await enforceBasicCap(tx, userId, settings.basicMonthly);
     }
     return syncCache(tx, userId);
   });

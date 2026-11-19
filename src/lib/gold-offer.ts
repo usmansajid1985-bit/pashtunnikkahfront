@@ -11,6 +11,7 @@ export function goldFeatures(gold: PlanSettings): GoldFeature[] {
     { icon: "filters", title: "Advanced browse filters", detail: "Be more specific in your search." },
     { icon: "insights", title: "Match Insights", detail: "Explore shared values, potential differences and questions worth discussing." },
     { icon: "eye", title: "See who viewed your profile", detail: "See who has viewed your profile." },
+    { icon: "sparkle", title: "See who just joined", detail: "Sort Browse by Just Joined to see the newest approved members first." },
   ];
 }
 
