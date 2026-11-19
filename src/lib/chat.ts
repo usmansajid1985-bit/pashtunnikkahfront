@@ -576,6 +576,42 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
   return threads;
 }
 
+/**
+ * On acceptance the sender's introduction becomes the first message of the conversation, keeping
+ * its original sent time (Tweaks p40/p87). Idempotent (stable clientId), so calling it from every
+ * accept path — manual Accept, mutual auto-accept, retries — never duplicates it. No push/email:
+ * the recipient has already read it on the request.
+ */
+export async function insertIntroMessage(requestId: bigint): Promise<void> {
+  const req = await prisma.match_requests.findUnique({
+    where: { id: requestId },
+    select: { sender_id: true, receiver_id: true, intro_message: true, created_at: true },
+  });
+  const intro = req?.intro_message?.trim();
+  if (!req || !intro) return;
+  const clientId = `intro-${requestId}`;
+  const existing = await prisma.$queryRaw<{ id: bigint }[]>`
+    SELECT id FROM messages WHERE request_id = ${requestId} AND metadata->>'clientId' = ${clientId} LIMIT 1
+  `.catch(() => []);
+  if (existing[0]) return;
+  await prisma.messages.create({
+    data: {
+      id: await nextMessageId(),
+      request_id: requestId,
+      sender_id: req.sender_id,
+      receiver_id: req.receiver_id,
+      body: intro.slice(0, 4000),
+      // The recipient read it on the request card before accepting.
+      is_read: true,
+      is_flagged: false,
+      flagged_by: null,
+      reply_to_id: null,
+      created_at: req.created_at,
+      metadata: { clientId, intro: true },
+    },
+  });
+}
+
 export async function createMessage(opts: {
   requestId: bigint;
   senderId: bigint;

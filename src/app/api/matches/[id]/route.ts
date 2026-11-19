@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { inBackground } from "@/lib/background";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { insertIntroMessage } from "@/lib/chat";
 import { expireStaleRequests } from "@/lib/matches";
 import { refundTokenForRequest, withMemberTokens } from "@/lib/tokens";
 import { broadcastChat } from "@/lib/chat-broadcast";
@@ -95,6 +96,9 @@ export async function POST(
       },
     });
     if (accepted.count === 0) return staleResponse(id);
+
+    // The introduction stays in the conversation as its first message, with its original time.
+    await insertIntroMessage(id).catch((err) => console.error("[match] intro message insert failed", err));
 
     const accepterCode = await profileCodeOf(match.receiver_id);
     notifyRequestChange(match, "accepted", accepterCode);

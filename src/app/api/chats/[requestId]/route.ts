@@ -27,12 +27,31 @@ const PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 60;
 
 async function loadMessagePage(requestId: bigint, before: bigint | null, limit: number) {
+  // Chronological by (created_at, id) — not id alone — so a message stored later with an earlier
+  // time (the restored introduction) sits in its true place. `before` is still a message id: page
+  // from that message's (time, id) position.
+  let cursor: { created_at: Date; id: bigint } | null = null;
+  if (before) {
+    cursor = await prisma.messages.findFirst({
+      where: { id: before, request_id: requestId },
+      select: { created_at: true, id: true },
+    });
+  }
   const desc = await prisma.messages.findMany({
     where: {
       request_id: requestId,
-      ...(before ? { id: { lt: before } } : {}),
+      ...(cursor
+        ? {
+            OR: [
+              { created_at: { lt: cursor.created_at } },
+              { created_at: cursor.created_at, id: { lt: cursor.id } },
+            ],
+          }
+        : before
+          ? { id: { lt: before } }
+          : {}),
     },
-    orderBy: { id: "desc" },
+    orderBy: [{ created_at: "desc" }, { id: "desc" }],
     take: limit + 1,
   });
   const hasMore = desc.length > limit;
@@ -94,6 +113,13 @@ export async function GET(
   );
 
   const matchEnded = req.status === "ended";
+
+  // Backfill: chats accepted before the intro fix lost their introduction — restore it once, with
+  // its original time, the first time the conversation is opened (idempotent, cheap no-op after).
+  if (req.status === "accepted" || req.status === "ended") {
+    const { insertIntroMessage } = await import("@/lib/chat");
+    await insertIntroMessage(requestId).catch(() => {});
+  }
 
   // "before" requests are just older-message pages — skip the heavy peer/profile payload.
   if (before !== null) {
