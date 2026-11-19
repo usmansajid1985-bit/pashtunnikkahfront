@@ -1627,7 +1627,7 @@ export function ChatApp({
   }
 
   /** Blocks the open chat's member, or `target` (a Past matches card's ⋮ menu). */
-  async function blockMember(doneMessage = "Member blocked", target?: { userId: string; requestId: string }) {
+  async function blockMember(doneMessage = "User blocked", target?: { userId: string; requestId: string }) {
     const who = target ?? (peer && activeId ? { userId: peer.userId, requestId: activeId } : null);
     if (!who || moreBusy) return;
     setMoreBusy(true);
@@ -1648,7 +1648,7 @@ export function ChatApp({
         if (typeof window !== "undefined") window.history.replaceState(null, "", "/chats");
       }
       setHeaderMenu(null);
-      showToast(doneMessage);
+      flashToast(doneMessage); // global: still shows after the conversation closes
     } catch {
       showToast("Could not block member");
     } finally {
@@ -1657,9 +1657,9 @@ export function ChatApp({
   }
 
   function showToast(message: string) {
-    setToast(message);
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 2200);
+    // Same 3s lifetime as every other toast — SuccessToast handles the timer and slide-out.
+    setToast(null);
+    window.setTimeout(() => setToast(message), 0);
   }
 
   // A reaction on the newest message makes it taller — stay pinned so the reaction isn't cut off.
@@ -1919,7 +1919,7 @@ export function ChatApp({
                         }}
                         onRematch={() => void requestRematch(t.peerCode)}
                         onReport={() => setReportTarget({ userId: t.peerUserId, code: t.peerCode, requestId: t.requestId })}
-                        onBlock={() => void blockMember("Member blocked", { userId: t.peerUserId, requestId: t.requestId })}
+                        onBlock={() => void blockMember("User blocked", { userId: t.peerUserId, requestId: t.requestId })}
                       />
                     ))}
                   </div>
@@ -2033,7 +2033,7 @@ export function ChatApp({
                       : prev
                   );
                   closeRequestPane();
-                  showToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "Member blocked");
+                  showToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "User blocked");
                 }}
               />
             </section>

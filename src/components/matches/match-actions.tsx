@@ -157,9 +157,17 @@ export function MatchActions({
         ) : null}
 
         {status.state === "pending_sent" ? (
-          <button type="button" disabled className={`${btn} bg-ink-900/8 text-ink-700`}>
-            Request sent — waiting
-          </button>
+          // Stays on the profile after sending; opens the existing pending chat (Chats → Requests → Sent).
+          <a
+            href={
+              status.requestId
+                ? `/chats?tab=requests&sub=sent&request=${status.requestId}`
+                : "/chats?tab=requests&sub=sent"
+            }
+            className={`${btn} bg-[#e12d72] text-white hover:bg-[#c92763] shadow-[0_12px_28px_-12px_rgba(225,45,114,0.55)]`}
+          >
+            Request sent · Open chat {arrow}
+          </a>
         ) : null}
 
         {status.state === "pending_received" ? (

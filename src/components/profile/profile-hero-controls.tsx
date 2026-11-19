@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -45,7 +47,8 @@ export function HeroMoreMenu({ userId, code, afterBlockHref = "/browse" }: { use
       return;
     }
     setOpen(false);
-    setToast(doneMessage);
+    // Global toast survives the navigation below (a local one would vanish with this page).
+    flashToast(doneMessage);
     router.push(afterBlockHref);
     router.refresh();
   }

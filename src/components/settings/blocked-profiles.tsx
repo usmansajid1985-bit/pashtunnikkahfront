@@ -1,5 +1,7 @@
 "use client";
 
+import { flashToast } from "@/components/flash-toast";
+
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { SuccessToast } from "@/components/success-toast";
@@ -38,7 +40,7 @@ export function BlockedProfiles({ initial }: { initial: BlockedProfileRow[] }) {
       if (res.ok) {
         setRows((prev) => prev.filter((r) => r.peerUserId !== row.peerUserId));
         setConfirm(null);
-        setToast("User unblocked");
+        flashToast("User unblocked");
       }
     });
   }

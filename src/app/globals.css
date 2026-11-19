@@ -778,3 +778,9 @@ dialog,
   animation: pnFieldPulse 1.1s ease-in-out 3;
   transition: border-color 0.3s;
 }
+
+/* Success toast exit: slide back up and fade. */
+@keyframes pnToastOut {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-18px); }
+}
