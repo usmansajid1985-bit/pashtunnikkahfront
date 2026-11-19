@@ -172,6 +172,24 @@ function extFromMime(mime: string) {
  * Persist a data-URL image to Supabase Storage. Writes a sidecar `.meta.json`
  * carrying a lightweight moderation watermark string (invisible ops tag).
  */
+const PHOTO_DECODE_ERROR = "This file couldn't be opened as a photo. Please choose another one.";
+const ACCEPTED_FORMATS = new Set(["jpeg", "png", "webp", "heif", "avif"]);
+
+/** Throws a member-friendly error unless `buf` is a real, fully decodable photo. */
+async function assertDecodablePhoto(buf: Buffer) {
+  try {
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(buf, { failOn: "error" }).metadata();
+    if (!meta.format || !ACCEPTED_FORMATS.has(meta.format) || !meta.width || !meta.height) {
+      throw new Error("unsupported");
+    }
+    // Decode every pixel — catches truncated/corrupt files whose header still looks valid.
+    await sharp(buf, { failOn: "error" }).resize(16, 16, { fit: "inside" }).raw().toBuffer();
+  } catch {
+    throw new Error(PHOTO_DECODE_ERROR);
+  }
+}
+
 export async function saveDataUrlPhoto(
   userId: bigint | string,
   dataUrl: string,
@@ -183,6 +201,10 @@ export async function saveDataUrlPhoto(
   const buf = Buffer.from(match[2], "base64");
   if (buf.length < 100) throw new Error("Image too small");
   if (buf.length > MAX_BYTES) throw new Error("Image must be under 8MB");
+
+  // PH-01 (server side): the browser checks decode before cropping, but a corrupt or non-image file
+  // can still be posted straight to the API. Fully decode it here and only accept real photos.
+  await assertDecodablePhoto(buf);
 
   const client = storageClient();
   await ensureBucket(client);
