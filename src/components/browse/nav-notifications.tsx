@@ -25,6 +25,11 @@ let lastCounts: NavCounts = { bellUnread: 0, incomingRequests: 0, unreadMessages
  * mounts seed from `lastCounts` rather than briefly showing a default/zero. */
 let seeded = false;
 let cacheOwner: string | null = null;
+/** When this device last changed a count itself (opened a notification, read a chat…). A page
+ * rendered on the server around that moment can carry the *old* count — the read was still saving —
+ * so for a short window we don't let page props overwrite the local value; we re-check instead. */
+let lastLocalChange = 0;
+const LOCAL_TRUST_MS = 15_000;
 
 function readCache() {
   if (typeof window === "undefined") return;
@@ -94,6 +99,7 @@ export function refreshNavCounts() {
  */
 export function bumpNavCounts(delta: Partial<NavCounts>) {
   if (typeof window === "undefined") return;
+  lastLocalChange = Date.now();
   lastCounts = {
     bellUnread: Math.max(0, lastCounts.bellUnread + (delta.bellUnread ?? 0)),
     incomingRequests: Math.max(0, lastCounts.incomingRequests + (delta.incomingRequests ?? 0)),
@@ -153,6 +159,24 @@ function useNavCounts(initial: Partial<NavCounts>): NavCounts {
     // Fold this page's server-provided counts into the shared base (so optimistic bumps start from
     // the right number and other islands match), then let the poll/realtime keep it fresh.
     let changed = false;
+    // Just changed a count here (e.g. opened a notification → navigated): this page's server
+    // props may predate that save. Keep the local value and confirm with the server right away.
+    const recentLocal = Date.now() - lastLocalChange < LOCAL_TRUST_MS;
+    const differs =
+      (initial.bellUnread != null && initial.bellUnread !== lastCounts.bellUnread) ||
+      (initial.incomingRequests != null && initial.incomingRequests !== lastCounts.incomingRequests) ||
+      (initial.unreadMessages != null && initial.unreadMessages !== lastCounts.unreadMessages);
+    if (recentLocal && differs) {
+      setCounts({ ...lastCounts });
+      startPolling();
+      refreshNavCounts();
+      const onEvtEarly = (e: Event) => {
+        lastCounts = (e as CustomEvent<NavCounts>).detail;
+        setCounts(lastCounts);
+      };
+      window.addEventListener(EVENT, onEvtEarly);
+      return () => window.removeEventListener(EVENT, onEvtEarly);
+    }
     if (initial.bellUnread != null && initial.bellUnread !== lastCounts.bellUnread) {
       lastCounts = { ...lastCounts, bellUnread: initial.bellUnread };
       changed = true;

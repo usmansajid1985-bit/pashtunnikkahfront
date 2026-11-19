@@ -71,8 +71,10 @@ export function NotificationsView({
       prev.map((r) => (r.ids.some((id) => ids.includes(id)) ? { ...r, unread: false } : r))
     );
     bumpNavCounts({ bellUnread: -nowUnread.length });
+    // keepalive: the row usually navigates away immediately — the save must still complete.
     void fetch("/api/notifications", {
       method: "PATCH",
+      keepalive: true,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ids }),
     })
