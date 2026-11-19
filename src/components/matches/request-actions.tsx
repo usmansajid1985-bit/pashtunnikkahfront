@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { refreshNavCounts } from "@/components/browse/nav-notifications";
 
 export type RequestAction = "accept" | "decline" | "withdraw";
 
@@ -10,7 +11,14 @@ export type RequestAction = "accept" | "decline" | "withdraw";
  * page cards and the request view inside Chats so both behave the same: accepting opens the new
  * chat, everything else refreshes the lists (`onDone` runs first, e.g. to close a panel).
  */
-export function useRequestActions(requestId: string, opts: { onDone?: (action: RequestAction | "block") => void } = {}) {
+export function useRequestActions(
+  requestId: string,
+  opts: {
+    onDone?: (action: RequestAction | "block") => void;
+    /** Chats handles the result in place (no page navigation / refresh → no flicker). */
+    inPlace?: boolean;
+  } = {}
+) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +38,8 @@ export function useRequestActions(requestId: string, opts: { onDone?: (action: R
         return;
       }
       opts.onDone?.(action);
+      refreshNavCounts();
+      if (opts.inPlace) return;
       if (action === "accept") {
         router.push(`/chats/${requestId}`);
         return;
@@ -52,7 +62,8 @@ export function useRequestActions(requestId: string, opts: { onDone?: (action: R
         return;
       }
       opts.onDone?.("block");
-      router.refresh();
+      refreshNavCounts();
+      if (!opts.inPlace) router.refresh();
     });
   }
 

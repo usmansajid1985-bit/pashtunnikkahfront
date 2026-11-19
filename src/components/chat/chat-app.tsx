@@ -2023,17 +2023,37 @@ export function ChatApp({
                 sub={openRequestSub}
                 onBack={closeRequestPane}
                 onDone={(action) => {
-                  if (action === "accept") return; // the hook opens the new chat
+                  const rid = openRequest.requestId!;
                   setRequestLists((prev) =>
                     prev
                       ? {
-                          received: prev.received.filter((c) => c.requestId !== openRequest.requestId),
-                          sent: prev.sent.filter((c) => c.requestId !== openRequest.requestId),
+                          received: prev.received.filter((c) => c.requestId !== rid),
+                          sent: prev.sent.filter((c) => c.requestId !== rid),
                         }
                       : prev
                   );
+                  if (action === "accept") {
+                    // In place, no navigation/refresh: the accepted request becomes the live chat
+                    // (same header/tabs) with its introduction as the first message and the
+                    // composer, Involve family and camera now enabled.
+                    setOpenRequestId(null);
+                    setInboxTab("chats");
+                    setChatSub("active");
+                    void (async () => {
+                      const list = await fetch("/api/chats", { cache: "no-store" })
+                        .then((r) => (r.ok ? r.json() : null))
+                        .catch(() => null);
+                      if (list?.threads) {
+                        setThreads(list.threads);
+                        threadsRef.current = list.threads;
+                      }
+                      window.history.replaceState(null, "", `/chats/${rid}`);
+                      await openThread(rid);
+                    })();
+                    return;
+                  }
                   closeRequestPane();
-                  showToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "User blocked");
+                  flashToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "User blocked");
                 }}
               />
             </section>

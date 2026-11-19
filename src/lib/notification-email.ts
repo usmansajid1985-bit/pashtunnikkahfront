@@ -15,11 +15,12 @@ import { features } from "@/lib/feature-flags";
 
 const AWAY_MINUTES = 15;
 
-type EmailKind = "new_request" | "request_accepted" | "new_message" | "message_reminder";
+type EmailKind = "new_request" | "request_accepted" | "request_declined" | "new_message" | "message_reminder";
 
 const KIND_PREF_COLUMN: Record<Exclude<EmailKind, "message_reminder">, string> = {
   new_request: "email_new_request",
   request_accepted: "email_match",
+  request_declined: "email_match",
   new_message: "email_new_message",
 };
 

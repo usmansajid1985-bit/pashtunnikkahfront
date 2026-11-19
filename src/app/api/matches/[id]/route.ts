@@ -167,6 +167,30 @@ export async function POST(
     });
     if (declined.count === 0) return staleResponse(id);
     notifyRequestChange(match, "declined");
+    // Tweaks p91: the sender gets exactly one push and one email (only the request that won the
+    // pending→declined transition reaches here, so retries can't duplicate them). Respectful
+    // wording; links open request history, never a chat. Declined requests keep the token spent.
+    const declinerCode = await profileCodeOf(match.receiver_id);
+    inBackground("push", () => sendPushNotification(match.sender_id, {
+      title: "Your match request was declined",
+      body: `${declinerCode} has declined your match request. Keep exploring — the right match may be just ahead.`,
+      url: "/requests?tab=sent",
+      tag: `match-${id}`,
+      type: "request_declined",
+      actorUserId: match.receiver_id,
+      relatedRequestId: id,
+    }).catch((err) => console.error("[push] request-declined notification failed", err)));
+    inBackground("activity email", () => maybeSendActivityEmail({
+      userId: match.sender_id,
+      kind: "request_declined",
+      heading: "Your match request was declined",
+      lines: [
+        `${declinerCode} has declined your match request.`,
+        "Don't be discouraged — keep exploring profiles to find someone who's right for you.",
+      ],
+      ctaLabel: "View request history",
+      ctaUrl: "/requests?tab=sent",
+    }));
     return NextResponse.json({ ok: true, status: "declined", requestId: raw });
   }
 

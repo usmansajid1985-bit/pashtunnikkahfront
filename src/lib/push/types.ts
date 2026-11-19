@@ -2,6 +2,7 @@ export type PushNotificationType =
   | "message"
   | "match"
   | "request_accepted"
+  | "request_declined"
   | "request_reminder"
   | "request_expired"
   | "request_refund"

@@ -121,6 +121,7 @@ function chipCategory(type: string): RowCategory {
     case "request":
     case "request_reminder":
     case "request_expired":
+    case "request_declined":
       return "request";
     case "request_accepted":
       return "match";
@@ -144,6 +145,7 @@ function badgeFor(type: string): RowBadge {
     case "request":
     case "request_reminder":
     case "request_expired":
+    case "request_declined":
       return "request";
     case "request_accepted":
       return "match";
