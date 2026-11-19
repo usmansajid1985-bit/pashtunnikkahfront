@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { getWaliSession } from "@/lib/wali";
-import { assertMatchParticipant, getReactionsForMessages, loadPeer, peerUserId, serializeMessage } from "@/lib/chat";
+import { assertMatchParticipant, getReactionsForMessages, loadPeer, loadPeerProfileView, peerUserId, serializeMessage } from "@/lib/chat";
+import { withPeerPhotoUrls } from "@/lib/photos";
 import { prisma } from "@/lib/prisma";
 import { isBlockedBetween } from "@/lib/blocking";
 import { WaliHeader } from "@/components/wali/wali-header";
@@ -87,32 +87,34 @@ export default async function WaliChatThreadPage({
     )
   );
 
+  // Profile tab: the match's full profile, by ID only (N46 — his name never reaches the wali).
+  const rawProfile = await loadPeerProfileView(peerId);
+  const peerProfile = rawProfile
+    ? { ...(await withPeerPhotoUrls(rawProfile)), fullName: rawProfile.profileCode }
+    : null;
+  const peerAvatarUrl =
+    peerProfile?.photoUrl || `https://i.pravatar.cc/120?img=${((peer?.avatarSeed ?? 0) % 70) + 1}`;
+
   return (
     <div className="min-h-screen bg-white text-ink-900">
-      <WaliHeader wardCode={wardCode} />
-      <div className="max-w-2xl mx-auto px-4 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <Link href="/wali" className="inline-flex items-center gap-1 text-sm text-ink-700/60 hover:text-ink-900">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-            Back to chats
-          </Link>
-          <Link href={`/wali/chats/${raw}/profile`} className="text-sm font-semibold text-rose-600 hover:text-rose-700">
-            View {peer?.code ? `${peer.code}'s` : "their"} full profile →
-          </Link>
-        </div>
-        <WaliPrivatePhoto requestId={raw} peerCode={peer?.code || "Member"} />
-        <WaliChatView
-          requestId={raw}
-          profileUserId={session.profileUserId}
-          peerName={peer?.name || "Member"}
-          peerCode={peer?.code || ""}
-          wardCode={wardCode}
-          initialMessages={messages}
-          ended={req.status === "ended"}
-        />
+      {/* Desktop keeps the wali bar (Exit); on phones the chat is full-screen like a member's. */}
+      <div className="hidden lg:block">
+        <WaliHeader wardCode={wardCode} />
       </div>
+      <WaliChatView
+        requestId={raw}
+        profileUserId={session.profileUserId}
+        peerName={peer?.name || "Member"}
+        peerCode={peer?.code || ""}
+        wardCode={wardCode}
+        initialMessages={messages}
+        ended={req.status === "ended"}
+        peerAvatarUrl={peerAvatarUrl}
+        peerStatusLabel={peer?.lastSeenLabel}
+        peerProfile={peerProfile}
+        backHref="/wali"
+        photoSlot={<WaliPrivatePhoto requestId={raw} peerCode={peer?.code || "Member"} />}
+      />
     </div>
   );
 }
