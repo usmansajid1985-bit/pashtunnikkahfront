@@ -45,6 +45,10 @@ export type SignupData = {
   /** ISO country picked for that dial code (US and Canada share +1). */
   phoneIso: string;
   phone: string;
+  /** Signed proof from /api/verify/whatsapp/check that Twilio approved this number (WhatsApp). */
+  phoneProof?: string;
+  /** The E.164 number the proof is for — a changed number needs verifying again. */
+  phoneVerifiedE164?: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -171,8 +175,8 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
   base.push(
     {
       id: "phone",
-      title: "What's your phone number?",
-      subtitle: "Kept private — used only for account security.",
+      title: "What's your WhatsApp number?",
+      subtitle: "We'll send a code on WhatsApp to verify it. Kept private — used only for account security.",
     },
     {
       id: "account",

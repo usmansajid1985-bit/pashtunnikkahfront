@@ -138,6 +138,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error }, { status: 400 });
     }
 
+    // WhatsApp verification (Twilio Verify) is mandatory once configured: the account is only
+    // created with a valid, recent proof that Twilio approved THIS exact number. No bypass.
+    const { whatsappVerifyEnabled, verifyPhoneProof, ensureWhatsAppVerifySchema } = await import("@/lib/whatsapp-verify");
+    const whatsappRequired = whatsappVerifyEnabled();
+    if (whatsappRequired && !verifyPhoneProof(phoneE164, body.phoneProof)) {
+      return NextResponse.json(
+        { error: "Please verify your WhatsApp number to continue.", code: "PHONE_UNVERIFIED" },
+        { status: 400 }
+      );
+    }
+
     // R04: the city must be a real town/city in the chosen country (the form only offers those —
     // this stops a hand-crafted request). If the lookup is down, don't block the signup.
     const cityVerdict = await verifyCity(body.city, body.country, body.cityPlaceId);
@@ -333,6 +344,12 @@ export async function POST(req: Request) {
 
     // B07: the member's own (home) coordinates — separate from location_*, which is their
     // Browse search centre and changes whenever they search another area.
+    if (whatsappRequired) {
+      await ensureWhatsAppVerifySchema();
+      await prisma.$executeRaw`UPDATE profiles SET phone_verified_at = NOW() WHERE user_id = ${user.id}`.catch((err) =>
+        console.error("[signup] phone_verified_at", err)
+      );
+    }
     if (geo) await saveHomeCoords(user.id, geo.lat, geo.lng);
     if (cityVerdict.placeId) await saveCityPlaceId(user.id, cityVerdict.placeId);
 

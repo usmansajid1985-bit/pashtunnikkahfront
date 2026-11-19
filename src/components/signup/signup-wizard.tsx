@@ -31,6 +31,7 @@ import { ChoiceGrid, ChoiceTile, GenderTile, I } from "@/components/signup/choic
 import { RELOCATION_OPTIONS, normalizeRelocation } from "@/lib/relocation";
 import { PhotoCropModal } from "@/components/signup/photo-crop-modal";
 import { PhoneCodePicker } from "@/components/signup/phone-code-picker";
+import { WhatsAppVerify } from "@/components/signup/whatsapp-verify";
 import { PashtoLevelQuestion } from "@/components/signup/pashto-level-question";
 import { PasswordField } from "@/components/signup/password-field";
 import { TribePicker } from "@/components/tribe/tribe-picker";
@@ -120,6 +121,14 @@ export function SignupWizard() {
   /** null = adding a new photo; number = replacing the photo at that index. */
   const [editingPhotoIndex, setEditingPhotoIndex] = useState<number | null>(null);
   const [phoneTouched, setPhoneTouched] = useState(false);
+  // WhatsApp verification (Twilio Verify) is mandatory whenever the server has it configured.
+  const [waEnabled, setWaEnabled] = useState(false);
+  useEffect(() => {
+    fetch("/api/verify/whatsapp/status", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setWaEnabled(Boolean(d?.enabled)))
+      .catch(() => setWaEnabled(false));
+  }, []);
   const [breach, setBreach] = useState<{ password: string; breached: boolean | null } | null>(null);
   const [, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -138,9 +147,11 @@ export function SignupWizard() {
   const breachKnown = breach?.password === data.password;
   const breachChecking = pw.ok && !breachKnown;
   const passwordWeak = !pw.hardToGuess || pw.tooLong || (breachKnown && breach?.breached === true);
+  const currentE164 = toE164(data.phoneIso, data.phone);
+  const phoneVerified = Boolean(data.phoneProof) && Boolean(currentE164) && data.phoneVerifiedE164 === currentE164;
   const canNext =
     isStepValid(step.id, data) &&
-    (step.id !== "phone" || phoneValid) &&
+    (step.id !== "phone" || (phoneValid && (!waEnabled || phoneVerified))) &&
     (step.id !== "account" || (breachKnown && breach?.breached !== true));
   // Don't nag on the first few digits — only once they've left the field or typed a full number.
   const phoneError =
@@ -271,6 +282,17 @@ export function SignupWizard() {
           setError(
             "An account with this email already exists. Use a different email, or log in instead."
           );
+          return;
+        }
+        if (json.code === "PHONE_UNVERIFIED") {
+          // The verification expired or the number changed — verify again on the phone step.
+          const phoneIndex = steps.findIndex((s) => s.id === "phone");
+          setData((d) => ({ ...d, phoneProof: undefined, phoneVerifiedE164: undefined }));
+          if (phoneIndex >= 0) {
+            setDir(-1);
+            setStepIndex(phoneIndex);
+          }
+          setError(json.error || "Please verify your WhatsApp number to continue.");
           return;
         }
         if (json.code === "TRIBE_INVALID") {
@@ -998,6 +1020,17 @@ export function SignupWizard() {
                   {phoneRules(data.phoneIso).hint}
                 </p>
               )}
+              {waEnabled ? (
+                <div className="pt-2">
+                  <WhatsAppVerify
+                    phoneIso={data.phoneIso}
+                    phone={data.phone}
+                    e164={currentE164}
+                    verified={phoneVerified}
+                    onVerified={(proof, e164) => patch({ phoneProof: proof, phoneVerifiedE164: e164 })}
+                  />
+                </div>
+              ) : null}
               </>
             )}
 
