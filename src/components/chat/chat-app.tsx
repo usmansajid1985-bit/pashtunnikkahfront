@@ -2653,9 +2653,9 @@ export function ChatApp({
                             ) : (
                               <>
                                 {displayName} asked to rematch.{" "}
-                                <a href="/chats?tab=requests&sub=received" className="font-semibold text-[#e12d72] hover:underline">
+                                <Link href="/chats?tab=requests&sub=received" className="font-semibold text-[#e12d72] hover:underline">
                                   Accept or decline in Requests
-                                </a>
+                                </Link>
                               </>
                             )}
                           </p>
