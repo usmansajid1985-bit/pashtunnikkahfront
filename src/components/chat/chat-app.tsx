@@ -2078,10 +2078,10 @@ export function ChatApp({
                  member ID header + ⋮ (Report / Block), a generic avatar, and no messages/composer. */
               <div className="flex-1 flex flex-col">
                 <div className="relative sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6">
-                  <div className="px-3 sm:px-4 h-14 flex items-center gap-2">
+                  <div className="px-2.5 sm:px-4 h-14 flex items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
+                      className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5"
                       onClick={() => {
                         setActiveId(null);
                         window.history.replaceState(null, "", "/chats");
@@ -2173,10 +2173,10 @@ export function ChatApp({
                   ref={headerRef}
                   className="relative sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6"
                 >
-                  <div className="px-3 sm:px-4 h-14 flex items-center gap-2">
+                  <div className="px-2.5 sm:px-4 h-14 flex items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
-                      className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5"
+                      className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5"
                       onClick={() => {
                         if (activeId) leaveThread(activeId);
                         setActiveId(null);
@@ -2192,7 +2192,7 @@ export function ChatApp({
                     <img
                       src={avatarUrl(seed)}
                       alt=""
-                      className="w-9 h-9 rounded-full object-cover ring-2 ring-rose-200"
+                      className="w-9 h-9 shrink-0 rounded-full object-cover ring-2 ring-rose-200"
                       style={
                         photoVisible
                           ? undefined
@@ -2209,8 +2209,8 @@ export function ChatApp({
                       {/* Clean header subtitle: real-time states, otherwise the member's coarse
                           activity status with a green dot (T3-#9) — no wali/photo text or badges. */}
                       <p
-                        className={`text-[11px] truncate transition-colors ${
-                          peerTyping ? "text-emerald-600 italic font-medium" : "text-ink-700/55"
+                        className={`text-[11px] whitespace-nowrap transition-colors ${
+                          peerTyping ? "text-emerald-600 italic font-medium truncate" : "text-ink-700/55"
                         }`}
                       >
                         {matchEnded ? (
@@ -2235,15 +2235,17 @@ export function ChatApp({
                           setFamilyModal({ step: "main", via: "manual" });
                         }}
                         disabled={!family}
-                        className={`relative h-10 flex items-center justify-center gap-1.5 rounded-full transition disabled:opacity-40 w-auto px-3 sm:px-3.5 ${
+                        className={`relative h-9 sm:h-10 shrink-0 flex items-center justify-center gap-1 sm:gap-1.5 rounded-full transition disabled:opacity-40 w-9 min-[400px]:w-auto min-[400px]:px-2.5 sm:px-3.5 ${
                           family?.shared ? "bg-emerald-50 text-emerald-700" : "bg-ink-900/[0.04] text-ink-950 hover:bg-ink-900/[0.07]"
                         }`}
                         aria-label="Involve family"
                         title="Involve family"
                       >
                         <FamilyIcon />
-                        {/* T3-#18b: show the label on mobile too (the member ID truncates to fit). */}
-                        <span className="text-[12px] sm:text-[13px] font-semibold whitespace-nowrap">Involve family</span>
+                        {/* Compact on phones so the activity status is never cut off: icon only under
+                            400px, "Family" up to 640px, the full label on larger screens. */}
+                        <span className="hidden min-[400px]:inline sm:hidden text-[12px] font-semibold whitespace-nowrap">Family</span>
+                        <span className="hidden sm:inline text-[13px] font-semibold whitespace-nowrap">Involve family</span>
                         {family && !family.shared && family.request.state === "pending" ? (
                           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E12D72] ring-2 ring-white" />
                         ) : null}
@@ -2256,7 +2258,7 @@ export function ChatApp({
                           setHeaderMenu(null);
                           if (activeId) openSharePicker(activeId);
                         }}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition text-ink-700"
+                        className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition text-ink-700"
                         aria-label="Share my photos"
                         title="Share my photos"
                       >
@@ -2269,7 +2271,7 @@ export function ChatApp({
                     <button
                       type="button"
                       onClick={() => setHeaderMenu((m) => (m === "more" ? null : "more"))}
-                      className={`w-10 h-10 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
+                      className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
                         headerMenu === "more" ? "bg-ink-900/10 text-ink-950" : "text-ink-700"
                       }`}
                       aria-label="More options"

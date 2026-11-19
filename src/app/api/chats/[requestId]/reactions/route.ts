@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { assertAcceptedParticipant, toggleReaction } from "@/lib/chat";
-import { broadcastChat } from "@/lib/chat-broadcast";
+import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +32,12 @@ export async function POST(
       messageId: messageId.toString(),
       reactions,
     });
+    // The wali's read-only view mirrors reactions live too (PN-AUD-001 / Tweaks p92).
+    void broadcastToWalis("reaction:update", requestId, {
+      requestId: raw,
+      messageId: messageId.toString(),
+      reactions,
+    }).catch(() => {});
     return NextResponse.json({ messageId: messageId.toString(), reactions });
   } catch (e) {
     return NextResponse.json(

@@ -48,12 +48,19 @@ export function WaliChatView({
     const onClosed = (e: { requestId?: string; reason?: string }) => {
       if (e?.requestId === requestId) router.refresh();
     };
+    // Reactions added/changed/removed by either member update here instantly (read-only).
+    const onReaction = (e: { requestId?: string; messageId?: string; reactions?: ChatMessageDTO["reactions"] }) => {
+      if (e?.requestId !== requestId || !e.messageId) return;
+      setMessages((prev) => prev.map((m) => (m.id === e.messageId ? { ...m, reactions: e.reactions ?? [] } : m)));
+    };
+    const offReaction = on("reaction:update", onReaction);
     const offNew = on("message:new", onNew);
     const offClosed = on("match:closed", onClosed);
     // Back from background/offline: messages sent meanwhile were missed — reload from the server.
     const offResync = on("realtime:resync", () => router.refresh());
     return () => {
       offNew();
+      offReaction();
       offClosed();
       offResync();
     };
