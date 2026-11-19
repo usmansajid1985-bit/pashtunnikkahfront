@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { ActivityDot } from "@/components/activity-dot";
 import { countryLabel, toCountryCode } from "@/lib/country";
 import { tribeLabel } from "@/lib/tribes";
+import { TribePill } from "@/components/tribe/tribe-pill";
+import { BriefcaseIcon, CapIcon, HeightArrowIcon, PeopleIcon } from "@/components/profile/pill-icons";
 
 export type ProfileCardData = {
   id: string;
@@ -42,20 +44,21 @@ function placeLine(city: string | null, country: string | null) {
 /** One detail cell: outline icon + value, value wraps gracefully (no truncation). */
 function Cell({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <span className="flex min-w-0 flex-1 items-start gap-2">
-      <span className="mt-[1px] shrink-0">{icon}</span>
+    // Hugs its content (no flex-grow), so the divider sits right after the value — no stretched gap.
+    <span className="flex min-w-0 items-start gap-2">
+      <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center text-[#4b5563]">{icon}</span>
       <span className="min-w-0 break-words">{children}</span>
     </span>
   );
 }
 
-/** A row of up to two detail cells with a subtle grey separator between them. */
+/** A row of up to two detail cells with a short subtle grey divider between them. */
 function DetailRow({ left, right }: { left: ReactNode; right: ReactNode }) {
   if (!left && !right) return null;
   return (
-    <div className="flex items-stretch gap-3 text-[14px] leading-snug text-ink-900/85">
+    <div className="flex items-center gap-3 text-[14px] leading-snug text-ink-900/85">
       {left}
-      {left && right ? <span aria-hidden className="w-px shrink-0 self-stretch bg-ink-900/12" /> : null}
+      {left && right ? <span aria-hidden className="h-4 w-px shrink-0 bg-ink-900/15" /> : null}
       {right}
     </div>
   );
@@ -98,7 +101,7 @@ export function ProfileCard({
     <Cell
       icon={
         place.code ? (
-          <span aria-hidden className={`fi fi-${place.code.toLowerCase()} rounded-[2px] text-[15px] leading-none`} />
+          <span aria-hidden className={`fi fi-${place.code.toLowerCase()} rounded-[2px] text-[17px] leading-none`} />
         ) : (
           <IconPin />
         )
@@ -107,9 +110,9 @@ export function ProfileCard({
       {place.text}
     </Cell>
   ) : null;
-  const heightCell = p.height ? <Cell icon={<IconHeight />}>{p.height}</Cell> : null;
-  const jobCell = p.occupation ? <Cell icon={<IconBriefcase />}>{p.occupation}</Cell> : null;
-  const eduCell = p.education ? <Cell icon={<IconCap />}>{p.education}</Cell> : null;
+  const heightCell = p.height ? <Cell icon={<HeightArrowIcon size={18} />}>{p.height}</Cell> : null;
+  const jobCell = p.occupation ? <Cell icon={<BriefcaseIcon size={18} />}>{p.occupation}</Cell> : null;
+  const eduCell = p.education ? <Cell icon={<CapIcon size={18} />}>{p.education}</Cell> : null;
 
   return (
     <article className="relative card p-3 flex flex-col group shadow-[0_6px_24px_-12px_rgba(17,17,24,0.18)] hover:border-rose-200 transition">
@@ -156,36 +159,32 @@ export function ProfileCard({
 
           <div className="mt-3 flex items-center justify-between gap-2">
             <span className="flex min-w-0 items-center gap-2">
-              <IconPeople />
-              {tribe ? (
-                <span className="truncate rounded-full bg-[#f4ead6] px-3 py-1 text-[12.5px] font-semibold text-[#8a6a32]">
-                  {tribe}
-                </span>
-              ) : null}
+              <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center text-[#4b5563]">
+                <PeopleIcon size={19} />
+              </span>
+              {/* Each tribe keeps its own confederacy colour (same pill as the full profile). */}
+              {tribe ? <TribePill tribe={p.tribe} className="px-3 py-1 text-[12.5px] truncate" /> : null}
             </span>
             <button
               type="button"
               onClick={onToggleSave}
               disabled={saveBusy}
               aria-pressed={saved}
-              className={`pointer-events-auto shrink-0 -mr-1 flex h-9 w-9 items-center justify-center rounded-full transition disabled:opacity-50 ${
-                saved ? "text-rose-600" : "text-ink-900/70 hover:bg-ink-900/5 hover:text-ink-950"
+              className={`pointer-events-auto shrink-0 -mr-1.5 flex h-10 w-10 items-center justify-center rounded-full transition disabled:opacity-50 ${
+                saved ? "text-rose-600" : "text-ink-900/75 hover:bg-ink-900/5 hover:text-ink-950"
               }`}
               aria-label={saved ? "Remove from saved" : "Save"}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
-                <path d="M6 4h12v16l-6-4-6 4V4Z" />
+              <svg width="24" height="24" viewBox="0 0 24 24" fill={saved ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+                <path d="M6 3.5h12v17l-6-4.2-6 4.2v-17Z" />
               </svg>
             </button>
           </div>
         </div>
       </div>
 
-      {/* About preview: two muted lines that fade out at the end. */}
-      <p
-        className="relative z-[1] pointer-events-none mt-3 px-1 text-[13px] leading-relaxed text-ink-700/55 line-clamp-2"
-        style={{ WebkitMaskImage: "linear-gradient(to bottom, #000 1.25rem, rgba(0,0,0,0.35))" }}
-      >
+      {/* About preview: two muted lines (no fade). */}
+      <p className="relative z-[1] pointer-events-none mt-3 px-1 text-[13px] leading-relaxed text-ink-700/60 line-clamp-2">
         {about}
       </p>
     </article>
@@ -194,43 +193,6 @@ export function ProfileCard({
 
 const STROKE = "#4b5563";
 
-function IconHeight() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 4v16" />
-      <path d="m8.5 7.5 3.5-3.5 3.5 3.5" />
-      <path d="m8.5 16.5 3.5 3.5 3.5-3.5" />
-    </svg>
-  );
-}
-function IconBriefcase() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="7" width="18" height="13" rx="2" />
-      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-      <path d="M3 12h18" />
-    </svg>
-  );
-}
-function IconCap() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 9.5 12 5l9 4.5-9 4.5-9-4.5Z" />
-      <path d="M7 11.4V15c0 1.2 2.2 2.3 5 2.3s5-1.1 5-2.3v-3.6" />
-      <path d="M21 9.5V14" />
-    </svg>
-  );
-}
-function IconPeople() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="9" cy="8" r="3" />
-      <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
-      <circle cx="17" cy="9" r="2.3" />
-      <path d="M15.6 14.2c2 .2 3.4 1.9 3.4 4.8" />
-    </svg>
-  );
-}
 function IconPin() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={STROKE} strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">

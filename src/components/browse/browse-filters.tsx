@@ -423,7 +423,7 @@ export function BrowseFiltersBar({
 
   return (
     <>
-      {/* Phones: a 2×2 grid of equal pills — Age | Filters, Recently active | My saves (location
+      {/* Phones: a 2×2 grid of equal pills — Filters | My saves, Age | Recently active (location
           lives inside Filters). sm+: the original single row with the saves/sort column on the right. */}
       <div
         className={`mt-5 grid grid-cols-2 gap-2.5 sm:flex sm:flex-wrap sm:items-center sm:gap-3 ${pending ? "opacity-70" : ""}`}
@@ -431,7 +431,7 @@ export function BrowseFiltersBar({
         <Pill
           active={filters.ageMin !== 18 || filters.ageMax !== 60}
           onClick={() => openPanel()}
-          className={`${MOBILE_PILL} max-sm:order-1`}
+          className={`${MOBILE_PILL} max-sm:order-3`}
         >
           {filters.ageMin} – {filters.ageMax} yrs
         </Pill>
@@ -459,7 +459,7 @@ export function BrowseFiltersBar({
 
         <button
           type="button"
-          className={`pill-btn ${MOBILE_PILL} max-sm:order-2`}
+          className={`pill-btn ${MOBILE_PILL} max-sm:order-1`}
           style={activeCount > 0 ? { borderColor: "#f0c3d3", color: "#e12d72" } : undefined}
           onClick={() => openPanel()}
         >
@@ -480,7 +480,7 @@ export function BrowseFiltersBar({
 
         {/* `contents` on phones so these two pills join the 2×2 grid directly. */}
         <div className="contents sm:flex sm:ml-auto sm:flex-col sm:items-stretch sm:gap-2">
-          <a href="/browse/saved" className={`pill-btn justify-center gap-2 ${MOBILE_PILL} max-sm:order-4`}>
+          <a href="/browse/saved" className={`pill-btn justify-center gap-2 ${MOBILE_PILL} max-sm:order-2`}>
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round" aria-hidden>
               <path d="M6 3.5h12v17l-6-4.2-6 4.2v-17Z" />
             </svg>
@@ -492,7 +492,7 @@ export function BrowseFiltersBar({
           {/* Sort: Recently active (default, all members) + Just Joined (Gold-only). Basic members
               stay on Recently active and can't change it, so they see a static label, not a dropdown. */}
           {isGold ? (
-            <label className={`pill-btn cursor-pointer justify-center ${MOBILE_PILL} max-sm:order-3`}>
+            <label className={`pill-btn cursor-pointer justify-center ${MOBILE_PILL} max-sm:order-4`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <circle cx="12" cy="12" r="9" />
                 <path d="M12 7v5l3 2" />
@@ -516,7 +516,7 @@ export function BrowseFiltersBar({
               </svg>
             </label>
           ) : (
-            <span className={`pill-btn justify-center text-sm font-medium text-ink-700 ${MOBILE_PILL} max-sm:order-3`}>
+            <span className={`pill-btn justify-center text-sm font-medium text-ink-700 ${MOBILE_PILL} max-sm:order-4`}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
                 <circle cx="12" cy="12" r="9" />
                 <path d="M12 7v5l3 2" />

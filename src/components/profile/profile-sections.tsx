@@ -6,7 +6,7 @@ import { tribeLabel } from "@/lib/tribes";
 import { MEN_APPEARANCE, splitWomenAppearance } from "@/lib/signup";
 import { displaySect } from "@/lib/islamic-background";
 import { MARRIAGE_PREF_FIELDS } from "@/lib/marriage-prefs";
-import { RelocationIcon, BriefcaseIcon } from "@/components/profile/pill-icons";
+import { RelocationIcon, BriefcaseIcon, CapIcon, HeightArrowIcon } from "@/components/profile/pill-icons";
 
 type Tone = "grey" | "rose" | "blue" | "solid" | "dark";
 
@@ -41,14 +41,6 @@ function MountainIcon() {
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" aria-hidden>
       <path d="M2.5 19 9.2 7.6a1 1 0 0 1 1.7 0L17 18" />
       <path d="m13.4 12.2 1.6-2.4a1 1 0 0 1 1.7 0L21.5 19H2.5" />
-    </svg>
-  );
-}
-
-function HeightIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden>
-      <path d="M12 4v16M8.5 4h7M8.5 20h7" />
     </svg>
   );
 }
@@ -190,7 +182,7 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
     <>
       <Section title="About Me">
         <div className={chips}>
-          {profile.height ? <Chip icon={<HeightIcon />}>{profile.height}</Chip> : null}
+          {profile.height ? <Chip icon={<HeightArrowIcon />}>{profile.height}</Chip> : null}
           {profile.maritalStatus ? <Chip icon="💍">{profile.maritalStatus}</Chip> : null}
           {hasChildren ? <Chip icon="👶">{hasChildren}</Chip> : null}
           {wantsChildren ? <Chip icon="🍼">{wantsChildren}</Chip> : null}
@@ -233,7 +225,7 @@ export function ProfileSections({ profile }: { profile: ProfileView; card?: bool
       {hasCareer ? (
         <Section title="Career & Education">
           <div className={chips}>
-            {profile.education ? <Chip icon="🎓">{profile.education}</Chip> : null}
+            {profile.education ? <Chip icon={<CapIcon />}>{profile.education}</Chip> : null}
             {profile.occupation ? <Chip icon={<BriefcaseIcon />}>{profile.occupation}</Chip> : null}
             {!profile.occupation && profile.employment ? <Chip icon={<BriefcaseIcon />}>{profile.employment}</Chip> : null}
           </div>

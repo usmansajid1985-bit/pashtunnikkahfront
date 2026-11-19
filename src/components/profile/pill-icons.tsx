@@ -26,18 +26,18 @@ export function RelocationIcon({ open }: { open: boolean }) {
   );
 }
 
-export function BriefcaseIcon() {
+export function BriefcaseIcon({ size = 15 }: { size?: number } = {}) {
   return (
-    <svg {...base}>
+    <svg {...base} width={size} height={size}>
       <rect x="3" y="7" width="18" height="13" rx="2.5" />
       <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18M10.5 12.5v1.5h3v-1.5" />
     </svg>
   );
 }
 
-export function PeopleIcon() {
+export function PeopleIcon({ size = 15 }: { size?: number } = {}) {
   return (
-    <svg {...base}>
+    <svg {...base} width={size} height={size}>
       <circle cx="9" cy="8.5" r="3" />
       <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
       <circle cx="16.5" cy="9" r="2.4" />
@@ -76,6 +76,28 @@ export function PracticeIcon({ practice }: { practice: string }) {
     <svg {...base}>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M10 9v6M14 9v6" />
+    </svg>
+  );
+}
+
+/** Graduation cap — education (shared by Browse cards and the full profile). */
+export function CapIcon({ size = 15 }: { size?: number } = {}) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M2.5 9.5 12 5l9.5 4.5L12 14 2.5 9.5Z" />
+      <path d="M6.5 11.6v3.6c0 1.3 2.5 2.6 5.5 2.6s5.5-1.3 5.5-2.6v-3.6" />
+      <path d="M21.5 9.5v4.5" />
+    </svg>
+  );
+}
+
+/** Vertical double arrow — height (shared by Browse cards and the full profile). */
+export function HeightArrowIcon({ size = 15 }: { size?: number } = {}) {
+  return (
+    <svg {...base} width={size} height={size}>
+      <path d="M12 3.5v17" />
+      <path d="m8.5 7 3.5-3.5L15.5 7" />
+      <path d="m8.5 17 3.5 3.5 3.5-3.5" />
     </svg>
   );
 }

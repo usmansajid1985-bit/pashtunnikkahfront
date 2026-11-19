@@ -206,17 +206,21 @@ dialog,
     transform: translateY(0) scale(1);
   }
 }
-.pill-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 9999px;
-  border: 1px solid #e9e4e3;
-  font-size: 13px;
-  font-weight: 500;
-  color: #4a4145;
-  background: white;
+/* In the components layer so Tailwind utilities (e.g. max-sm:hidden, max-sm:px-2.5) can override it —
+   as unlayered CSS it silently beat them, which kept "Any location" visible on phones. */
+@layer components {
+  .pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 9999px;
+    border: 1px solid #e9e4e3;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a4145;
+    background: white;
+  }
 }
 .icon-circle {
   width: 36px;
