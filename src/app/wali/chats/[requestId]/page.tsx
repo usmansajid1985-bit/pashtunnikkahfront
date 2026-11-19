@@ -1,5 +1,5 @@
 import { getWaliSession } from "@/lib/wali";
-import { assertMatchParticipant, getReactionsForMessages, loadPeer, loadPeerProfileView, peerUserId, serializeMessage } from "@/lib/chat";
+import { assertMatchParticipant, conversationRows, getReactionsForMessages, loadPeer, loadPeerProfileView, peerUserId, serializeMessage } from "@/lib/chat";
 import { withPeerPhotoUrls } from "@/lib/photos";
 import { prisma } from "@/lib/prisma";
 import { isBlockedBetween } from "@/lib/blocking";
@@ -60,9 +60,14 @@ export default async function WaliChatThreadPage({
     `${session.name} viewed ${wardCode}'s conversation with ${peer?.code ?? "a match"}`
   );
 
+  // One continuous conversation across the pair's original match and any rematches (Tweaks p1–5).
+  const conv = await conversationRows(requestId).catch(() => null);
+  const conversationIds = conv?.ids ?? [requestId];
+  // Live messages arrive on the conversation's current match id (after a rematch, a newer row).
+  const liveId = (conv?.current.id ?? requestId).toString();
   const rows = await prisma.messages.findMany({
-    where: { request_id: requestId },
-    orderBy: { created_at: "asc" },
+    where: { request_id: { in: conversationIds } },
+    orderBy: [{ created_at: "asc" }, { id: "asc" }],
     take: 400,
   });
 
@@ -102,13 +107,13 @@ export default async function WaliChatThreadPage({
         <WaliHeader wardCode={wardCode} />
       </div>
       <WaliChatView
-        requestId={raw}
+        requestId={liveId}
         profileUserId={session.profileUserId}
         peerName={peer?.name || "Member"}
         peerCode={peer?.code || ""}
         wardCode={wardCode}
         initialMessages={messages}
-        ended={req.status === "ended"}
+        ended={(conv?.current.status ?? req.status) === "ended"}
         peerAvatarUrl={peerAvatarUrl}
         peerStatusLabel={peer?.lastSeenLabel}
         peerProfile={peerProfile}

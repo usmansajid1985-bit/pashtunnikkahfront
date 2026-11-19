@@ -628,10 +628,14 @@ export function ChatApp({
   const [toast, setToast] = useState<string | null>(null);
   const [chatWarning, setChatWarning] = useState<string | null>(null);
   const [matchEnded, setMatchEnded] = useState(false);
+  const matchEndedRef = useRef(false);
+  matchEndedRef.current = matchEnded;
   const [unavailMenu, setUnavailMenu] = useState(false);
   const [endReason, setEndReason] = useState<string | null>(null);
   const [endedByMe, setEndedByMe] = useState(false);
   const [rematchBusy, setRematchBusy] = useState(false);
+  /** A rematch request for this (ended) conversation is waiting for an answer. */
+  const [rematchPending, setRematchPending] = useState<{ byMe: boolean } | null>(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [endBusy, setEndBusy] = useState(false);
   // null = not known yet for this chat (no prompt, no sending) until the server says.
@@ -890,6 +894,13 @@ export function ChatApp({
           if (res.status === 404) showToast("This conversation is no longer available.");
           return;
         }
+        // Any of a pair's match ids opens their one conversation; adopt its current id (so old
+        // links / notifications land on the live thread and new messages go to the right place).
+        const canonical = String(data.requestId || requestId);
+        if (canonical !== requestId && typeof window !== "undefined" && window.location.pathname.startsWith("/chats/")) {
+          window.history.replaceState(null, "", `/chats/${canonical}`);
+        }
+        setRematchPending(data.rematchPending ?? null);
         setPeer(data.peer);
         // C14: show any still-queued (unconfirmed) messages for this conversation after history.
         const history: ChatMessageDTO[] = data.messages || [];
@@ -908,7 +919,7 @@ export function ChatApp({
         );
         setHasMoreOlder(Boolean(data.hasMore));
         hasMoreOlderRef.current = Boolean(data.hasMore);
-        setActiveId(requestId);
+        setActiveId(canonical);
         setPhotoShared(Boolean(data.photoShared));
         setPhotoVisible(Boolean(data.photoVisible));
         setCanSharePhoto(Boolean(data.canSharePhoto));
@@ -939,11 +950,11 @@ export function ChatApp({
         setEndedByMe(Boolean(data.endedByMe));
         setShowEndConfirm(false);
         setThreads((prev) =>
-          prev.map((t) => (t.requestId === requestId ? { ...t, unread: 0 } : t))
+          prev.map((t) => (t.requestId === canonical || t.requestId === requestId ? { ...t, unread: 0 } : t))
         );
-        await joinThread(requestId, data.realtimeTopic);
-        markRead(requestId);
-        await fetch(`/api/chats/${requestId}/read`, { method: "POST" });
+        await joinThread(canonical, data.realtimeTopic);
+        markRead(canonical);
+        await fetch(`/api/chats/${canonical}/read`, { method: "POST" });
         scrollToBottom(false);
       } finally {
         setLoadingThread(false);
@@ -957,6 +968,24 @@ export function ChatApp({
     if (!connected || !activeId) return;
     void joinThread(activeId);
   }, [connected, activeId, joinThread]);
+
+  // Rematch requested / accepted / declined by either member while this ended chat is open:
+  // refresh it in place — Pending appears, or the conversation resumes as Active (Tweaks p1–5).
+  useEffect(() => {
+    return on("request:update", async () => {
+      const list = await fetch("/api/chats", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (list?.threads) {
+        setThreads(list.threads);
+        threadsRef.current = list.threads;
+      }
+      const id = activeIdRef.current;
+      const t = id ? (list?.threads as ChatThreadDTO[] | undefined)?.find((x) => x.requestId === id) : undefined;
+      // The open conversation is ended (or just resumed under a new id): reload it softly.
+      if (id && (matchEndedRef.current || !t)) void openThread(id, { soft: true });
+    });
+  }, [on, openThread]);
 
   // Catch up after being offline / backgrounded / disconnected: broadcasts sent meanwhile were
   // missed, so re-read the thread list and merge any missed messages into the open conversation
@@ -1201,7 +1230,7 @@ export function ChatApp({
 
   const grouped = useMemo(() => {
     const items: {
-      type: "day" | "msg" | "unread" | "family";
+      type: "day" | "msg" | "unread" | "family" | "rematch";
       key: string;
       iso?: string;
       msg?: ChatMessageDTO;
@@ -1214,7 +1243,13 @@ export function ChatApp({
       .filter((e) => !hasMoreOlder || new Date(e.at).getTime() >= firstAt)
       .sort((a, b) => a.at.localeCompare(b.at));
     let lastDay = "";
+    let lastRequestId: string | null = null;
     for (const msg of messages) {
+      // One continuous conversation across rematches: mark where it resumed (Tweaks p1–5).
+      if (lastRequestId && msg.requestId && msg.requestId !== lastRequestId) {
+        items.push({ type: "rematch", key: `r-${msg.id}` });
+      }
+      if (msg.requestId) lastRequestId = msg.requestId;
       while (events.length && events[0].at <= msg.createdAt) {
         const event = events.shift()!;
         items.push({ type: "family", key: event.key, event });
@@ -1286,7 +1321,8 @@ export function ChatApp({
       const res = await fetch("/api/matches", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profileCode: code, rematch: true }),
+        // Identify the member by this conversation (not their code) — see Tweaks p5.
+        body: JSON.stringify(activeId ? { rematchOf: activeId, rematch: true } : { profileCode: code, rematch: true }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -1297,9 +1333,19 @@ export function ChatApp({
         setToast(data.error || "Could not request a rematch");
         return;
       }
-      // Parked so it shows after the page change below (a plain toast would vanish with it).
+      // Stay on this read-only chat (no redirect to Requests → Sent): toast + Pending state.
+      if (data.status === "accepted") {
+        // They had already asked to rematch — this accepted it; the conversation resumes here.
+        flashToast("You're matched again");
+        if (activeId) await openThread(activeId, { soft: true });
+        return;
+      }
       flashToast(data.message === "Request already sent" ? "Rematch request already sent" : "Rematch request sent");
-      window.location.assign("/requests?tab=sent");
+      setRematchPending({ byMe: true });
+      const rid = activeId;
+      setThreads((prev) =>
+        prev.map((t) => (t.requestId === rid ? { ...t, canRematch: false, rematchPending: { byMe: true } } : t))
+      );
     } finally {
       setRematchBusy(false);
     }
@@ -2499,7 +2545,15 @@ export function ChatApp({
                           </button>
                         ) : null}
                         {grouped.map((item) =>
-                          item.type === "day" ? (
+                          item.type === "rematch" ? (
+                            <div key={item.key} className="flex items-center gap-3 py-2" role="separator">
+                              <span className="h-px flex-1 bg-rose-200/70" />
+                              <span className="rounded-full bg-rose-50 px-3 py-1 text-[11.5px] font-semibold text-rose-700">
+                                Rematched! ❤️
+                              </span>
+                              <span className="h-px flex-1 bg-rose-200/70" />
+                            </div>
+                          ) : item.type === "day" ? (
                             <p key={item.key} className="text-center py-2">
                               <span className="inline-block rounded-full bg-white/90 border border-ink-900/6 px-3 py-1 text-[11.5px] font-medium text-ink-700/60 shadow-sm">
                                 <LocalStamp iso={item.iso ?? null} variant="day" />
@@ -2585,7 +2639,28 @@ export function ChatApp({
 
                     {/* Composer / Photo share */}
                     <div className="border-t border-ink-900/6 bg-white px-3 sm:px-4 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-                      {matchEnded && endedByMe ? (
+                      {matchEnded && rematchPending ? (
+                        <div className="mb-2 rounded-2xl border border-ink-900/8 bg-ink-900/[0.03] px-4 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[12px] font-semibold text-amber-700">
+                              Pending
+                            </span>
+                            <p className="text-sm font-bold text-ink-950">Rematch requested</p>
+                          </div>
+                          <p className="mt-1 text-[13px] leading-relaxed text-ink-700/70">
+                            {rematchPending.byMe ? (
+                              <>Waiting for {displayName} to respond.</>
+                            ) : (
+                              <>
+                                {displayName} asked to rematch.{" "}
+                                <a href="/chats?tab=requests&sub=received" className="font-semibold text-[#e12d72] hover:underline">
+                                  Accept or decline in Requests
+                                </a>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      ) : matchEnded && endedByMe ? (
                         <div className="@container mb-2">
                           <div className="rounded-2xl border border-rose-100 bg-rose-50/50 px-4 py-3.5 flex flex-col @md:flex-row @md:items-center gap-3">
                             <div className="min-w-0 flex-1">

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   assertAcceptedParticipant,
+  conversationRows,
   chatAccessError,
   assertMatchParticipant,
   createMessage,
@@ -26,20 +27,20 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 60;
 
-async function loadMessagePage(requestId: bigint, before: bigint | null, limit: number) {
+async function loadMessagePage(requestIds: bigint[], before: bigint | null, limit: number) {
   // Chronological by (created_at, id) — not id alone — so a message stored later with an earlier
   // time (the restored introduction) sits in its true place. `before` is still a message id: page
   // from that message's (time, id) position.
   let cursor: { created_at: Date; id: bigint } | null = null;
   if (before) {
     cursor = await prisma.messages.findFirst({
-      where: { id: before, request_id: requestId },
+      where: { id: before, request_id: { in: requestIds } },
       select: { created_at: true, id: true },
     });
   }
   const desc = await prisma.messages.findMany({
     where: {
-      request_id: requestId,
+      request_id: { in: requestIds },
       ...(cursor
         ? {
             OR: [
@@ -94,10 +95,16 @@ export async function GET(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { requestId: raw } = await params;
-  const requestId = BigInt(raw);
+  const openedId = BigInt(raw);
   const userId = BigInt(session.userId);
-  const req = await assertMatchParticipant(requestId, userId);
-  if (!req) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+  const opened = await assertMatchParticipant(openedId, userId);
+  if (!opened) return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+  // Tweaks p1–5: any of a pair's match rows opens their ONE continuous conversation. Status, meta
+  // and sending use the current row; history spans every accepted/ended row between them.
+  const conv = await conversationRows(openedId);
+  const req = conv?.current ?? opened;
+  const requestId = req.id;
+  const conversationIds = conv?.ids ?? [openedId];
 
   const { searchParams } = new URL(_req.url);
   let before: bigint | null = null;
@@ -116,16 +123,16 @@ export async function GET(
 
   // Backfill: chats accepted before the intro fix lost their introduction — restore it once, with
   // its original time, the first time the conversation is opened (idempotent, cheap no-op after).
-  if (req.status === "accepted" || req.status === "ended") {
+  {
     const { insertIntroMessage } = await import("@/lib/chat");
-    await insertIntroMessage(requestId).catch(() => {});
+    for (const id of conversationIds) await insertIntroMessage(id).catch(() => {});
   }
 
   // "before" requests are just older-message pages — skip the heavy peer/profile payload.
   if (before !== null) {
     const meta = await threadMetaFor(req, userId);
     if (!meta.privateChat) return NextResponse.json({ messages: [], hasMore: false });
-    const page = await loadMessagePage(requestId, before, limit);
+    const page = await loadMessagePage(conversationIds, before, limit);
     if (matchEnded) {
       page.messages = page.messages.map((m) =>
         m.type === "contact_card" && m.card && m.senderId !== session.userId
@@ -138,6 +145,19 @@ export async function GET(
 
   const peerId = await peerUserId(req, userId);
   const [peer, peerProfile] = await Promise.all([loadPeer(peerId), loadPeerProfileView(peerId)]);
+  const pendingRematch = matchEnded
+    ? await prisma.match_requests.findFirst({
+        where: {
+          status: "pending",
+          OR: [
+            { sender_id: userId, receiver_id: peerId },
+            { sender_id: peerId, receiver_id: userId },
+          ],
+        },
+        select: { sender_id: true },
+      })
+    : null;
+  const rematchPendingInfo = pendingRematch ? { byMe: pendingRematch.sender_id === userId } : null;
   if (!peer) return NextResponse.json({ error: "Peer not found" }, { status: 404 });
 
   const [meta, chatConsent] = await Promise.all([
@@ -146,7 +166,7 @@ export async function GET(
   ]);
 
   const { messages, hasMore } = meta.privateChat
-    ? await loadMessagePage(requestId, null, limit)
+    ? await loadMessagePage(conversationIds, null, limit)
     : { messages: [] as ReturnType<typeof serializeMessage>[], hasMore: false };
 
   // Never send the peer's original photo URL to a viewer who isn't cleared to see it — the
@@ -201,6 +221,8 @@ export async function GET(
     endReason: req.end_reason ?? null,
     // N43: only the member who ended the match is offered "Request Rematch".
     endedByMe: matchEnded && req.ended_by != null && req.ended_by === userId,
+    // A rematch request between the pair waiting for an answer → "Pending · Waiting for …".
+    rematchPending: matchEnded ? rematchPendingInfo : null,
     chatConsent,
     ...meta,
   });

@@ -37,6 +37,8 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const profileCode = String(body.profileCode ?? "").trim();
   const peerUserIdRaw = body.userId != null ? String(body.userId) : "";
+  /** Rematch from a past conversation: identify the member by that conversation, not by code. */
+  const rematchOfRaw = body.rematchOf != null ? String(body.rematchOf) : "";
   const introMessageRaw = body.introMessage != null ? String(body.introMessage).trim() : "";
   const introProblem = introMessageProblem(introMessageRaw);
   if (introProblem) {
@@ -50,7 +52,36 @@ export async function POST(req: Request) {
   const me = BigInt(session.userId);
   let peerUserId: bigint | null = null;
 
-  if (peerUserIdRaw) {
+  if (rematchOfRaw) {
+    let priorId: bigint | null = null;
+    try {
+      priorId = BigInt(rematchOfRaw);
+    } catch {
+      priorId = null;
+    }
+    const prior = priorId
+      ? await prisma.match_requests.findUnique({ where: { id: priorId }, select: { sender_id: true, receiver_id: true } })
+      : null;
+    if (!prior || (prior.sender_id !== me && prior.receiver_id !== me)) {
+      return NextResponse.json({ error: "Chat not found" }, { status: 404 });
+    }
+    peerUserId = prior.sender_id === me ? prior.receiver_id : prior.sender_id;
+    const peerProfile = await prisma.profiles.findUnique({
+      where: { user_id: peerUserId },
+      select: { status: true, is_hidden: true, profile_code: true },
+    });
+    if (!peerProfile || peerProfile.status !== "approved" || peerProfile.is_hidden) {
+      // Was a misleading "Profile not found" (Tweaks p5): say what's actually going on.
+      const who = peerProfile?.profile_code || "This member";
+      return NextResponse.json(
+        {
+          error: `${who}'s profile isn't available right now — it may be paused or under review. You can request a rematch once it's visible again.`,
+          code: "peer_unavailable",
+        },
+        { status: 409 }
+      );
+    }
+  } else if (peerUserIdRaw) {
     peerUserId = BigInt(peerUserIdRaw);
   } else if (profileCode) {
     const profile = await prisma.profiles.findFirst({

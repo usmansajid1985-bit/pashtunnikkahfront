@@ -80,6 +80,8 @@ export type ChatThreadDTO = {
   /** The peer blocked this viewer: the conversation shows read-only as "Conversation unavailable"
    * (no messages, composer, profile or rematch). The viewer can still Report or Block them. */
   unavailable: boolean;
+  /** A rematch request between the pair is waiting for an answer (who sent it). */
+  rematchPending?: { byMe: boolean } | null;
 };
 
 export type PhotoOnceStatus = "none" | "pending" | "viewed";
@@ -467,6 +469,43 @@ export async function consumePhotoOnce(requestId: bigint, viewerId: bigint) {
   };
 }
 
+type MatchRow = Awaited<ReturnType<typeof prisma.match_requests.findMany>>[number];
+
+/** The row that represents a pair's conversation now: the live match, else the latest ended one. */
+function currentRow(rows: MatchRow[]): MatchRow | null {
+  const live = rows.find((r) => r.status === "accepted");
+  if (live) return live;
+  const t = (r: MatchRow) => (r.ended_at ?? r.updated_at).getTime();
+  return [...rows].sort((a, b) => t(b) - t(a))[0] ?? null;
+}
+
+/**
+ * One continuous conversation per member pair (Tweaks p1–5): every accepted/ended match row
+ * between the same two members — the original match and any rematches — is one chat. Reads span
+ * all of them; writes go to `current`. Nothing is moved or merged in storage, so no history is
+ * ever lost and old duplicate threads consolidate automatically.
+ */
+export async function conversationRows(requestId: bigint): Promise<{ rows: MatchRow[]; ids: bigint[]; current: MatchRow } | null> {
+  const base = await prisma.match_requests.findUnique({
+    where: { id: requestId },
+    select: { sender_id: true, receiver_id: true },
+  });
+  if (!base) return null;
+  const rows = await prisma.match_requests.findMany({
+    where: {
+      status: { in: ["accepted", "ended"] },
+      OR: [
+        { sender_id: base.sender_id, receiver_id: base.receiver_id },
+        { sender_id: base.receiver_id, receiver_id: base.sender_id },
+      ],
+    },
+    orderBy: { created_at: "asc" },
+  });
+  const current = currentRow(rows);
+  if (!current) return null;
+  return { rows, ids: rows.map((r) => r.id), current };
+}
+
 export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[]> {
   const [requests, { iBlocked, blockedMe }] = await Promise.all([
     prisma.match_requests.findMany({
@@ -485,12 +524,39 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
     return !iBlocked.has(otherId);
   });
 
-  // Each thread's lookups are independent — run them all concurrently instead of
-  // walking the list one round-trip at a time.
+  // Tweaks p1–5: ONE conversation card per member pair, however many times they ended and
+  // rematched — its history spans every accepted/ended row between them.
+  const byPeer = new Map<string, MatchRow[]>();
+  for (const r of visible) {
+    const pid = (r.sender_id === userId ? r.receiver_id : r.sender_id).toString();
+    byPeer.set(pid, [...(byPeer.get(pid) ?? []), r]);
+  }
+  const peerIds = [...byPeer.keys()].map((id) => BigInt(id));
+  const pendings = peerIds.length
+    ? await prisma.match_requests.findMany({
+        where: {
+          status: "pending",
+          OR: [
+            { sender_id: userId, receiver_id: { in: peerIds } },
+            { receiver_id: userId, sender_id: { in: peerIds } },
+          ],
+        },
+        select: { sender_id: true, receiver_id: true },
+      })
+    : [];
+  const pendingByPeer = new Map<string, { byMe: boolean }>();
+  for (const pr of pendings) {
+    const pid = (pr.sender_id === userId ? pr.receiver_id : pr.sender_id).toString();
+    pendingByPeer.set(pid, { byMe: pr.sender_id === userId });
+  }
+
+  // Each pair's lookups are independent — run them all concurrently.
   const built = await Promise.all(
-    visible.map(async (req) => {
-      const peerId = await peerUserId(req, userId);
-      const unavailable = blockedMe.has(peerId.toString());
+    [...byPeer.entries()].map(async ([pid, rows]) => {
+      const req = currentRow(rows)!;
+      const ids = rows.map((r) => r.id);
+      const peerId = BigInt(pid);
+      const unavailable = blockedMe.has(pid);
 
       // Unavailable (peer blocked me): show a locked placeholder — the member ID, a generic avatar,
       // and the last-message timestamp only. Never load or leak the messages, meta or unread count.
@@ -498,7 +564,7 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
         const [peer, last] = await Promise.all([
           loadPeer(peerId),
           prisma.messages.findFirst({
-            where: { request_id: req.id },
+            where: { request_id: { in: ids } },
             orderBy: { created_at: "desc" },
             select: { created_at: true },
           }),
@@ -524,6 +590,7 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
           endedByMe: false,
           canRematch: false,
           unavailable: true,
+          rematchPending: null,
         } satisfies ChatThreadDTO;
       }
 
@@ -531,14 +598,15 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
         loadPeer(peerId),
         threadMetaFor(req, userId),
         prisma.messages.findFirst({
-          where: { request_id: req.id },
+          where: { request_id: { in: ids } },
           orderBy: { created_at: "desc" },
         }),
         prisma.messages.count({
-          where: { request_id: req.id, receiver_id: userId, is_read: false },
+          where: { request_id: { in: ids }, receiver_id: userId, is_read: false },
         }),
       ]);
       if (!peer) return null;
+      const pending = pendingByPeer.get(pid) ?? null;
 
       return {
       requestId: req.id.toString(),
@@ -558,8 +626,10 @@ export async function listThreadsForUser(userId: bigint): Promise<ChatThreadDTO[
       ended: req.status === "ended",
       endedAt: req.status === "ended" ? (req.ended_at ?? req.updated_at).toISOString() : null,
       endedByMe: req.status === "ended" && req.ended_by === userId,
-      canRematch: req.status === "ended" && (req.ended_by == null || req.ended_by === userId),
+      // Only the member who ended the most recent match, and only while nothing is pending.
+      canRematch: req.status === "ended" && (req.ended_by == null || req.ended_by === userId) && !pending,
       unavailable: false,
+      rematchPending: req.status === "ended" ? pending : null,
       } satisfies ChatThreadDTO;
     })
   );
@@ -792,9 +862,11 @@ export async function createContactCardMessage(opts: {
 }
 
 export async function markThreadRead(requestId: bigint, userId: bigint) {
+  // The whole conversation (original match + rematches) reads as one — clear all of it.
+  const ids = (await conversationRows(requestId).catch(() => null))?.ids ?? [requestId];
   const result = await prisma.messages.updateMany({
     where: {
-      request_id: requestId,
+      request_id: { in: ids },
       receiver_id: userId,
       is_read: false,
     },
@@ -804,7 +876,7 @@ export async function markThreadRead(requestId: bigint, userId: bigint) {
   // so the next message starts a fresh "sent you 1 message" (spec §7).
   await prisma.notifications
     .updateMany({
-      where: { recipient_user_id: userId, group_key: `message:${requestId}` },
+      where: { recipient_user_id: userId, group_key: { in: ids.map((id) => `message:${id}`) } },
       data: { read_at: new Date(), group_count: 1 },
     })
     .catch(() => undefined);
