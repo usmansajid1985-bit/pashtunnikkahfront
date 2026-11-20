@@ -17,9 +17,11 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { reason?: string; other?: string; confirm?: string };
-  if (body.confirm !== "DELETE") {
-    return NextResponse.json({ error: "Type DELETE to confirm." }, { status: 400 });
+  const body = (await req.json().catch(() => ({}))) as { reason?: string; other?: string; agreed?: boolean; confirm?: string };
+  // Tweaks 6: a ticked "I have read the account deletion terms" box replaces typing DELETE
+  // (the old field is still accepted so an open tab with the previous form keeps working).
+  if (body.agreed !== true && body.confirm !== "DELETE") {
+    return NextResponse.json({ error: "Please confirm you've read the account deletion terms." }, { status: 400 });
   }
   const reason = DELETION_REASONS.find((r) => r.code === body.reason)?.code as DeletionReasonCode | undefined;
   if (!reason) return NextResponse.json({ error: "Please choose a reason for leaving." }, { status: 400 });

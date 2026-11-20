@@ -14,13 +14,14 @@ export default async function DeleteAccountPage() {
 
   return (
     <SettingsShell title="Delete account" backHref="/settings" profileCode={session.profileCode ?? undefined} unreadCount={unreadCount} userId={session.userId}>
-      <h2 className="text-2xl font-bold text-ink-950">Delete account</h2>
-      <p className="mt-1 text-sm text-ink-700/65 leading-relaxed">
-        We&apos;re sorry to see you go. Your profile is hidden immediately. Your account will be deleted after 30 days.
-        Log in before then to reactivate it.
-      </p>
-      <div className="mt-6 card p-4">
-        <DeleteAccountForm />
+      <div className="mx-auto max-w-lg">
+        <h2 className="text-center text-[26px] font-bold text-ink-950 sm:text-3xl">Delete your account?</h2>
+        <p className="mx-auto mt-2 max-w-sm text-center text-[15px] leading-relaxed text-ink-700/75">
+          This is permanent. Read the account deletion terms before continuing.
+        </p>
+        <div className="mt-7">
+          <DeleteAccountForm />
+        </div>
       </div>
     </SettingsShell>
   );
