@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 import { listThreadsForUser } from "@/lib/chat";
 import { userTopic } from "@/lib/realtime-topics";
@@ -13,6 +14,10 @@ export default async function ChatsPage({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  // Account created but profile not finished yet — carry on with onboarding.
+  if (!(await prisma.profiles.findUnique({ where: { user_id: BigInt(session.userId) }, select: { id: true } }))) {
+    redirect("/signup");
+  }
   const { tab, sub, request } = await searchParams;
 
   const threads = await listThreadsForUser(BigInt(session.userId));

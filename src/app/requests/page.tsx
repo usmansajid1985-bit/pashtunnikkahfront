@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { loadRequestsHub } from "@/lib/requests-hub";
@@ -16,6 +17,10 @@ export default async function RequestsPage({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  // Account created but profile not finished yet — carry on with onboarding.
+  if (!(await prisma.profiles.findUnique({ where: { user_id: BigInt(session.userId) }, select: { id: true } }))) {
+    redirect("/signup");
+  }
 
   const { tab } = await searchParams;
   const userId = BigInt(session.userId);

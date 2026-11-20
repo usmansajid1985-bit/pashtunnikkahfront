@@ -46,6 +46,7 @@ import {
 } from "@/lib/password-strength";
 import { phonePlaceholder, phoneRules, sanitizePhoneInput, toE164 } from "@/lib/phone";
 import { writeSessionMarker } from "@/lib/session-marker";
+import { EmailCodeStage, InstallStage, NotifyStage, shouldShowInstallPage } from "@/components/signup/onboarding-stages";
 
 const STORAGE_KEY = "pn_signup_draft_v2";
 
@@ -130,15 +131,23 @@ export function SignupWizard() {
       .catch(() => setWaEnabled(false));
   }, []);
   const [breach, setBreach] = useState<{ password: string; breached: boolean | null } | null>(null);
+  /** Screens outside the numbered steps: email code, install, notifications. */
+  const [stage, setStage] = useState<"steps" | "email" | "install" | "notify">("steps");
+  const [accountEmail, setAccountEmail] = useState("");
+  /** Signed-in member (account created) — profile answers autosave to the server. */
+  const [userId, setUserId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const MAX_PHOTOS = 3;
   const steps = useMemo(() => getSignupSteps(data.gender), [data.gender]);
   const step = steps[stepIndex] ?? steps[0];
-  const total = steps.length;
-  const left = Math.max(0, total - stepIndex - 1);
-  const progress = ((stepIndex + 1) / total) * 100;
+  // "Step X of N" counts only the profile steps — the account screen and the finish aren't numbered.
+  const numbered = steps.filter((s) => s.id !== "account" && s.id !== "done");
+  const numIndex = numbered.findIndex((s) => s.id === step.id);
+  const total = numbered.length;
+  const progress = numIndex >= 0 ? ((numIndex + 1) / total) * 100 : 0;
+  const firstProfileIndex = steps.findIndex((s) => s.id !== "account");
   // The phone step is checked against the selected country's numbering plan, not just length.
   const phoneValid = toE164(data.phoneIso, data.phone) !== null;
   // Password: the instant rules, then a breach-list lookup for the exact password typed. If that
@@ -157,75 +166,102 @@ export function SignupWizard() {
   const phoneError =
     !phoneValid && data.phone.trim() !== "" && (phoneTouched || data.phone.replace(/\D/g, "").length >= 9);
 
+  // Resume from wherever the member is: signed out → account; account made → email code;
+  // email verified → profile steps with progress from the server (works after installing the
+  // app, logging in again or switching device); profile submitted → into the app.
   useEffect(() => {
+    let cancelled = false;
+    let local: { data?: SignupData; stepIndex?: number; uid?: string | null } | null = null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as { data: SignupData; stepIndex: number };
-        if (parsed?.data) {
-          const restored = { ...emptySignupData(), ...parsed.data };
-          restored.openTo = normalizeOpenTo(restored.openTo);
-          let resumeAt = Math.max(0, parsed.stepIndex || 0);
-          // Drafts saved with the old "open to" options may now have none selected — send them
-          // back to that step, since one is required.
-          const openToIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "openTo");
-          if (openToIndex >= 0 && resumeAt > openToIndex && !restored.openTo.length) {
-            resumeAt = openToIndex;
-          }
-          // Drafts saved while "Profession / role" was optional: workers and students must now
-          // answer it, so send them back to that step.
-          const careerIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "career");
-          if (careerIndex >= 0 && resumeAt > careerIndex && !isStepValid("career", restored)) {
-            resumeAt = careerIndex;
-          }
-          // R04: drafts saved before the city picker existed (or with a typed-in city) must go
-          // back and pick the city from the list, instead of failing at "Create account".
-          const locationIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "location");
-          if (locationIndex >= 0 && resumeAt > locationIndex && !restored.cityConfirmed) {
-            resumeAt = locationIndex;
-          }
-          // Drafts saved before Pashto speakers were asked their level.
-          const languagesIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "languages");
-          if (languagesIndex >= 0 && resumeAt > languagesIndex && !isStepValid("languages", restored)) {
-            resumeAt = languagesIndex;
-          }
-          // Drafts saved before the tribe question existed.
-          const tribeIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "tribe");
-          if (tribeIndex >= 0 && resumeAt > tribeIndex && !isStepValid("tribe", restored)) {
-            resumeAt = tribeIndex;
-          }
-          // Drafts saved before numbers were validated per country: fix the number before the
-          // account step rather than failing at "Create account".
-          const phoneIndex = getSignupSteps(restored.gender).findIndex((s) => s.id === "phone");
-          if (phoneIndex >= 0 && resumeAt > phoneIndex && toE164(restored.phoneIso, restored.phone) === null) {
-            resumeAt = phoneIndex;
-          }
-          // About children, appearance, and health were removed from signup. An old draft's
-          // step number can now land past the end, or skip a step that is still required.
-          const stepsNow = getSignupSteps(restored.gender);
-          if (resumeAt >= stepsNow.length) {
-            const accountIndex = stepsNow.findIndex((s) => s.id === "account");
-            resumeAt = accountIndex >= 0 ? accountIndex : stepsNow.length - 1;
-          }
-          const firstGap = stepsNow.findIndex(
-            (s) => s.id !== "done" && s.id !== "account" && !isStepValid(s.id, restored)
-          );
-          if (firstGap >= 0 && firstGap < resumeAt) resumeAt = firstGap;
-          setData(restored);
-          setStepIndex(resumeAt);
-        }
-      }
+      if (raw) local = JSON.parse(raw);
     } catch {
       /* ignore */
     }
-    setHydrated(true);
+    (async () => {
+      const state = await fetch("/api/onboarding/state", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .catch(() => null);
+      if (cancelled) return;
+      const stageNow: string = state?.stage ?? "account";
+      if (stageNow === "done") {
+        router.replace("/browse");
+        return;
+      }
+      if (stageNow === "account") {
+        // Signed out: keep anything typed on this device, but start at the account screen.
+        if (local?.data && !local.uid) setData({ ...emptySignupData(), ...local.data, password: "", confirmPassword: "" });
+        setStepIndex(0);
+        setHydrated(true);
+        return;
+      }
+      setUserId(state.userId ?? null);
+      setAccountEmail(state.email ?? "");
+      if (stageNow === "email") {
+        setStage("email");
+        setHydrated(true);
+        return;
+      }
+      // Profile stage: server draft wins; photos only ever live on this device.
+      const sameUser = local?.uid && local.uid === state.userId;
+      const restored: SignupData = {
+        ...emptySignupData(),
+        ...(sameUser ? local?.data : {}),
+        ...(state.draft?.data ?? {}),
+        email: state.email ?? "",
+        password: "",
+        confirmPassword: "",
+      } as SignupData;
+      if (sameUser && local?.data?.photos?.length) restored.photos = local.data.photos;
+      restored.openTo = normalizeOpenTo(restored.openTo);
+      const stepsNow = getSignupSteps(restored.gender);
+      const phoneIndex = stepsNow.findIndex((s) => s.id === "phone");
+      let resumeAt = Number(state.draft?.stepIndex ?? (sameUser ? local?.stepIndex : 1) ?? 1) || 1;
+      resumeAt = Math.min(Math.max(1, resumeAt), phoneIndex >= 0 ? phoneIndex : stepsNow.length - 2);
+      // Never skip past a step that still needs an answer (older drafts, removed/added questions).
+      const firstGap = stepsNow.findIndex(
+        (s) =>
+          s.id !== "done" &&
+          s.id !== "account" &&
+          (!isStepValid(s.id, restored) || (s.id === "phone" && toE164(restored.phoneIso, restored.phone) === null))
+      );
+      if (firstGap >= 1 && firstGap < resumeAt) resumeAt = firstGap;
+      setData(restored);
+      setStepIndex(resumeAt);
+      if (shouldShowInstallPage()) setStage("install");
+      setHydrated(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!hydrated || step.id === "done") return;
     // The draft lives in localStorage in plain text — never keep the password there.
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data: { ...data, password: "", confirmPassword: "" }, stepIndex }));
-  }, [data, stepIndex, hydrated, step.id]);
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ data: { ...data, password: "", confirmPassword: "" }, stepIndex, uid: userId })
+    );
+  }, [data, stepIndex, hydrated, step.id, userId]);
+
+  // Autosave profile answers to the server so they can carry on from any device.
+  useEffect(() => {
+    if (!hydrated || !userId || step.id === "done" || step.id === "account") return;
+    const t = window.setTimeout(() => {
+      void fetch("/api/onboarding/draft", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: { ...data, password: "", confirmPassword: "", photos: [], phoneProof: undefined },
+          stepIndex,
+        }),
+        keepalive: true,
+      }).catch(() => undefined);
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [data, stepIndex, hydrated, userId, step.id]);
 
   // Breach lookup, once they pause typing a password that passes the instant rules.
   const passwordToLookUp = step.id === "account" && checkPassword(data.password, data.email).ok ? data.password : null;
@@ -265,6 +301,39 @@ export function SignupWizard() {
     startTransition(() => setStepIndex(next));
   }
 
+  /** Step 1: create the account (email + password), then verify the email with a code. */
+  async function registerAccount() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: data.email, password: data.password, website: "" }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || "Couldn't create your account. Please try again.");
+        return;
+      }
+      writeSessionMarker(json.userId ?? null);
+      setUserId(json.userId ? String(json.userId) : null);
+      setAccountEmail(data.email.trim().toLowerCase());
+      patch({ password: "", confirmPassword: "" });
+      setStage("email");
+    } catch {
+      setError("Network error. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function afterEmailVerified() {
+    setDir(1);
+    setStepIndex(Math.max(1, firstProfileIndex));
+    setStage(shouldShowInstallPage() ? "install" : "steps");
+  }
+
   async function submitAccount() {
     setSubmitting(true);
     setError(null);
@@ -282,6 +351,10 @@ export function SignupWizard() {
           setError(
             "An account with this email already exists. Use a different email, or log in instead."
           );
+          return;
+        }
+        if (json.code === "EMAIL_UNVERIFIED") {
+          setStage("email");
           return;
         }
         if (json.code === "PHONE_UNVERIFIED") {
@@ -325,6 +398,8 @@ export function SignupWizard() {
       writeSessionMarker(json.userId ?? null);
       setDir(1);
       setStepIndex(steps.findIndex((s) => s.id === "done"));
+      // Optional "Stay in the loop" screen, then the pending-approval welcome.
+      setStage("notify");
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -335,6 +410,10 @@ export function SignupWizard() {
   async function onNext() {
     if (!canNext || submitting) return;
     if (step.id === "account") {
+      await registerAccount();
+      return;
+    }
+    if (step.id === "phone") {
       await submitAccount();
       return;
     }
@@ -406,6 +485,16 @@ export function SignupWizard() {
 
       <main className="flex-1 w-full max-w-xl mx-auto px-5 py-8 sm:py-12">
         <div className="rounded-3xl bg-white shadow-[0_20px_60px_-30px_rgba(32,26,29,0.25)] border border-ink-900/6 p-5 sm:p-9">
+        {stage === "email" ? (
+          <EmailCodeStage email={accountEmail || data.email} onVerified={afterEmailVerified} />
+        ) : stage === "install" ? (
+          <InstallStage onDone={() => setStage("steps")} />
+        ) : stage === "notify" ? (
+          <NotifyStage onDone={() => setStage("steps")} />
+        ) : !hydrated ? (
+          <div className="py-24 text-center text-sm text-ink-700/60">Loading…</div>
+        ) : (
+        <>
         {/* Progress */}
         {step.id !== "done" ? (
           <div className="relative flex items-center gap-3 mb-6">
@@ -413,7 +502,7 @@ export function SignupWizard() {
               type="button"
               onClick={() => go(-1)}
               className={`w-9 h-9 flex items-center justify-center rounded-full border border-ink-900/10 text-ink-700/60 hover:text-ink-900 hover:border-rose-300 transition ${
-                stepIndex === 0 ? "invisible" : ""
+                stepIndex === 0 || (userId && stepIndex <= firstProfileIndex) ? "invisible" : ""
               }`}
               aria-label="Back"
             >
@@ -423,15 +512,17 @@ export function SignupWizard() {
             </button>
 
             <div className="flex-1">
-              <div className="h-1.5 rounded-full bg-ink-900/8 overflow-hidden">
+              <div className={`h-1.5 rounded-full bg-ink-900/8 overflow-hidden ${numIndex < 0 ? "invisible" : ""}`}>
                 <div
                   className="h-full bg-gradient-to-r from-rose-600 to-rose-500 transition-all duration-500 ease-out"
                   style={{ width: `${progress}%` }}
                 />
               </div>
-              <p className="absolute inset-x-0 top-full mt-0.5 text-center text-xs font-medium text-ink-700/70">
-                Step {stepIndex + 1} of {total}
-              </p>
+              {numIndex >= 0 ? (
+                <p className="absolute inset-x-0 top-full mt-0.5 text-center text-xs font-medium text-ink-700/70">
+                  Step {numIndex + 1} of {total}
+                </p>
+              ) : null}
             </div>
 
             <Link
@@ -1152,14 +1243,14 @@ export function SignupWizard() {
               className="w-full mt-7 py-3.5 flex items-center justify-center gap-2 rounded-full bg-rose-600 text-white font-semibold hover:bg-rose-700 transition disabled:opacity-45 disabled:cursor-not-allowed shadow-[0_10px_30px_-12px_rgba(225, 45, 114,0.55)]"
             >
               {submitting
-                ? "Creating account…"
+                ? step.id === "phone"
+                  ? "Submitting…"
+                  : "Creating account…"
                 : step.id === "account"
                   ? "Create account"
                   : step.id === "phone"
-                    ? "Continue"
-                    : left === 0
-                      ? "Finish"
-                      : "Next"}
+                    ? "Submit for approval"
+                    : "Next"}
               {!submitting ? (
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                   <path d="M5 12h14M13 6l6 6-6 6" />
@@ -1168,6 +1259,8 @@ export function SignupWizard() {
             </button>
           ) : null}
         </div>
+        </>
+        )}
         </div>
       </main>
 

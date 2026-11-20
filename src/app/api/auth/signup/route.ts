@@ -9,6 +9,7 @@ import { PASSWORD_WEAK_MESSAGE, isBreachedPassword, passwordIssue } from "@/lib/
 import { prisma } from "@/lib/prisma";
 import {
   createSessionToken,
+  getSession,
   hashPassword,
   SESSION_COOKIE,
   sessionCookieOptions,
@@ -23,6 +24,7 @@ import {
 } from "@/lib/signup";
 import { getPlanSettings } from "@/lib/plan-settings";
 import { sendVerificationEmail } from "@/lib/email-verification";
+import { nextUserId } from "@/lib/onboarding";
 import {
   DEFAULT_RADIUS_MILES,
   geocodeCityCountry,
@@ -50,30 +52,43 @@ async function nextProfileId() {
   return (max._max.id ?? 0n) + 1n;
 }
 
-async function nextUserId() {
-  const max = await prisma.users.aggregate({ _max: { id: true } });
-  return (max._max.id ?? 0n) + 1n;
-}
+
 
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as Partial<SignupData>;
-    const email = String(body.email ?? "")
-      .trim()
-      .toLowerCase();
-    const password = String(body.password ?? "");
+
+    // Account-first onboarding: a signed-in member whose account exists but has no profile yet is
+    // completing THEIR OWN profile. Email/password come from the account, never the request.
+    const session = await getSession();
+    const sessionUser = session
+      ? await prisma.users.findUnique({ where: { id: BigInt(session.userId) }, include: { profiles: true } })
+      : null;
+    const accountFirst = Boolean(sessionUser && !sessionUser.profiles);
+    if (accountFirst && !sessionUser!.email_verified) {
+      return NextResponse.json({ error: "Please verify your email first.", code: "EMAIL_UNVERIFIED" }, { status: 403 });
+    }
+
+    const email = accountFirst
+      ? sessionUser!.email.trim().toLowerCase()
+      : String(body.email ?? "")
+          .trim()
+          .toLowerCase();
+    const password = accountFirst ? "" : String(body.password ?? "");
     const fullName = String(body.fullName ?? "").trim();
     const genderLabel = body.gender === "Sister" ? "Female" : body.gender === "Brother" ? "Male" : "";
 
-    if (!email || !password || !fullName || !genderLabel) {
+    if (!email || (!accountFirst && !password) || !fullName || !genderLabel) {
       return NextResponse.json({ error: "Missing required account details." }, { status: 400 });
     }
 
-    // Same password rules as the form, then a breach-list lookup (skipped if it can't be reached).
-    const weakPassword = passwordIssue(password, email);
-    if (weakPassword) return NextResponse.json({ error: weakPassword }, { status: 400 });
-    if ((await isBreachedPassword(password)) === true) {
-      return NextResponse.json({ error: PASSWORD_WEAK_MESSAGE }, { status: 400 });
+    if (!accountFirst) {
+      // Same password rules as the form, then a breach-list lookup (skipped if it can't be reached).
+      const weakPassword = passwordIssue(password, email);
+      if (weakPassword) return NextResponse.json({ error: weakPassword }, { status: 400 });
+      if ((await isBreachedPassword(password)) === true) {
+        return NextResponse.json({ error: PASSWORD_WEAK_MESSAGE }, { status: 400 });
+      }
     }
 
     const dob = String(body.dob ?? "");
@@ -156,10 +171,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: cityInvalidMessage(body.country), code: "CITY_INVALID" }, { status: 400 });
     }
 
-    const existingUser = await prisma.users.findFirst({
-      where: { email: { equals: email, mode: "insensitive" } },
-      include: { profiles: true },
-    });
+    const existingUser = accountFirst
+      ? sessionUser
+      : await prisma.users.findFirst({
+          where: { email: { equals: email, mode: "insensitive" } },
+          include: { profiles: true },
+        });
     if (existingUser?.profiles) {
       const redirectTo = `/login?email=${encodeURIComponent(email)}&existing=1`;
       return NextResponse.json(
@@ -172,9 +189,21 @@ export async function POST(req: Request) {
       );
     }
 
-    const resumeIncompleteSignup = Boolean(existingUser && !existingUser.profiles);
+    // An unfinished account is only ever completed by its signed-in owner. Submitting this form
+    // with someone else's email (signed out) must never take that account over — log in instead.
+    if (!accountFirst && existingUser) {
+      return NextResponse.json(
+        {
+          error: "You've already started signing up with this email. Log in to continue where you left off.",
+          code: "EMAIL_EXISTS",
+          redirectTo: `/login?email=${encodeURIComponent(email)}&existing=1`,
+        },
+        { status: 409 }
+      );
+    }
+    const resumeIncompleteSignup = accountFirst;
 
-    const password_hash = await hashPassword(password);
+    const password_hash = accountFirst ? "" : await hashPassword(password);
     const profile_code = await nextProfileCode(genderLabel);
     const userId = resumeIncompleteSignup ? existingUser!.id : await nextUserId();
 
@@ -297,7 +326,6 @@ export async function POST(req: Request) {
         ? await tx.users.update({
             where: { id: userId },
             data: {
-              password_hash,
               display_name: fullName,
               onboarding_complete: true,
               requests_remaining: freeSettings.monthlyCredits,
@@ -324,7 +352,8 @@ export async function POST(req: Request) {
             },
           });
 
-      if (!resumeIncompleteSignup) {
+      {
+        // The monthly allowance is recorded once, when the profile is submitted.
         await tx.credit_ledger.create({
           data: {
             user_id: savedUser.id,
@@ -362,9 +391,15 @@ export async function POST(req: Request) {
       });
     }
 
-    void sendVerificationEmail(user.id).catch((err) =>
-      console.error("signup verification email failed", err)
-    );
+    if (!accountFirst) {
+      void sendVerificationEmail(user.id).catch((err) =>
+        console.error("signup verification email failed", err)
+      );
+    }
+    if (accountFirst) {
+      // Profile submitted — the saved onboarding draft is no longer needed.
+      await prisma.$executeRaw`UPDATE users SET onboarding_draft = NULL WHERE id = ${user.id}`.catch(() => undefined);
+    }
 
     const token = await createSessionToken({
       userId: user.id.toString(),

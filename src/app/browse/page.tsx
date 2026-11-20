@@ -94,6 +94,8 @@ export default async function BrowsePage({
     getNavCounts(userId),
     prisma.favourites.findMany({ where: { user_id: userId }, select: { profile_user_id: true } }),
   ]);
+  // Account created but profile not finished yet — carry on with onboarding.
+  if (!me) redirect("/signup");
   const initialSavedUserIds = savedFavourites.map((f) => f.profile_user_id.toString());
   const isGold = (meUser?.plan ?? "").toLowerCase() === "gold";
   // Gold-only filters never apply for a Basic viewer — drop them here so the query, the

@@ -91,7 +91,13 @@ export async function POST(req: Request) {
         profileCode,
         plan: user.plan,
       },
-      redirectTo: needsPasswordSetup ? "/set-password" : deletion === "reactivated" ? "/dashboard?reactivated=1" : "/browse",
+      redirectTo: needsPasswordSetup
+        ? "/set-password"
+        : !user.profiles
+          ? "/signup" // account created, profile not finished — resume onboarding
+          : deletion === "reactivated"
+            ? "/dashboard?reactivated=1"
+            : "/browse",
       reactivated: deletion === "reactivated",
     });
 

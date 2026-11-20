@@ -122,6 +122,13 @@ export type StepDef = {
 
 export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
   const base: StepDef[] = [
+    // Account-first onboarding (Tweaks 6): the account is created before the numbered profile
+    // steps. It isn't counted in "Step X of N".
+    {
+      id: "account",
+      title: "Create your account",
+      subtitle: "Start with your email and a password. You'll verify your email next.",
+    },
     { id: "gender", title: "What's your gender?", subtitle: "Choose the option that applies to you." },
     { id: "name", title: "What's your full name?", subtitle: "Enter your first and last name." },
     { id: "marital", title: "What is your marital status?" },
@@ -177,11 +184,6 @@ export function getSignupSteps(gender: SignupGender | ""): StepDef[] {
       id: "phone",
       title: "What's your WhatsApp number?",
       subtitle: "We'll send a code on WhatsApp to verify it. Kept private — used only for account security.",
-    },
-    {
-      id: "account",
-      title: "Create your login",
-      subtitle: "You'll use this email and password to sign in.",
     },
     {
       id: "done",
