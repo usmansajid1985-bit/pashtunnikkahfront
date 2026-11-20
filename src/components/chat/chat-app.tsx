@@ -2119,21 +2119,20 @@ export function ChatApp({
                 onBack={closeRequestPane}
                 onDone={(action) => {
                   const rid = openRequest.requestId!;
-                  setRequestLists((prev) =>
-                    prev
-                      ? {
-                          received: prev.received.filter((c) => c.requestId !== rid),
-                          sent: prev.sent.filter((c) => c.requestId !== rid),
-                        }
-                      : prev
-                  );
+                  const dropRequest = () =>
+                    setRequestLists((prev) =>
+                      prev
+                        ? {
+                            received: prev.received.filter((c) => c.requestId !== rid),
+                            sent: prev.sent.filter((c) => c.requestId !== rid),
+                          }
+                        : prev
+                    );
                   if (action === "accept") {
-                    // In place, no navigation/refresh: the accepted request becomes the live chat
-                    // (same header/tabs) with its introduction as the first message and the
-                    // composer, Involve family and camera now enabled.
-                    setOpenRequestId(null);
-                    setInboxTab("chats");
-                    setChatSub("active");
+                    // In place, no navigation/refresh/flicker: the request screen stays up
+                    // ("Opening chat…") until the conversation — introduction first — has loaded,
+                    // then the live chat (same header/tabs, composer, Involve family and camera now
+                    // enabled) takes its place in one step.
                     void (async () => {
                       const list = await fetch("/api/chats", { cache: "no-store" })
                         .then((r) => (r.ok ? r.json() : null))
@@ -2144,9 +2143,14 @@ export function ChatApp({
                       }
                       window.history.replaceState(null, "", `/chats/${rid}`);
                       await openThread(rid);
+                      setInboxTab("chats");
+                      setChatSub("active");
+                      setOpenRequestId(null);
+                      dropRequest();
                     })();
                     return;
                   }
+                  dropRequest();
                   closeRequestPane();
                   flashToast(action === "withdraw" ? "Request withdrawn" : action === "decline" ? "Request declined" : "User blocked");
                 }}

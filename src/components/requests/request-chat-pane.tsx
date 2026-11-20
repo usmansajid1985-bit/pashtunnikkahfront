@@ -91,7 +91,7 @@ function ExpiryBanner({ expiresAt }: { expiresAt: string }) {
 
 function FamilyGlyph() {
   return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden>
       <circle cx="9" cy="8.5" r="3" />
       <path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" />
       <circle cx="16.5" cy="9" r="2.4" />
@@ -162,6 +162,11 @@ export function RequestChatPane({
   const received = sub === "received";
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
   const [confirmDecline, setConfirmDecline] = useState(false);
+  /** Accepted — the chat is loading in place; keep both buttons locked until it takes over. */
+  const [accepting, setAccepting] = useState(false);
+  useEffect(() => {
+    if (error) setAccepting(false);
+  }, [error]);
   const [confirmBlock, setConfirmBlock] = useState(false);
   const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [tab, setTab] = useState<"chat" | "profile">("chat");
@@ -266,11 +271,11 @@ export function RequestChatPane({
           <span
             title={disabledHint}
             aria-disabled
-            className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center gap-1 rounded-full bg-ink-900/[0.04] text-ink-700/40 min-[400px]:w-auto min-[400px]:px-2.5 sm:h-10 sm:px-3.5"
+            className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center gap-1 rounded-full bg-ink-900/[0.04] text-ink-700/40 min-[400px]:w-auto min-[400px]:px-2.5"
           >
             <FamilyGlyph />
             <span className="hidden whitespace-nowrap text-[12px] font-semibold min-[400px]:inline sm:hidden">Family</span>
-            <span className="hidden whitespace-nowrap text-[13px] font-semibold sm:inline">Involve family</span>
+            <span className="hidden whitespace-nowrap text-[12px] font-semibold sm:inline">Involve family</span>
           </span>
           <span title={disabledHint} aria-disabled className="flex h-9 w-9 shrink-0 cursor-not-allowed items-center justify-center rounded-full text-ink-700/35 sm:h-10 sm:w-10">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -359,7 +364,7 @@ export function RequestChatPane({
                 <div className="mx-auto flex max-w-md gap-3">
                   <button
                     type="button"
-                    disabled={pending}
+                    disabled={pending || accepting}
                     onClick={() => setConfirmDecline(true)}
                     className="h-12 flex-1 rounded-full border border-[#e12d72] bg-white text-[15px] font-semibold text-[#e12d72] hover:bg-rose-50 disabled:opacity-50"
                   >
@@ -367,11 +372,14 @@ export function RequestChatPane({
                   </button>
                   <button
                     type="button"
-                    disabled={pending}
-                    onClick={() => act("accept")}
+                    disabled={pending || accepting}
+                    onClick={() => {
+                      setAccepting(true);
+                      act("accept");
+                    }}
                     className="h-12 flex-1 rounded-full border border-emerald-300 bg-emerald-50 text-[15px] font-semibold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
                   >
-                    {pending ? "…" : "Accept"}
+                    {accepting && !error ? "Opening chat…" : pending ? "…" : "Accept"}
                   </button>
                 </div>
               ) : (
