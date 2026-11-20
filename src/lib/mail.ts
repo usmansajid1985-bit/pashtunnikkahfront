@@ -66,6 +66,12 @@ export async function sendMail(input: SendMailInput): Promise<{ ok: boolean; via
     }
   }
 
+  if (process.env.NODE_ENV === "production") {
+    // No provider configured on a live deployment: report the failure instead of silently
+    // "sending" (otherwise members wait for codes and links that never arrive).
+    console.error("[mail] no RESEND_API_KEY or SMTP_HOST configured — email not sent", { subject: input.subject });
+    return { ok: false, via: "none" };
+  }
   console.info(
     `[mail:dev] to=${input.to} subject=${JSON.stringify(input.subject)}\n${input.text}`
   );

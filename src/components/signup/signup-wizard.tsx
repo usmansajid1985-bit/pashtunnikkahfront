@@ -134,6 +134,8 @@ export function SignupWizard() {
   /** Screens outside the numbered steps: email code, install, notifications. */
   const [stage, setStage] = useState<"steps" | "email" | "install" | "notify">("steps");
   const [accountEmail, setAccountEmail] = useState("");
+  /** The very first code email failed to send — the code screen says so and allows an instant resend. */
+  const [firstSendFailed, setFirstSendFailed] = useState(false);
   /** Signed-in member (account created) — profile answers autosave to the server. */
   const [userId, setUserId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -318,6 +320,7 @@ export function SignupWizard() {
       }
       writeSessionMarker(json.userId ?? null);
       setUserId(json.userId ? String(json.userId) : null);
+      setFirstSendFailed(json.emailSent === false);
       setAccountEmail(data.email.trim().toLowerCase());
       patch({ password: "", confirmPassword: "" });
       setStage("email");
@@ -486,7 +489,7 @@ export function SignupWizard() {
       <main className="flex-1 w-full max-w-xl mx-auto px-5 py-8 sm:py-12">
         <div className="rounded-3xl bg-white shadow-[0_20px_60px_-30px_rgba(32,26,29,0.25)] border border-ink-900/6 p-5 sm:p-9">
         {stage === "email" ? (
-          <EmailCodeStage email={accountEmail || data.email} onVerified={afterEmailVerified} />
+          <EmailCodeStage email={accountEmail || data.email} sendFailed={firstSendFailed} onVerified={afterEmailVerified} />
         ) : stage === "install" ? (
           <InstallStage onDone={() => setStage("steps")} />
         ) : stage === "notify" ? (

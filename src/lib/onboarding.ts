@@ -65,9 +65,10 @@ export async function sendEmailCode(userId: bigint): Promise<CodeResult> {
 
   const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
   await prisma.$executeRaw`UPDATE email_codes SET used_at = NOW() WHERE user_id = ${userId} AND used_at IS NULL`;
-  await prisma.$executeRaw`
+  const inserted = await prisma.$queryRaw<{ id: bigint }[]>`
     INSERT INTO email_codes (user_id, code_hash, expires_at)
-    VALUES (${userId}, ${hashCode(userId, code)}, ${new Date(Date.now() + CODE_TTL_MS)})`;
+    VALUES (${userId}, ${hashCode(userId, code)}, ${new Date(Date.now() + CODE_TTL_MS)})
+    RETURNING id`;
 
   const sent = await sendMail({
     to: user.email,
@@ -83,7 +84,12 @@ export async function sendEmailCode(userId: bigint): Promise<CodeResult> {
     console.error("[onboarding] email code send failed", err);
     return { ok: false, via: "error" };
   });
-  if (!sent.ok) return { ok: false, code: "send_failed", error: "We couldn't send the email just now. Please try again." };
+  if (!sent.ok) {
+    // Nothing was delivered: drop this code so the cooldown/hourly cap don't block a retry.
+    if (inserted[0]) await prisma.$executeRaw`DELETE FROM email_codes WHERE id = ${inserted[0].id}`;
+    console.error("[onboarding] email code not delivered", { userId: String(userId), via: (sent as { via?: string }).via });
+    return { ok: false, code: "send_failed", error: "We couldn't send the email just now. Please tap Resend code." };
+  }
   return { ok: true };
 }
 

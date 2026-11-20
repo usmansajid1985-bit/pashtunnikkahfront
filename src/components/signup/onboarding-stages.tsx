@@ -218,12 +218,23 @@ const skipBtn = "mx-auto block py-3 text-[14.5px] font-semibold text-ink-950";
 /* ------------------------------------------------------------------ */
 /* 1. Email code                                                       */
 /* ------------------------------------------------------------------ */
-export function EmailCodeStage({ email, onVerified }: { email: string; onVerified: () => void }) {
+export function EmailCodeStage({
+  email,
+  onVerified,
+  sendFailed = false,
+}: {
+  email: string;
+  onVerified: () => void;
+  /** The account was created but the first code email didn't go out. */
+  sendFailed?: boolean;
+}) {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    sendFailed ? "We couldn't send your code just now. Tap Resend code to try again." : null
+  );
   const [info, setInfo] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(60);
+  const [cooldown, setCooldown] = useState(sendFailed ? 0 : 60);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
