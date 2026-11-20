@@ -1267,6 +1267,25 @@ export function ChatApp({
     return items;
   }, [messages, unreadMarker, family, matchEnded, hasMoreOlder]);
 
+  // When the female member's wali oversight is genuinely active (she has a connected wali), show
+  // both members that her wali can read this chat — her: "Your wali", him: "Her wali" — under the
+  // first date chip, as in the design.
+  const firstDayKey = grouped.find((g) => g.type === "day")?.key ?? null;
+  const waliBanner =
+    !matchEnded && waliOversightActive ? (
+      <div className="flex justify-center px-2 pb-1.5">
+        <span className="inline-flex items-center gap-2 rounded-full bg-[#dcf7d9] px-4 py-2 text-[13px] font-semibold text-[#1b7a2c] text-center leading-snug">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
+            <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
+          <span>
+            Wali oversight active · {isFemaleViewer ? "Your wali can read this chat" : "Her wali can read this chat"}
+          </span>
+        </span>
+      </div>
+    ) : null;
+
   // A new status line or prompt at the foot of the chat shouldn't land below the fold.
   const familyMark = `${family?.card ?? ""}|${family?.request.state ?? ""}|${family?.contacted ?? ""}`;
   useEffect(() => {
@@ -2515,20 +2534,6 @@ export function ChatApp({
                       {/* No point asking for notifications in a chat that can't receive new messages. */}
                       {matchEnded ? null : <ChatNotifyBanner />}
 
-                      {/* When the female member's wali oversight is genuinely active (she has a
-                          connected wali), show both members that the wali can read this chat
-                          (her: "Your wali"; him: "Her wali"). */}
-                      {!matchEnded && waliOversightActive ? (
-                        <div className="flex justify-center py-1.5">
-                          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 border border-emerald-200/70 px-3.5 py-1.5 text-[12.5px] font-semibold text-emerald-700 text-center">
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0">
-                              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
-                              <circle cx="12" cy="12" r="3" />
-                            </svg>
-                            Wali oversight active · {isFemaleViewer ? "Your wali can read this chat" : "Her wali can read this chat"}
-                          </span>
-                        </div>
-                      ) : null}
 
                       {loadingThread ? (
                         <p className="text-center text-sm text-ink-700/50 py-10">Loading…</p>
@@ -2544,6 +2549,8 @@ export function ChatApp({
                             {loadingOlder ? "Loading…" : "Load earlier messages"}
                           </button>
                         ) : null}
+                        {/* Empty thread: no date chip yet, so the wali banner leads the chat. */}
+                        {firstDayKey ? null : waliBanner}
                         {grouped.map((item) =>
                           item.type === "rematch" ? (
                             <div key={item.key} className="flex items-center gap-3 py-2" role="separator">
@@ -2554,11 +2561,14 @@ export function ChatApp({
                               <span className="h-px flex-1 bg-rose-200/70" />
                             </div>
                           ) : item.type === "day" ? (
-                            <p key={item.key} className="text-center py-2">
-                              <span className="inline-block rounded-full bg-white/90 border border-ink-900/6 px-3 py-1 text-[11.5px] font-medium text-ink-700/60 shadow-sm">
-                                <LocalStamp iso={item.iso ?? null} variant="day" />
-                              </span>
-                            </p>
+                            <div key={item.key}>
+                              <p className="text-center py-2">
+                                <span className="inline-block rounded-full bg-white/90 border border-ink-900/6 px-3 py-1 text-[11.5px] font-medium text-ink-700/60 shadow-sm">
+                                  <LocalStamp iso={item.iso ?? null} variant="day" />
+                                </span>
+                              </p>
+                              {item.key === firstDayKey ? waliBanner : null}
+                            </div>
                           ) : item.type === "unread" ? (
                             <div key={item.key} className="flex items-center gap-3 py-1.5" role="separator">
                               <span className="h-px flex-1 bg-rose-200" />
