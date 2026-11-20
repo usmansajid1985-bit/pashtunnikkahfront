@@ -87,10 +87,11 @@ export async function signedPhotoUrl(
     const { data, error } = await client.storage
       .from(BUCKET)
       .createSignedUrl(objectPath, expiresInSec);
-    if (error || !data?.signedUrl) return publicPhotoUrl(objectPath);
+    // SEC-5: the bucket is private, so a public URL would only 404 — return nothing instead.
+    if (error || !data?.signedUrl) return null;
     return data.signedUrl;
   } catch {
-    return publicPhotoUrl(objectPath);
+    return null;
   }
 }
 

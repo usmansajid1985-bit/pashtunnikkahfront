@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (looksLikeBot(req, body)) return NextResponse.json({ error: "Request blocked." }, { status: 400 });
   const ip = requestIp(req);
   // Fast per-instance burst guard on top of the database limits.
-  if (!rateLimit(`wa-send:${ip ?? "?"}`, 6, 60_000)) {
+  if (!(await rateLimit(`wa-send:${ip ?? "?"}`, 6, 60_000))) {
     return NextResponse.json({ error: "Too many requests. Please wait a moment.", code: "burst" }, { status: 429 });
   }
   const phone = toE164(String(body.phoneIso ?? ""), String(body.phone ?? ""));

@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: "Please log in again." }, { status: 401 });
   const userId = BigInt(session.userId);
   const body = (await req.json().catch(() => ({}))) as { action?: string; code?: string };
-  if (!rateLimit(`email-code:${session.userId}`, 15, 10 * 60_000)) {
+  if (!(await rateLimit(`email-code:${session.userId}`, 15, 10 * 60_000))) {
     return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
   }
   const r = body.action === "resend" ? await sendEmailCode(userId) : await verifyEmailCode(userId, String(body.code ?? ""));

@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getSession, hashPassword, verifyPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await rateLimit(`change-pw:${session.userId}`, 10, 15 * 60_000))) return tooManyRequests(15 * 60);
 
   const body = await req.json().catch(() => ({}));
   const currentPassword = String(body.currentPassword ?? "");

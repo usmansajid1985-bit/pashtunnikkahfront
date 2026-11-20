@@ -13,7 +13,7 @@ import {
   type CommMode,
 } from "@/lib/communication";
 import { sendPushNotification } from "@/lib/push/server";
-import { mapProfileView } from "@/lib/profile";
+import { mapProfileView, toPublicProfileView } from "@/lib/profile";
 import { ALL_REACTIONS, isAllowedReaction } from "@/lib/reactions";
 
 export type ReactionSummary = { emoji: string; userIds: string[] }[];
@@ -314,7 +314,8 @@ export async function loadPeer(peerId: bigint) {
   return {
     userId: peerId.toString(),
     code: profile.profile_code || "Member",
-    name: profile.full_name || user.display_name || profile.profile_code || "Member",
+    // SEC-1: members (and walis) only ever know each other by profile code.
+    name: profile.profile_code || "Member",
     verified: Boolean(user.email_verified || user.cultural_verified || profile.status === "approved"),
     avatarSeed: Number(profile.id % BigInt(70)),
     gender: profile.gender,
@@ -344,7 +345,7 @@ export async function loadPeerProfileView(peerId: bigint) {
   const view = mapProfileView(profile, user);
   // This is served to the OTHER chat participant over a plain JSON API — never include the
   // profile owner's real email/phone here, unlike the RSC-embedded /p/[code] page.
-  return { ...view, email: "", phone: null };
+  return toPublicProfileView(view);
 }
 
 function modeOf(req: { communication_mode: string | null }): CommMode {

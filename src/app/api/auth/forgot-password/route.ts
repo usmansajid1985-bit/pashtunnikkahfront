@@ -8,6 +8,7 @@ import {
   passwordResetUrl,
 } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,14 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const identifier = String(body.identifier ?? "").trim();
+    // SEC-7: stop reset-email bombing and unlimited reset tokens.
+    const ip = clientIp(req);
+    if (
+      !(await rateLimit(`forgot:${identifier.toLowerCase()}`, 3, 60 * 60_000)) ||
+      !(await rateLimit(`forgot-ip:${ip}`, 10, 60 * 60_000))
+    ) {
+      return tooManyRequests(60 * 60, "Too many reset requests. Please wait an hour and try again.");
+    }
     if (!identifier) {
       return NextResponse.json(
         { error: "Enter your Profile ID or email." },

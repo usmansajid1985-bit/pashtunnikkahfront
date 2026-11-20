@@ -102,7 +102,8 @@ function toCard(
     requestId: extra.requestId,
     peerUserId: peer.user_id.toString(),
     code: peer.profile_code || "Member",
-    name: peer.full_name || peer.profile_code || "Member",
+    // SEC-1: never the real name — members are known by profile code only.
+    name: peer.profile_code || "Member",
     place,
     age: peer.age,
     maritalStatus: peer.marital_status,

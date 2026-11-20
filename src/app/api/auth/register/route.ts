@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { email?: string; password?: string; website?: string };
   if (looksLikeBot(req, body)) return NextResponse.json({ error: "Request blocked." }, { status: 400 });
   const ip = requestIp(req);
-  if (!rateLimit(`register:${ip ?? "?"}`, 5, 10 * 60_000)) {
+  if (!(await rateLimit(`register:${ip ?? "?"}`, 5, 10 * 60_000))) {
     return NextResponse.json({ error: "Too many attempts. Please wait a few minutes." }, { status: 429 });
   }
 

@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  if (!rateLimit(`matches:${session.userId}`, 15, 60_000)) {
+  if (!(await rateLimit(`matches:${session.userId}`, 15, 60_000))) {
     return NextResponse.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
   }
 
@@ -317,12 +317,26 @@ export async function POST(req: Request) {
   const now = new Date();
   const expiresAt = new Date(now.getTime() + settings.requestExpiryDays * 24 * 60 * 60 * 1000);
   const OUT_OF_TOKENS = "out_of_tokens";
+  const ALREADY_LINKED = "already_linked";
   let created;
   let newBalance = 0;
   try {
     // One member transaction: the request row and the token it spends commit together, and the
     // row lock stops two simultaneous sends from spending the same last token.
     created = await withMemberTokens(me, async (tx) => {
+      // CHAT-1: re-check under the member's row lock — two quick taps (or two tabs) must not both
+      // create a request / spend a token, and a pair that's already matched or pending can't pay
+      // for another request.
+      const live = await tx.match_requests.count({
+        where: {
+          status: { in: ["pending", "accepted"] },
+          OR: [
+            { sender_id: me, receiver_id: peerUserId },
+            { sender_id: peerUserId, receiver_id: me },
+          ],
+        },
+      });
+      if (live > 0) throw new Error(ALREADY_LINKED);
       const row = await tx.match_requests.create({
         data: {
           id,
@@ -346,6 +360,12 @@ export async function POST(req: Request) {
       return row;
     });
   } catch (err) {
+    if (err instanceof Error && err.message === ALREADY_LINKED) {
+      return NextResponse.json(
+        { error: "You already have a request or match with this member.", code: "already_linked" },
+        { status: 409 }
+      );
+    }
     if (err instanceof Error && err.message === OUT_OF_TOKENS) {
       return NextResponse.json(
         {

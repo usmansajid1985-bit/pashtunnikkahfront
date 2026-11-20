@@ -79,6 +79,29 @@ export type ProfileView = {
   avatarSeed: number;
 };
 
+/**
+ * SEC-1: the shape any member may receive about ANOTHER member. Members are known by profile code
+ * only; real name, contact details, balance, plan (beyond a visible Gold badge) and internal
+ * moderation/checklist fields never leave the server for someone else's profile.
+ */
+export function toPublicProfileView(view: ProfileView): ProfileView {
+  const showGold = view.plan?.toLowerCase() === "gold" && !view.hideGoldBadge;
+  return {
+    ...view,
+    fullName: view.profileCode,
+    displayLabel: view.profileCode,
+    email: "",
+    phone: null,
+    plan: showGold ? "gold" : "basic",
+    credits: 0,
+    completeness: 0,
+    checklist: [],
+    status: "approved",
+    isHidden: false,
+    photoStatus: null,
+  };
+}
+
 function parseExtras(traits: string | null | undefined): ProfileExtras {
   if (!traits) return {};
   try {

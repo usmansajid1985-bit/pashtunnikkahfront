@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { sendVerificationEmail } from "@/lib/email-verification";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!(await rateLimit(`resend-verify:${session.userId}`, 5, 60 * 60_000))) {
+    return tooManyRequests(60 * 60, "Too many emails requested. Please wait an hour and try again.");
+  }
 
   try {
     const result = await sendVerificationEmail(BigInt(session.userId));

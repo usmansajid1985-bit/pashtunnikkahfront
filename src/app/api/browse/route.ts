@@ -20,11 +20,16 @@ import { applyGoldCompatToBrowseItems } from "@/lib/browse-gold-compat";
 import { blockedUserIds } from "@/lib/blocking";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
 import { expansionStages, firstExpansionStage } from "@/lib/browse-expansion";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  // SEC-2: paging through the whole directory by script.
+  if (!(await rateLimit(`browse:${session.userId}`, 120, 10 * 60_000))) {
+    return tooManyRequests(10 * 60, "You're browsing very quickly. Please wait a few minutes.");
   }
 
   await ensureBrowseAndWaliSchema();

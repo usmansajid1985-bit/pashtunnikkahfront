@@ -187,6 +187,12 @@ export function SignupWizard() {
       if (cancelled) return;
       const stageNow: string = state?.stage ?? "account";
       if (stageNow === "done") {
+        // SEC-4: nothing from signup stays on the device once the profile is submitted.
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
         router.replace("/browse");
         return;
       }

@@ -23,8 +23,27 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+          // geolocation=(self): Browse's "use my location" needs it; nothing else may ask.
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+          { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self' https://checkout.stripe.com" },
+          // Full policy in report-only mode first (violations show in the browser console) so it
+          // can be tightened without breaking Stripe, Firebase, Supabase, Maps or fonts.
+          {
+            key: "Content-Security-Policy-Report-Only",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://maps.googleapis.com https://www.gstatic.com https://apis.google.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://i.pravatar.cc https://maps.gstatic.com https://maps.googleapis.com https://*.googleusercontent.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://maps.googleapis.com https://*.googleapis.com https://api.pwnedpasswords.com https://fcmregistrations.googleapis.com",
+              "frame-src https://js.stripe.com https://checkout.stripe.com",
+              "worker-src 'self'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
         ],
       },
       {

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { phoneIso?: string; phone?: string; code?: string; website?: string };
   if (looksLikeBot(req, body)) return NextResponse.json({ error: "Request blocked." }, { status: 400 });
   const ip = requestIp(req);
-  if (!rateLimit(`wa-check:${ip ?? "?"}`, 12, 60_000)) {
+  if (!(await rateLimit(`wa-check:${ip ?? "?"}`, 12, 60_000))) {
     return NextResponse.json({ error: "Too many attempts. Please wait a moment.", code: "burst" }, { status: 429 });
   }
   const phone = toE164(String(body.phoneIso ?? ""), String(body.phone ?? ""));

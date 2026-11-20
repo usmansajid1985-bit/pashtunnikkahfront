@@ -9,12 +9,21 @@ import {
 import { prisma } from "@/lib/prisma";
 import { ensureP3Schema } from "@/lib/ensure-p3-schema";
 import { reactivateOnLogin } from "@/lib/account-deletion";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const identifier = String(body.identifier ?? "").trim();
     const password = String(body.password ?? "");
+    // SEC-7: brute-force protection — per account+IP and per IP, shared across instances.
+    const ip = clientIp(req);
+    if (
+      !(await rateLimit(`login:${ip}:${identifier.toLowerCase()}`, 8, 15 * 60_000)) ||
+      !(await rateLimit(`login-ip:${ip}`, 40, 15 * 60_000))
+    ) {
+      return tooManyRequests(15 * 60, "Too many sign-in attempts. Please wait 15 minutes and try again.");
+    }
 
     if (!identifier || !password) {
       return NextResponse.json(

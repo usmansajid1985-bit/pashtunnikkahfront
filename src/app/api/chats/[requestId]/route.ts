@@ -19,6 +19,7 @@ import { ChatBlockedError } from "@/lib/moderation";
 import { broadcastChat, broadcastToWalis } from "@/lib/chat-broadcast";
 import { threadTopic } from "@/lib/realtime-topics";
 import { signedPhotoUrl, saveBlurredVariantFromUrl } from "@/lib/photos";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,8 @@ export async function GET(
           : peerProfile.photoBlurUrl
             ? await signedPhotoUrl(peerProfile.photoBlurUrl)
             : null,
+        // SEC-5: the stored key is a (private-bucket) public-style URL that 404s — never send it.
+        photoBlurUrl: null,
       }
     : null;
 
@@ -235,6 +238,10 @@ export async function POST(
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // SEC-7: message flooding — generous for real conversation, stops scripted spam.
+  if (!(await rateLimit(`msg:${session.userId}`, 40, 60_000))) {
+    return tooManyRequests(60, "You're sending messages too quickly. Please slow down.");
+  }
   const { requestId: raw } = await params;
   const requestId = BigInt(raw);
   const userId = BigInt(session.userId);

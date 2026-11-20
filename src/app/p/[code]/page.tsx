@@ -1,8 +1,9 @@
+import Link from "next/link";
 import { after } from "next/server";
 import { redirect, notFound } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { mapProfileView } from "@/lib/profile";
+import { mapProfileView, toPublicProfileView } from "@/lib/profile";
 import { findRelation, relationStatus } from "@/lib/matches";
 import { ProfilePreview } from "@/components/profile/profile-preview";
 import { getUnreadMessageCount } from "@/lib/dashboard";
@@ -17,6 +18,7 @@ import { isBlockedBetween } from "@/lib/blocking";
 import { fullProfilePhotoVisibility, applyPhotoVisibility } from "@/lib/photo-access";
 import { signedPhotoUrl } from "@/lib/photos";
 import { ensureBrowseAndWaliSchema } from "@/lib/ensure-browse-schema";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,23 @@ export default async function PublicProfilePage({
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
+
+  // SEC-2: stop one account from walking every profile code to copy the member base.
+  if (!(await rateLimit(`profile-view:${session.userId}`, 150, 60 * 60_000))) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center">
+        <div className="max-w-sm">
+          <h1 className="text-xl font-bold text-ink-950">Slow down a little</h1>
+          <p className="mt-2 text-sm text-ink-700/70">
+            You&apos;ve viewed a lot of profiles in a short time. Please take a break and try again later.
+          </p>
+          <Link href="/browse" className="mt-5 inline-block rounded-full bg-[#e12d72] px-5 py-2.5 text-sm font-semibold text-white">
+            Back to Browse
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   await ensureBrowseAndWaliSchema();
   const { code } = await params;
@@ -215,10 +234,13 @@ export default async function PublicProfilePage({
 
   void recordBrowseOpened(viewerId, profile.user_id);
 
-  const view = mapProfileView(profile, {
+  const fullView = mapProfileView(profile, {
     ...profile.users,
     hide_gold_badge: hideGoldBadge,
   });
+  // SEC-1: everything below is serialised into the page for the viewer — another member only
+  // ever gets the public shape (no real name, email, phone, balance or internal fields).
+  const view = profile.user_id === viewerId ? fullView : toPublicProfileView(fullView);
 
   // Photo privacy: an unmatched viewer must not receive the photo URL at all; a matched viewer
   // sees it per the per-match photo-share rules (PN privacy defect — confirmed).

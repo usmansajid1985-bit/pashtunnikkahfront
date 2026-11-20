@@ -11,7 +11,7 @@ export async function POST(req: Request) {
 
   // Self-service test — the notification only ever goes to the caller's own
   // devices. Cap it so the button can't be used to hammer FCM.
-  if (!rateLimit(`push-test:${session.userId}`, 5, 60_000)) {
+  if (!(await rateLimit(`push-test:${session.userId}`, 5, 60_000))) {
     return NextResponse.json(
       { error: "Too many test notifications — wait a minute and try again." },
       { status: 429 }

@@ -3,6 +3,7 @@ import { hashPassword } from "@/lib/auth";
 import { ensurePasswordResetSchema } from "@/lib/ensure-password-reset-schema";
 import { hashPasswordResetToken } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
+import { clientIp, rateLimit, tooManyRequests } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
     const token = String(body.token ?? "").trim();
+    if (!(await rateLimit(`reset:${clientIp(req)}`, 10, 60 * 60_000))) {
+      return tooManyRequests(60 * 60);
+    }
     const password = String(body.password ?? "");
     const confirm = String(body.confirm ?? "");
 
