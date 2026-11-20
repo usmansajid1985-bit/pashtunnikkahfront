@@ -621,6 +621,12 @@ export function ChatApp({
   const [waliOversightActive, setWaliOversightActive] = useState(false);
   const [shareConfirm, setShareConfirm] = useState(false);
   const [headerMenu, setHeaderMenu] = useState<"photo" | "more" | null>(null);
+  /** Chat header fit: 0 = "Involve family", 1 = "Family", 2 = icon only, 3 = icon + tighter row.
+   *  Chosen by measuring, so the member's activity status is never cut off on any phone. */
+  const [headerFit, setHeaderFit] = useState<0 | 1 | 2 | 3>(0);
+  const headerRowRef = useRef<HTMLDivElement>(null);
+  const headerInfoRef = useRef<HTMLDivElement>(null);
+  const headerStatusRef = useRef<HTMLParagraphElement>(null);
   const [familyModal, setFamilyModal] = useState<FamilyModalState>(null);
   const [moreBusy, setMoreBusy] = useState(false);
   const [blockArmed, setBlockArmed] = useState(false);
@@ -1271,6 +1277,30 @@ export function ChatApp({
   // both members that her wali can read this chat — her: "Your wali", him: "Her wali" — under the
   // first date chip, as in the design.
   const firstDayKey = grouped.find((g) => g.type === "day")?.key ?? null;
+
+  // Start from the roomiest header whenever the space or the status text changes…
+  useLayoutEffect(() => {
+    setHeaderFit(0);
+    const row = headerRowRef.current;
+    if (!row || typeof ResizeObserver === "undefined") return;
+    let w = row.clientWidth;
+    const ro = new ResizeObserver(() => {
+      if (row.clientWidth !== w) {
+        w = row.clientWidth;
+        setHeaderFit(0);
+      }
+    });
+    ro.observe(row);
+    return () => ro.disconnect();
+  }, [activeId, peerLiveLabel, matchEnded, connected]);
+  // …then step the family button down (before paint) until the status fits in full.
+  useLayoutEffect(() => {
+    const info = headerInfoRef.current;
+    const status = headerStatusRef.current;
+    // "X is typing…" is allowed to truncate — only the activity status must fit.
+    if (!info || !status || headerFit >= 3 || peerTyping) return;
+    if (status.scrollWidth > info.clientWidth + 0.5) setHeaderFit((f) => (f < 3 ? ((f + 1) as 1 | 2 | 3) : f));
+  });
   const waliBanner =
     !matchEnded && waliOversightActive ? (
       <div className="flex justify-center px-2 pb-1.5">
@@ -2258,7 +2288,10 @@ export function ChatApp({
                   ref={headerRef}
                   className="relative sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-ink-900/6"
                 >
-                  <div className="px-2.5 sm:px-4 h-14 flex items-center gap-1.5 sm:gap-2">
+                  <div
+                    ref={headerRowRef}
+                    className={`px-2.5 sm:px-4 h-14 flex items-center ${headerFit >= 3 ? "gap-1" : "gap-1.5 sm:gap-2"}`}
+                  >
                     <button
                       type="button"
                       className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5"
@@ -2284,7 +2317,7 @@ export function ChatApp({
                           : { filter: "blur(4px) saturate(0.9)" }
                       }
                     />
-                    <div className="min-w-0 flex-1">
+                    <div ref={headerInfoRef} className="min-w-0 flex-1">
                       <p
                         className="font-semibold text-ink-950 truncate"
                         style={{ fontFamily: "var(--font-poppins), var(--font-inter), system-ui, sans-serif" }}
@@ -2294,7 +2327,8 @@ export function ChatApp({
                       {/* Clean header subtitle: real-time states, otherwise the member's coarse
                           activity status with a green dot (T3-#9) — no wali/photo text or badges. */}
                       <p
-                        className={`text-[11px] whitespace-nowrap transition-colors ${
+                        ref={headerStatusRef}
+                        className={`${headerFit >= 3 ? "text-[10.5px]" : "text-[11px]"} whitespace-nowrap transition-colors ${
                           peerTyping ? "text-emerald-600 italic font-medium truncate" : "text-ink-700/55"
                         }`}
                       >
@@ -2320,17 +2354,22 @@ export function ChatApp({
                           setFamilyModal({ step: "main", via: "manual" });
                         }}
                         disabled={!family}
-                        className={`relative h-9 sm:h-10 shrink-0 flex items-center justify-center gap-1 sm:gap-1.5 rounded-full transition disabled:opacity-40 w-9 min-[400px]:w-auto min-[400px]:px-2.5 sm:px-3.5 ${
+                        className={`relative h-9 shrink-0 flex items-center justify-center gap-1 rounded-full transition disabled:opacity-40 ${
+                          headerFit >= 2 ? "w-9" : "px-2.5"
+                        } ${
                           family?.shared ? "bg-emerald-50 text-emerald-700" : "bg-ink-900/[0.04] text-ink-950 hover:bg-ink-900/[0.07]"
                         }`}
                         aria-label="Involve family"
                         title="Involve family"
                       >
-                        <FamilyIcon />
-                        {/* Compact on phones so the activity status is never cut off: icon only under
-                            400px, "Family" up to 640px, the full label on larger screens. */}
-                        <span className="hidden min-[400px]:inline sm:hidden text-[12px] font-semibold whitespace-nowrap">Family</span>
-                        <span className="hidden sm:inline text-[13px] font-semibold whitespace-nowrap">Involve family</span>
+                        <FamilyIcon size={16} />
+                        {/* Compact pill; the label shortens only as far as needed for the activity
+                            status to show in full ("Involve family" → "Family" → icon). */}
+                        {headerFit === 0 ? (
+                          <span className="text-[12px] font-semibold whitespace-nowrap">Involve family</span>
+                        ) : headerFit === 1 ? (
+                          <span className="text-[12px] font-semibold whitespace-nowrap">Family</span>
+                        ) : null}
                         {family && !family.shared && family.request.state === "pending" ? (
                           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#E12D72] ring-2 ring-white" />
                         ) : null}
