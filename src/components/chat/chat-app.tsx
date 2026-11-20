@@ -2290,11 +2290,11 @@ export function ChatApp({
                 >
                   <div
                     ref={headerRowRef}
-                    className={`px-2.5 sm:px-4 h-14 flex items-center ${headerFit >= 3 ? "gap-1" : "gap-1.5 sm:gap-2"}`}
+                    className={`${headerFit >= 3 ? "px-1.5" : "px-2.5"} sm:px-4 h-14 flex items-center ${headerFit >= 3 ? "gap-1" : "gap-1.5 sm:gap-2"}`}
                   >
                     <button
                       type="button"
-                      className="lg:hidden w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5"
+                      className={`lg:hidden ${headerFit >= 3 ? "w-7" : "w-9"} h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5`}
                       onClick={() => {
                         if (activeId) leaveThread(activeId);
                         setActiveId(null);
@@ -2310,7 +2310,7 @@ export function ChatApp({
                     <img
                       src={avatarUrl(seed)}
                       alt=""
-                      className="w-9 h-9 shrink-0 rounded-full object-cover ring-2 ring-rose-200"
+                      className={`${headerFit >= 3 ? "w-8 h-8" : "w-9 h-9"} shrink-0 rounded-full object-cover ring-2 ring-rose-200`}
                       style={
                         photoVisible
                           ? undefined
@@ -2382,7 +2382,7 @@ export function ChatApp({
                           setHeaderMenu(null);
                           if (activeId) openSharePicker(activeId);
                         }}
-                        className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition text-ink-700"
+                        className={`${headerFit >= 3 ? "w-8" : "w-9"} h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition text-ink-700`}
                         aria-label="Share my photos"
                         title="Share my photos"
                       >
@@ -2395,7 +2395,7 @@ export function ChatApp({
                     <button
                       type="button"
                       onClick={() => setHeaderMenu((m) => (m === "more" ? null : "more"))}
-                      className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
+                      className={`${headerFit >= 3 ? "w-7" : "w-9"} h-9 sm:w-10 sm:h-10 shrink-0 flex items-center justify-center rounded-full hover:bg-ink-900/5 transition ${
                         headerMenu === "more" ? "bg-ink-900/10 text-ink-950" : "text-ink-700"
                       }`}
                       aria-label="More options"
