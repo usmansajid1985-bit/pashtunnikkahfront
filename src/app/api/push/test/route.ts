@@ -5,7 +5,7 @@ import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -18,13 +18,26 @@ export async function POST() {
     );
   }
 
-  const result = await sendPushNotification(BigInt(session.userId), {
-    title: "Pashtun Nikah",
-    body: "Notifications are working correctly.",
-    url: "/settings",
-    tag: "test",
-    type: "system",
-  });
+  // Onboarding "Stay in the loop": one confirmation right after they turn notifications on.
+  const welcome = (await req.json().catch(() => ({})))?.kind === "welcome";
+  const result = await sendPushNotification(
+    BigInt(session.userId),
+    welcome
+      ? {
+          title: "Notifications are on ✅",
+          body: "We'll let you know when your profile is approved and when you receive match requests or messages.",
+          url: "/dashboard",
+          tag: "welcome",
+          type: "system",
+        }
+      : {
+          title: "Pashtun Nikah",
+          body: "Notifications are working correctly.",
+          url: "/settings",
+          tag: "test",
+          type: "system",
+        }
+  );
 
   return NextResponse.json({ ok: true, ...result });
 }

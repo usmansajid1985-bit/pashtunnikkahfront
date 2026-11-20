@@ -733,7 +733,15 @@ export function NotifyStage({ onDone }: { onDone: () => void }) {
     setNote(null);
     const r = await subscribeToPush().catch(() => ({ ok: false as const, reason: "error" as const }));
     setBusy(false);
-    if (r.ok) return onDone();
+    if (r.ok) {
+      // A confirmation straight away, so they can see notifications really arrive on this device.
+      void fetch("/api/push/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "welcome" }),
+      }).catch(() => undefined);
+      return onDone();
+    }
     // Never block progress — explain, then let them carry on.
     setNote(
       r.reason === "denied"
