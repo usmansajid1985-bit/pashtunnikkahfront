@@ -18,7 +18,6 @@ import { ensureP1Schema } from "@/lib/ensure-p1-schema";
 import { getNavCounts } from "@/lib/dashboard";
 import { firstExpansionStage } from "@/lib/browse-expansion";
 import { BrowseAppNav } from "@/components/browse/app-nav";
-import { PremiumBanner } from "@/components/browse/banners";
 import { CompletenessBanner } from "@/components/profile/completeness-banner";
 import { profileCompletion } from "@/lib/profile-completeness";
 import { BrowseFiltersBar } from "@/components/browse/browse-filters";
@@ -212,7 +211,6 @@ export default async function BrowsePage({
 
       <main className="max-w-7xl mx-auto px-5 sm:px-8 py-8 pb-[var(--pn-bottom-nav-h)]">
         <div className="flex flex-col gap-4 empty:hidden">
-          <PremiumBanner isGold={isGold} />
           <CompletenessBanner percent={pc.percent} missing={pc.missing} completeHref={pc.completeHref} />
           {!meUser?.email_verified ? (
             <EmailVerificationBanner emailVerified={false} compact />
